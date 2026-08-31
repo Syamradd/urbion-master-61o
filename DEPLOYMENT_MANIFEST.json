@@ -1,0 +1,17 @@
+{
+  "project": "URBION MASTER-61O",
+  "framework": "FastAPI",
+  "server": "Uvicorn",
+  "health_endpoint": "/health",
+  "assessment_endpoint": "/assess",
+  "gis": "CONNECTED",
+  "retrieval": "CONNECTED",
+  "applicability": "CONNECTED",
+  "compliance": "CONNECTED",
+  "external_gis_apis": "NOT_CONNECTED",
+  "test_distance_m": 111.1949266445465,
+  "test_classification": "TOD 400m",
+  "test_rule": "RT-MBMB-2035-TOD-01",
+  "test_status": "COMPLY",
+  "deployment_ready": true
+}
