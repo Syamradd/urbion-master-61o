@@ -206,29 +206,117 @@ function fillResult(data){
   document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+function updateDevelopmentFields(){
+  const type = document.getElementById('developmentType').value;
+  const box = document.getElementById('verificationFields');
+  const label = document.getElementById('verificationLabel');
+
+  box.style.display = 'none';
+
+  if(type === 'Commercial Shop Frontage'){
+    box.style.display = 'block';
+    label.textContent = 'Shop Frontage Verification';
+  }
+
+  if(type === 'Commercial Shop-Office'){
+    box.style.display = 'block';
+    label.textContent = 'Shop-Office Typology Verification';
+  }
+}
+
+document.getElementById('developmentType')
+  .addEventListener('change', updateDevelopmentFields);
+
+updateDevelopmentFields();
+
+
 async function analyse(){
   const btn=document.getElementById('analyseBtn');
+
+  const developmentType =
+    document.getElementById('developmentType').value;
+
+  const verified =
+    document.getElementById('verification').value === 'true';
+
   const payload={
     site_lat:Number(document.getElementById('siteLat').value),
     site_lon:Number(document.getElementById('siteLon').value),
-    tod_lat:TOD.lat,tod_lon:TOD.lon,
+    tod_lat:TOD.lat,
+    tod_lon:TOD.lon,
     plot_ratio:Number(document.getElementById('plotRatio').value),
-    precinct:document.getElementById('precinct').value.trim()||TOD.name
+    precinct:
+      document.getElementById('precinct').value.trim() || TOD.name,
+
+    development_type: developmentType,
+
+    shop_frontage_verified:
+      developmentType === 'Commercial Shop Frontage'
+        ? verified
+        : false,
+
+    shop_office_verified:
+      developmentType === 'Commercial Shop-Office'
+        ? verified
+        : false
   };
-  if(![payload.site_lat,payload.site_lon,payload.plot_ratio].every(Number.isFinite)||payload.plot_ratio<=0){
-    showToast('Please enter valid site coordinates and a plot ratio greater than 0.');return;
+
+  if(
+    ![
+      payload.site_lat,
+      payload.site_lon,
+      payload.plot_ratio
+    ].every(Number.isFinite)
+    || payload.plot_ratio <= 0
+  ){
+    showToast(
+      'Please enter valid site coordinates and a plot ratio greater than 0.'
+    );
+    return;
   }
-  btn.classList.add('loading');btn.textContent='ANALYSING…';
+
+  btn.classList.add('loading');
+  btn.textContent='ANALYSING…';
+
   try{
-    const res=await fetch(API+'/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const res=await fetch(
+      API+'/assess',
+      {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify(payload)
+      }
+    );
+
     const data=await res.json();
-    if(!res.ok)throw new Error(data.detail?JSON.stringify(data.detail):`HTTP ${res.status}`);
+
+    if(!res.ok){
+      throw new Error(
+        data.detail
+          ? JSON.stringify(data.detail)
+          : `HTTP ${res.status}`
+      );
+    }
+
     fillResult(data);
+
   }catch(err){
-    showToast('URBION could not complete the assessment. The public API may be waking up or unavailable. Try again in a moment.');
+
+    showToast(
+      'URBION could not complete the assessment. ' +
+      'The public API may be waking up or unavailable. ' +
+      'Try again in a moment.'
+    );
+
     console.error(err);
+
   }finally{
-    btn.classList.remove('loading');btn.textContent='ANALYSE WITH URBION →';
+
+    btn.classList.remove('loading');
+    btn.textContent='ANALYSE WITH URBION →';
+
   }
 }
 document.getElementById('analyseBtn').addEventListener('click',analyse);
