@@ -77,6 +77,22 @@
 
         <label>Precinct</label>
         <input id="precinct" value="Terminal Sg. Udang">
+        <label>Development Type</label>
+<select id="developmentType">
+  <option value="TOD Development / Mixed Use">TOD Development / Mixed Use</option>
+  <option value="Free-Standing Commercial">Free-Standing Commercial</option>
+  <option value="Free-Standing Building">Free-Standing Building</option>
+  <option value="Commercial Shop Frontage">Commercial Shop Frontage</option>
+  <option value="Commercial Shop-Office">Commercial Shop-Office</option>
+</select>
+
+<div id="verificationFields" style="display:none">
+  <label id="verificationLabel">Verification</label>
+  <select id="verification">
+    <option value="false">Not Verified</option>
+    <option value="true">Verified</option>
+  </select>
+</div>
 
         <label>Proposed plot ratio</label>
         <input id="plotRatio" type="number" min="0.1" step="0.1" value="4.5">
