@@ -70,6 +70,13 @@ def urbion_check_applicability(
         )
     )
 
+    shop_office_verified = bool(
+        spatial_context.get(
+            "shop_office_verified",
+            False
+        )
+    )
+
     precinct_verified = bool(
         spatial_context.get(
             "precinct_verified",
@@ -229,16 +236,28 @@ def urbion_check_applicability(
                 in development_type.lower()
             ):
 
-                status = (
-                    "REQUIRES TYPOLOGY VERIFICATION"
-                )
+                if shop_office_verified:
 
-                reason = (
-                    "The proposal is identified as "
-                    "shop-office, but the applicable "
-                    "commercial control requires "
-                    "typology confirmation."
-                )
+                    status = "APPLICABLE"
+
+                    reason = (
+                        "The proposal is identified as "
+                        "shop-office and the shop-office "
+                        "typology has been independently verified."
+                    )
+
+                else:
+
+                    status = (
+                        "REQUIRES TYPOLOGY VERIFICATION"
+                    )
+
+                    reason = (
+                        "The proposal is identified as "
+                        "shop-office, but the applicable "
+                        "commercial control requires "
+                        "typology confirmation."
+                    )
 
             else:
 

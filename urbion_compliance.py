@@ -546,22 +546,37 @@ def urbion_calculate_overall_status(
     """
     Calculate an overall assessment status.
 
-    Priority:
+    NOT APPLICABLE rules are excluded.
 
+    Any unresolved verification state such as
+    REQUIRES REVIEW or REQUIRES TYPOLOGY VERIFICATION
+    prevents a full COMPLY result.
+
+    Priority:
     1. NON-COMPLIANCE
     2. CONDITIONAL NON-COMPLIANCE
-    3. REQUIRES REVIEW
+    3. REQUIRES REVIEW / VERIFICATION
     4. COMPLY
     """
+
+    relevant_results = [
+        item
+        for item in compliance_results
+        if item.get("applicability")
+        != "NOT APPLICABLE"
+    ]
 
     statuses = [
         item.get(
             "status",
             ""
         )
-        for item in compliance_results
+        for item in relevant_results
     ]
 
+    # --------------------------------------------------------
+    # HARD FAILURE
+    # --------------------------------------------------------
 
     if "NON-COMPLIANCE" in statuses:
 
@@ -569,6 +584,9 @@ def urbion_calculate_overall_status(
             "🔴 NON-COMPLIANCE"
         )
 
+    # --------------------------------------------------------
+    # CONDITIONAL FAILURE
+    # --------------------------------------------------------
 
     if (
         "CONDITIONAL NON-COMPLIANCE"
@@ -579,15 +597,30 @@ def urbion_calculate_overall_status(
             "🟠 CONDITIONAL RISK"
         )
 
+    # --------------------------------------------------------
+    # UNRESOLVED / VERIFICATION REQUIRED
+    # --------------------------------------------------------
 
-    if "REQUIRES REVIEW" in statuses:
+    review_statuses = {
+        "REQUIRES REVIEW",
+        "REQUIRES TYPOLOGY VERIFICATION",
+        "REQUIRES SPATIAL VERIFICATION",
+    }
+
+    if any(
+        status in review_statuses
+        for status in statuses
+    ):
 
         return (
             "🟡 REQUIRES REVIEW"
         )
 
+    # --------------------------------------------------------
+    # FULL COMPLIANCE
+    # --------------------------------------------------------
 
-    if statuses and all(
+    if relevant_results and all(
         status == "COMPLY"
         for status in statuses
     ):
@@ -595,7 +628,6 @@ def urbion_calculate_overall_status(
         return (
             "🟢 COMPLY"
         )
-
 
     return (
         "🟡 REQUIRES REVIEW"

@@ -37,6 +37,8 @@ class AssessmentRequest(BaseModel):
     building_height: float | None = Field(default=None, ge=0)
     perimeter_planting: float | None = Field(default=None, ge=0)
     landscaped_pedestrian_walkway: float | None = Field(default=None, ge=0)
+    shop_frontage_verified: bool = False
+    shop_office_verified: bool = False
 
 def distance_m(lat1, lon1, lat2, lon2):
     R = 6371000
@@ -82,7 +84,8 @@ def assess(request: AssessmentRequest):
         tod_verified=(tod_400 or tod_800),
         tod_400_verified=tod_400,
         tod_800_verified=tod_800,
-        shop_frontage_verified=("shop" in request.development_type.lower()),
+        shop_frontage_verified=request.shop_frontage_verified,
+        shop_office_verified=request.shop_office_verified,
         tod_distance_m=distance,
     )
 
@@ -94,6 +97,8 @@ def assess(request: AssessmentRequest):
         "Building Height": request.building_height,
         "Perimeter Planting": request.perimeter_planting,
         "Landscaped Pedestrian Walkway": request.landscaped_pedestrian_walkway,
+        "shop_frontage_verified": request.shop_frontage_verified,
+        "shop_office_verified": request.shop_office_verified,
         "spatial_context": spatial_context,
     }
 

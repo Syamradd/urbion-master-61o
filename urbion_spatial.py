@@ -10,6 +10,7 @@ def urbion_create_spatial_context(
     tod_400_verified=False,
     tod_800_verified=False,
     shop_frontage_verified=False,
+    shop_office_verified=False,
     tod_distance_m=None
 ):
     """
@@ -47,6 +48,11 @@ def urbion_create_spatial_context(
         "shop_frontage_verified":
             bool(
                 shop_frontage_verified
+            ),
+
+        "shop_office_verified":
+            bool(
+                shop_office_verified
             ),
 
         "tod_distance_m":
