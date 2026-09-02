@@ -16,6 +16,10 @@ class MapStudioContractTests(unittest.TestCase):
         for token in required:
             self.assertIn(token, html)
 
+    def test_map_studio_renders_hydrology_group(self):
+        html = (Path(__file__).resolve().parents[1] / "map-studio.html").read_text(encoding="utf-8")
+        self.assertIn("'HYDROLOGY'", html)
+
     def test_map_studio_does_not_hardcode_urbion_render_api(self):
         html = (Path(__file__).resolve().parents[1] / "map-studio.html").read_text(encoding="utf-8")
         self.assertNotIn("urbion-master-61o.onrender.com", html)
