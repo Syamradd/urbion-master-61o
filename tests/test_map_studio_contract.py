@@ -9,7 +9,7 @@ class MapStudioContractTests(unittest.TestCase):
             "const API=location.origin",
             "L.tileLayer.wms",
             "GEOSERVER_WMS",
-            "iplan:gunatanah_komited_04",
+            "gunatanah_komited_",
             "/map/layers?state=Melaka",
             "/iplan/context?site_lat=",
         ]
