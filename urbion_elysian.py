@@ -20,30 +20,65 @@ ELYSIAN_LOT_11213 = {
     "evidence_status": "PROJECT_REFERENCE",
 }
 
+
+def _first(values):
+    return next((v for v in values if v is not None and str(v).strip()), None)
+
+
+def _normal(value):
+    return " ".join(str(value).strip().lower().split()) if value is not None else None
+
+
+def _conflict(field, reference, official):
+    return {"field": field, "elysian": reference, "official": official}
+
+
 def compare_official_context(official: dict | None) -> dict:
-    """Compare Elysian's known parcel context with an official query result."""
+    """Compare Elysian parcel context with an official query result.
+
+    A conflict is reported field-by-field where the official response exposes
+    a comparable attribute. Missing official attributes are not treated as a
+    conflict and never become fabricated evidence.
+    """
     official = official or {}
     attrs = official.get("attributes") or {}
     candidates = {
-        "land_use": [attrs.get("gunatanah1"), attrs.get("guna_tanah"), attrs.get("LANDUSE")],
+        "current_land_use": [attrs.get("gunatanah1"), attrs.get("guna_tanah"), attrs.get("LANDUSE")],
         "area_ha": [attrs.get("luas_ha"), attrs.get("area_ha"), attrs.get("LUAS_HA")],
         "lot_no": [attrs.get("no_lot"), attrs.get("lot_no"), attrs.get("LOT_NO")],
         "district": [attrs.get("daerah"), attrs.get("district"), attrs.get("DAERAH")],
         "mukim": [attrs.get("mukim"), attrs.get("MUKIM")],
     }
     conflicts = []
-    land_values = [v for v in candidates["land_use"] if v is not None]
-    if land_values:
-        value = str(land_values[0])
-        if value.strip().lower() != ELYSIAN_LOT_11213["current_land_use"].lower():
-            conflicts.append({"field":"current_land_use","elysian":ELYSIAN_LOT_11213["current_land_use"],"official":value})
+    official_values = {}
+    ref = ELYSIAN_LOT_11213
+
+    for field, values in candidates.items():
+        value = _first(values)
+        if value is None:
+            continue
+        official_values[field] = value
+        reference = ref[field]
+        if field == "area_ha":
+            try:
+                if abs(float(value) - float(reference)) > 0.001:
+                    conflicts.append(_conflict(field, reference, value))
+            except (TypeError, ValueError):
+                if _normal(value) != _normal(reference):
+                    conflicts.append(_conflict(field, reference, value))
+        elif _normal(value) != _normal(reference):
+            conflicts.append(_conflict(field, reference, value))
+
     return {
-        "reference": ELYSIAN_LOT_11213,
+        "reference": ref,
         "official_status": official.get("status", "NOT_PROVIDED"),
+        "official_values": official_values,
         "conflicts": conflicts,
+        "conflict_count": len(conflicts),
         "resolution_policy": "OFFICIAL_SOURCE_WINS_FOR_DECISION_CONTEXT; ELYSIAN RETAINED AS TRACEABLE PROJECT REFERENCE",
         "decision_safe": False,
     }
+
 
 def elysian_source_record() -> dict:
     return {
