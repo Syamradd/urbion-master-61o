@@ -4,3 +4,4 @@ pydantic
 folium
 pandas
 numpy
+pytest
