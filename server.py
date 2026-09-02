@@ -17,6 +17,7 @@ from urbion_scenario_ranking import rank_scenarios
 from urbion_decision_center import build_decision_center
 from urbion_judge_mode import build_judge_mode
 from urbion_iplan import query_iplan_context
+from urbion_data_sources import source_catalog,map_layer_catalog
 app=FastAPI(title='URBION API',version='PHASE-E.6');app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=False,allow_methods=['*'],allow_headers=['*'])
 class AssessmentRequest(BaseModel):
  site_lat:float=Field(...,ge=-90,le=90);site_lon:float=Field(...,ge=-180,le=180);tod_lat:float=Field(...,ge=-90,le=90);tod_lon:float=Field(...,ge=-180,le=180);plot_ratio:float=Field(default=4.5,gt=0);precinct:str='Terminal Sg. Udang';development_type:str='TOD Development / Mixed Use';development_class:str='Mixed Use';state:str='Melaka';district:str='Melaka Tengah';pbt:str='Majlis Bandaraya Melaka Bersejarah';lot_no:str='';building_height:float|None=Field(default=None,ge=0);perimeter_planting:float|None=Field(default=None,ge=0);landscaped_pedestrian_walkway:float|None=Field(default=None,ge=0);shop_frontage_verified:bool=False;shop_office_verified:bool=False
@@ -54,9 +55,14 @@ def root():return{'project':'URBION','version':'PHASE-E.6','status':'ONLINE'}
 @app.get('/health')
 def health():return{'status':'healthy','engine':'URBION PHASE-E.6'}
 @app.get('/metadata')
-def metadata():return{'project':'URBION HORIZON','version':'PHASE-E.6','states':sorted(STATE_PBT.keys()),'pbt':STATE_PBT,'development_classes':DEVELOPMENT_CLASSES,'source_registry':source_registry_snapshot(),'policy_coverage':'RT MBMB 2035 rule engine active for supported typologies; other PBTs are spatial-demo coverage only.','decision_layer':'Explainable recommendation + evidence confidence + planning value + What-If scenario intelligence + championship decision center + deterministic judge mode; not statutory approval.'}
+def metadata():return{'project':'URBION HORIZON','version':'PHASE-E.6','states':sorted(STATE_PBT.keys()),'pbt':STATE_PBT,'development_classes':DEVELOPMENT_CLASSES,'source_registry':source_registry_snapshot(),'national_data_sources':source_catalog(),'map_layer_catalog':'/map/layers','policy_coverage':'RT MBMB 2035 rule engine active for supported typologies; other PBTs are spatial-demo coverage only.','decision_layer':'Explainable recommendation + evidence confidence + planning value + What-If scenario intelligence + championship decision center + deterministic judge mode; not statutory approval.'}
 @app.get('/evidence-summary')
 def evidence_summary():return summarise_sources(source_registry_snapshot())
+@app.get('/sources')
+def sources():return{'sources':source_catalog(),'evidence_policy':'Portal access or public map-service availability does not equal statutory verification.'}
+@app.get('/map/layers')
+def map_layers(state:str='Melaka'):
+ return{'state':state,'layers':map_layer_catalog(state),'layer_controls':['toggle','opacity','identify','legend','fit-to-site','measure-distance','measure-area','basemap','share-location'],'disclaimer':'Layers are decision-support context. Verify authoritative currency and statutory applicability before relying on any layer for a planning decision.'}
 @app.get('/iplan/context')
 def iplan_context(site_lat:float=2.3,site_lon:float=102.2,state:str='Melaka'):
  if not math.isfinite(float(site_lat)) or not math.isfinite(float(site_lon)):raise HTTPException(status_code=422,detail={'code':'INVALID_SPATIAL_INPUT','message':'Coordinates must be finite numeric values.'})

@@ -29,4 +29,13 @@ def query_iplan_context(lat: float, lon: float, state: str = "Melaka") -> dict:
     code = STATE_CODES.get(state)
     if not code:
         return {"status":"UNSUPPORTED_STATE","state":state}
-    return {"provider":"PLANMalaysia i-Plan","state":state,"latitude":lat,"longitude":lon,"current_land_use":_query_layer(f"GTsemasa_{code}",lat,lon),"zoning":_query_layer(f"GTzoning_{code}",lat,lon),"source_type":"PUBLIC_ARCGIS_REST","decision_use":"SOURCE_CONTEXT_ONLY","disclaimer":"i-Plan source context; verify currency, plan status and statutory applicability before relying on it for a planning decision."}
+    current = _query_layer(f"GTsemasa_{code}",lat,lon)
+    zoning = _query_layer(f"GTzoning_{code}",lat,lon)
+    lot = _query_layer(f"LOT_{code}",lat,lon)
+    contour = _query_layer(f"KONTUR5M_{code}",lat,lon)
+    return {
+        "provider":"PLANMalaysia i-Plan","state":state,"latitude":lat,"longitude":lon,
+        "current_land_use":current,"zoning":zoning,"cadastral_lot":lot,"terrain_contour_5m":contour,
+        "source_type":"PUBLIC_ARCGIS_REST","decision_use":"SOURCE_CONTEXT_ONLY",
+        "disclaimer":"i-Plan source context; verify currency, plan status and statutory applicability before relying on it for a planning decision. A successful query is not itself statutory verification."
+    }
