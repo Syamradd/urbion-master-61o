@@ -1,0 +1,1 @@
+MASTER-68 championship UI work is prepared as the next frontend freeze layer. The backend evidence and demo layers are anchored from the MASTER-67 merge lineage.
