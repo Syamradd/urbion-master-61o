@@ -1,0 +1,17 @@
+from urbion_iplan import query_iplan_context
+
+def test_iplan_unknown_state_is_explicit():
+    result=query_iplan_context(2.3,102.2,"Atlantis")
+    assert result["status"]=="UNSUPPORTED_STATE"
+
+def test_iplan_melaka_contract(monkeypatch):
+    calls=[]
+    def fake(service,lat,lon,timeout=8.0):
+        calls.append(service)
+        return {"status":"LIVE_QUERY","attributes":{"gunatanah1":"Komersial","tahun_data":2025},"geometry":{"rings":[]}}
+    monkeypatch.setattr("urbion_iplan._query_layer",fake)
+    result=query_iplan_context(2.3,102.2,"Melaka")
+    assert result["provider"]=="PLANMalaysia i-Plan"
+    assert result["current_land_use"]["attributes"]["gunatanah1"]=="Komersial"
+    assert result["zoning"]["attributes"]["tahun_data"]==2025
+    assert calls==["GTsemasa_04","GTzoning_04"]
