@@ -35,7 +35,14 @@ def normalise_class(t,c):
  if any(x in v for x in['infrastructure','utility']):return'Infrastructure'
  if'mixed'in v or'tod'in v:return'Mixed Use'
  return'Commercial'
+def _validate_spatial_input(r):
+ values=(r.site_lat,r.site_lon,r.tod_lat,r.tod_lon)
+ if not all(math.isfinite(float(value)) for value in values):
+  raise HTTPException(status_code=422,detail={'code':'INVALID_SPATIAL_INPUT','message':'Site and TOD coordinates must be finite numeric values.'})
+ if (float(r.site_lat),float(r.site_lon))==(-90.0,-180.0) or (float(r.tod_lat),float(r.tod_lon))==(-90.0,-180.0):
+  raise HTTPException(status_code=422,detail={'code':'INVALID_SPATIAL_INPUT','message':'Placeholder coordinates (-90, -180) cannot be used for spatial assessment. Provide actual site and TOD coordinates.'})
 def assess_core(r):
+ _validate_spatial_input(r)
  d=distance_m(r.site_lat,r.site_lon,r.tod_lat,r.tod_lon);cl=classify(d);dc=normalise_class(r.development_type,r.development_class);cov=policy_coverage(r.pbt);sc=urbion_create_spatial_context(precinct=r.precinct,precinct_verified=True,tod_verified=d<=800,tod_400_verified=d<=400,tod_800_verified=d<=800,shop_frontage_verified=r.shop_frontage_verified,shop_office_verified=r.shop_office_verified,tod_distance_m=d);prop={'development_type':r.development_type,'authority':'MBMB'if r.pbt=='Majlis Bandaraya Melaka Bersejarah'else r.pbt,'planning_reference':'RT MBMB 2035'if r.pbt=='Majlis Bandaraya Melaka Bersejarah'else'Local planning policy not loaded','Plot Ratio':r.plot_ratio,'Building Height':r.building_height,'Perimeter Planting':r.perimeter_planting,'Landscaped Pedestrian Walkway':r.landscaped_pedestrian_walkway,'shop_frontage_verified':r.shop_frontage_verified,'shop_office_verified':r.shop_office_verified,'spatial_context':sc};rr=[];ar=[];cr=[];fr=None;fs='REQUIRES REVIEW'
  if r.pbt=='Majlis Bandaraya Melaka Bersejarah':
   rr=urbion_retrieve_rules(development_type=prop['development_type'],authority=prop['authority'],spatial_context=sc);ar=urbion_check_applicability(prop,rr);cr=urbion_evaluate_compliance(ar,prop);applicable=[x for x in cr if x.get('applicability')=='APPLICABLE']
