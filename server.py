@@ -20,6 +20,7 @@ from urbion_judge_mode import build_judge_mode
 from urbion_iplan import query_iplan_context
 from urbion_data_sources import source_catalog,map_layer_catalog
 from urbion_elysian import ELYSIAN_LOT_11213,compare_official_context,elysian_source_record
+from urbion_kebenaran_merancang import build_km_readiness
 app=FastAPI(title='URBION API',version='PHASE-E.7');app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=False,allow_methods=['*'],allow_headers=['*'])
 class AssessmentRequest(BaseModel):
  site_lat:float=Field(...,ge=-90,le=90);site_lon:float=Field(...,ge=-180,le=180);tod_lat:float=Field(...,ge=-90,le=90);tod_lon:float=Field(...,ge=-180,le=180);plot_ratio:float=Field(default=4.5,gt=0);precinct:str='Terminal Sg. Udang';development_type:str='TOD Development / Mixed Use';development_class:str='Mixed Use';state:str='Melaka';district:str='Melaka Tengah';pbt:str='Majlis Bandaraya Melaka Bersejarah';lot_no:str='';building_height:float|None=Field(default=None,ge=0);perimeter_planting:float|None=Field(default=None,ge=0);landscaped_pedestrian_walkway:float|None=Field(default=None,ge=0);shop_frontage_verified:bool=False;shop_office_verified:bool=False
@@ -59,18 +60,13 @@ def assess_core(r):
  sa=build_site_analysis(state=r.state,district=r.district,pbt=r.pbt,lot_no=r.lot_no,latitude=r.site_lat,longitude=r.site_lon,tod_distance_m=d,development_class=dc,development_type=r.development_type,policy_status=fs,final_status=fs,retrieved_rules=len(rr));reg=source_registry_snapshot();ei=summarise_sources(reg);trace=decision_trace(fs,rr,ar,cr);site={'latitude':r.site_lat,'longitude':r.site_lon,'state':r.state,'district':r.district,'pbt':r.pbt,'lot_no':r.lot_no or'Not specified','tod_distance_m':d};pv=build_planning_value(site=site,final_status=fs,policy_coverage=cov,retrieved_rules=rr,compliance_results=cr,site_analysis=sa,evidence_intelligence=ei);return{'project':'URBION','version':'PHASE-E.7','site':site,'tod':{'latitude':r.tod_lat,'longitude':r.tod_lon},'precinct':r.precinct,'development_class':dc,'development_type':r.development_type,'proposal':prop,'tod_distance_m':d,'classification':cl,'policy_coverage':cov,'retrieved_rules':rr,'applicability_results':ar,'compliance_results':cr,'final_rule':fr,'final_status':fs,'site_analysis':sa,'recommendation':sa['recommendation'],'decision_confidence':sa['decision_confidence'],'planning_value':pv,'source_registry':reg,'evidence_intelligence':ei,'decision_trace':trace,'evidence_state':{'site_coordinates':evidence_state(user_provided=True),'tod_distance':evidence_state(calculated=True),'planning_rules':evidence_state(source='RT MBMB 2035' if rr else None),'final_decision':evidence_state(calculated=True),'statutory_verification':'NOT_CLAIMED'},'gis_provenance':'URBION GIS decision pipeline + official-source registry; external GIS live-query status is explicitly disclosed.'}
 @app.get('/',include_in_schema=False)
 def root():
- source=(BASE_DIR/'index.html').read_text(encoding='utf-8')
- source=source.replace('MASTER-63 ENGINE ONLINE','PHASE-E.7 ENGINE ONLINE').replace('MASTER-65 VISUAL DECISION LAYER','PHASE-E.7 LIVE DECISION LAYER')
- source=source.replace("const API='https://urbion-master-61o-1.onrender.com';","const API=location.origin;")
- enhancement='''<script>window.addEventListener('load',function(){try{if(window.L&&document.getElementById('map')){const wms='https://iplan.planmalaysia.gov.my/geoserver/iplan/wms';const l=L.tileLayer.wms(wms,{layers:'iplan:gunatanah_komited_04',format:'image/png',transparent:true,version:'1.1.1',opacity:.55,attribution:'PLANMalaysia i-Plan'});window.__urbionCommittedWms=l;const b=document.createElement('button');b.textContent='i-PLAN COMMITTED';b.style.cssText='position:absolute;z-index:1200;right:18px;top:18px;padding:9px 11px;border-radius:10px;border:1px solid #294052;background:#0b1621dd;color:#eff8ff;font:800 9px Inter;cursor:pointer';b.onclick=function(){if(map.hasLayer(l)){map.removeLayer(l);b.style.opacity='.65'}else{l.addTo(map);b.style.opacity='1'}};document.body.appendChild(b)}}catch(e){}});</script>'''
- source=source.replace('</body>',enhancement+'</body>')
- return HTMLResponse(source,media_type='text/html')
+ source=(BASE_DIR/'index.html').read_text(encoding='utf-8');source=source.replace('MASTER-63 ENGINE ONLINE','PHASE-E.7 ENGINE ONLINE').replace('MASTER-65 VISUAL DECISION LAYER','PHASE-E.7 LIVE DECISION LAYER').replace("const API='https://urbion-master-61o-1.onrender.com';","const API=location.origin;");enhancement='''<script>window.addEventListener('load',function(){try{if(window.L&&document.getElementById('map')){const wms='https://iplan.planmalaysia.gov.my/geoserver/iplan/wms';const l=L.tileLayer.wms(wms,{layers:'iplan:gunatanah_komited_04',format:'image/png',transparent:true,version:'1.1.1',opacity:.55,attribution:'PLANMalaysia i-Plan'});window.__urbionCommittedWms=l;const b=document.createElement('button');b.textContent='i-PLAN COMMITTED';b.style.cssText='position:absolute;z-index:1200;right:18px;top:18px;padding:9px 11px;border-radius:10px;border:1px solid #294052;background:#0b1621dd;color:#eff8ff;font:800 9px Inter;cursor:pointer';b.onclick=function(){if(map.hasLayer(l)){map.removeLayer(l);b.style.opacity='.65'}else{l.addTo(map);b.style.opacity='1'}};document.body.appendChild(b)}}catch(e){}});</script>''';source=source.replace('</body>',enhancement+'</body>');return HTMLResponse(source,media_type='text/html')
 @app.get('/index.html',include_in_schema=False)
 def index_html():return root()
 @app.get('/health')
 def health():return{'status':'healthy','engine':'URBION PHASE-E.7','frontend':'SERVING_INDEX_HTML'}
 @app.get('/metadata')
-def metadata():return{'project':'URBION HORIZON','version':'PHASE-E.7','states':sorted(STATE_PBT.keys()),'pbt':STATE_PBT,'development_classes':DEVELOPMENT_CLASSES,'source_registry':source_registry_snapshot(),'national_data_sources':source_catalog(),'map_layer_catalog':'/map/layers','policy_coverage':'RT MBMB 2035 rule engine active for supported typologies; other PBTs are spatial-demo coverage only.','decision_layer':'Explainable recommendation + evidence confidence + planning value + What-If scenario intelligence + championship decision center + deterministic judge mode; not statutory approval.','frontend':'index.html served by the same deployment origin.','evidence_model':['USER_PROVIDED','CALCULATED','SOURCE_CONTEXT','SOURCE_CONFIRMED','VERIFIED']}
+def metadata():return{'project':'URBION HORIZON','version':'PHASE-E.7','states':sorted(STATE_PBT.keys()),'pbt':STATE_PBT,'development_classes':DEVELOPMENT_CLASSES,'source_registry':source_registry_snapshot(),'national_data_sources':source_catalog(),'map_layer_catalog':'/map/layers','policy_coverage':'RT MBMB 2035 rule engine active for supported typologies; other PBTs are spatial-demo coverage only.','decision_layer':'Explainable recommendation + evidence confidence + planning value + What-If scenario intelligence + championship decision center + deterministic judge mode; not statutory approval.','frontend':'index.html served by the same deployment origin.','evidence_model':['USER_PROVIDED','CALCULATED','SOURCE_CONTEXT','VERIFIED','UNVERIFIED']}
 @app.get('/evidence-summary')
 def evidence_summary():return summarise_sources(source_registry_snapshot())
 @app.get('/sources')
@@ -85,7 +81,7 @@ def iplan_context(site_lat:float=2.3,site_lon:float=102.2,state:str='Melaka'):
 @app.get('/elysian/reconcile')
 def elysian_reconcile(site_lat:float|None=None,site_lon:float|None=None,state:str='Melaka'):
  result={'reference':ELYSIAN_LOT_11213,'source_record':elysian_source_record(),'official_query':None}
- if (site_lat is None)!=(site_lon is None):raise HTTPException(status_code=422,detail={'code':'INCOMPLETE_SPATIAL_INPUT','message':'Provide both site_lat and site_lon, or neither.'})
+ if(site_lat is None)!=(site_lon is None):raise HTTPException(status_code=422,detail={'code':'INCOMPLETE_SPATIAL_INPUT','message':'Provide both site_lat and site_lon, or neither.'})
  if site_lat is not None:
   if not math.isfinite(float(site_lat))or not math.isfinite(float(site_lon)):raise HTTPException(status_code=422,detail={'code':'INVALID_SPATIAL_INPUT','message':'Coordinates must be finite numeric values.'})
   official=query_iplan_context(site_lat,site_lon,state);result['official_query']=official;result['reconciliation']=compare_official_context(official.get('current_land_use') or {})
@@ -93,6 +89,8 @@ def elysian_reconcile(site_lat:float|None=None,site_lon:float|None=None,state:st
  return result
 @app.post('/assess')
 def assess(r:AssessmentRequest):return assess_core(r)
+@app.post('/km/readiness')
+def km_readiness(pbt:str,development_type:str,documents:list[str]|None=None,km_category:str|None=None,technical_reviews:dict[str,str]|None=None):return build_km_readiness(pbt=pbt,development_type=development_type,documents=documents,km_category=km_category,technical_reviews=technical_reviews)
 @app.get('/demo-scenarios')
 def scenarios():return{'project':'URBION HORIZON','scenarios':demo_scenarios()}
 @app.post('/demo-scenarios/{scenario_id}')
