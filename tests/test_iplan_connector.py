@@ -11,7 +11,11 @@ def test_iplan_melaka_contract(monkeypatch):
 
     def fake(service, lat, lon, timeout=8.0):
         calls.append(service)
-        return {"status":"LIVE_QUERY","attributes":{"gunatanah1":"Komersial","tahun_data":2025},"geometry":{"rings":[]}}
+        return {
+            "status": "LIVE_QUERY",
+            "attributes": {"gunatanah1": "Komersial", "tahun_data": 2025},
+            "geometry": {"rings": []},
+        }
 
     monkeypatch.setattr("urbion_iplan._query_layer", fake)
     result = query_iplan_context(2.3, 102.2, "Melaka")
@@ -20,4 +24,4 @@ def test_iplan_melaka_contract(monkeypatch):
     assert result["zoning"]["attributes"]["tahun_data"] == 2025
     assert result["cadastral_lot"]["status"] == "LIVE_QUERY"
     assert result["terrain_contour_5m"]["status"] == "LIVE_QUERY"
-    assert calls == ["GTsemasa_04","GTzoning_04","LOT_04","KONTUR5M_04"]
+    assert calls == ["GTsemasa_04", "GTzoning_04", "LOT_04", "KONTUR5M_04"]
