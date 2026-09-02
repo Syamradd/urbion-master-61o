@@ -12,7 +12,7 @@
   <style>
     :root{--bg:#071018;--panel:rgba(13,27,38,.9);--line:rgba(159,184,202,.16);--text:#edf6fb;--muted:#91a6b5;--accent:#62e6c2;--accent2:#6ca8ff;--danger:#ff6f7d;--shadow:0 24px 70px rgba(0,0,0,.35);--radius:22px}
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:radial-gradient(circle at 15% 0%,rgba(98,230,194,.1),transparent 30%),radial-gradient(circle at 85% 15%,rgba(108,168,255,.1),transparent 28%),var(--bg);font-family:Inter,system-ui,sans-serif;min-height:100vh}
-    button,input{font:inherit}button{cursor:pointer}.shell{width:min(1240px,calc(100% - 32px));margin:auto}
+    button,input,select{font:inherit}button{cursor:pointer}.shell{width:min(1240px,calc(100% - 32px));margin:auto}
     .nav{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
     .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.08em}.brand-mark{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#061018;font-weight:900}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em;margin-top:2px}
     .nav-status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 16px var(--accent)}
@@ -24,7 +24,7 @@
     .workspace{display:grid;grid-template-columns:1.55fr .75fr;gap:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
     .map-wrap{position:relative;min-height:580px}#map{height:580px;width:100%}.map-overlay{position:absolute;z-index:500;top:16px;left:16px;padding:10px 13px;border-radius:12px;background:rgba(5,13,19,.82);backdrop-filter:blur(12px);border:1px solid var(--line);font-size:12px;color:var(--muted)}
     .form{padding:22px}.form h3{margin:0 0 6px;font-family:"Space Grotesk";font-size:21px}.form .sub{color:var(--muted);font-size:12px;line-height:1.5;margin-bottom:22px}
-    label{display:block;color:#b8c9d4;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin:16px 0 8px}input{width:100%;border:1px solid var(--line);background:#08151f;color:var(--text);border-radius:12px;padding:12px 13px;outline:none}input:focus{border-color:rgba(98,230,194,.55);box-shadow:0 0 0 3px rgba(98,230,194,.08)}
+    label{display:block;color:#b8c9d4;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin:16px 0 8px}input,select{width:100%;border:1px solid var(--line);background:#08151f;color:var(--text);border-radius:12px;padding:12px 13px;outline:none}.type-fields{display:none}.type-fields.show{display:block}input:focus{border-color:rgba(98,230,194,.55);box-shadow:0 0 0 3px rgba(98,230,194,.08)}
     .coords{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pill{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--line);background:rgba(255,255,255,.025);padding:12px;border-radius:12px;margin-top:12px}.pill span{color:var(--muted);font-size:11px}.pill strong{font-size:12px}.analyse{width:100%;margin-top:20px}
     .result{margin-top:16px;display:none}.result.show{display:block;animation:rise .35s ease}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     .decision{padding:28px;text-align:center;border-radius:var(--radius);border:1px solid rgba(98,230,194,.24);background:linear-gradient(180deg,rgba(98,230,194,.08),rgba(255,255,255,.02))}.decision .label{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.18em}.decision h2{margin:8px 0;font-family:"Space Grotesk";font-size:46px;letter-spacing:-.04em}.decision p{color:var(--muted);line-height:1.6;font-size:13px;margin:0 auto;max-width:650px}.decision.fail{border-color:rgba(255,111,125,.35);background:rgba(255,111,125,.06)}.decision.fail h2{color:var(--danger)}.decision.pass h2{color:var(--accent)}
@@ -86,16 +86,32 @@
   <option value="Commercial Shop-Office">Commercial Shop-Office</option>
 </select>
 
-<div id="verificationFields" style="display:none">
-  <label id="verificationLabel">Verification</label>
-  <select id="verification">
-    <option value="false">Not Verified</option>
-    <option value="true">Verified</option>
-  </select>
-</div>
-
-        <label>Proposed plot ratio</label>
-        <input id="plotRatio" type="number" min="0.1" step="0.1" value="4.5">
+        <div id="todFields" class="type-fields">
+          <label>Proposed plot ratio</label>
+          <input id="plotRatio" type="number" min="0.1" step="0.1" value="4.5">
+        </div>
+        <div id="freeStandingCommercialFields" class="type-fields">
+          <label>Proposed plot ratio</label>
+          <input id="commercialPlotRatio" type="number" min="0.1" step="0.1" value="4.5">
+          <label>Perimeter planting (m)</label>
+          <input id="commercialPerimeterPlanting" type="number" min="0" step="0.1" placeholder="Optional perimeter planting width">
+        </div>
+        <div id="freeStandingBuildingFields" class="type-fields">
+          <label>Perimeter planting (m)</label>
+          <input id="perimeterPlanting" type="number" min="0" step="0.1" placeholder="Minimum 3.0 m">
+        </div>
+        <div id="shopFrontageFields" class="type-fields">
+          <label>Landscaped pedestrian walkway (m)</label>
+          <input id="landscapedPedestrianWalkway" type="number" min="0" step="0.1" placeholder="Minimum 1.5 m">
+          <label>Shop-frontage verification</label>
+          <select id="shopFrontageVerified"><option value="false">Not Verified</option><option value="true">Verified</option></select>
+        </div>
+        <div id="shopOfficeFields" class="type-fields">
+          <label>Building height (storeys)</label>
+          <input id="buildingHeight" type="number" min="0" step="1" placeholder="Maximum 4 storeys">
+          <label>Shop-office verification</label>
+          <select id="shopOfficeVerified"><option value="false">Not Verified</option><option value="true">Verified</option></select>
+        </div>
 
         <label>Proposed site coordinates</label>
         <div class="coords">
@@ -201,14 +217,14 @@ function fillResult(data){
   document.getElementById('distance').textContent=`${Number(data.tod_distance_m).toFixed(1)} m`;
   document.getElementById('classification').textContent=data.classification||'—';
   document.getElementById('finalRule').textContent=data.final_rule||'None';
-  document.getElementById('proposedRatio').textContent=ratio(document.getElementById('plotRatio').value);
+  document.getElementById('proposedRatio').textContent=ratio(data.proposal?.['Plot Ratio']);
 
   const applicable=(data.compliance_results||[]).find(x=>x.applicability==='APPLICABLE');
   const rule=(data.retrieved_rules||[]).find(x=>x.rule_id===data.final_rule)||applicable;
   const requirement=applicable?.requirement||rule?.requirement||'—';
 
   document.getElementById('decisionText').textContent=status==='COMPLY'
-    ?`The proposed plot ratio ${ratio(document.getElementById('plotRatio').value)} is compliant with the applicable planning control for this spatial condition.`
+    ?`The proposal is compliant with the applicable planning control for this spatial condition.`
     :'URBION could not establish a compliant outcome from the currently applicable planning controls.';
   document.getElementById('whySpatial').textContent=`The proposed site is ${Number(data.tod_distance_m).toFixed(1)} m from ${data.precinct}, placing it in the ${data.classification} spatial band.`;
   document.getElementById('whyPolicy').textContent=rule?`${rule.rule_id} applies under ${rule.source_document}, ${rule.source_section}. Requirement: ${requirement}.`:'No primary applicable rule was established.';
@@ -223,28 +239,31 @@ function fillResult(data){
 }
 
 function updateDevelopmentFields(){
-  const type = document.getElementById('developmentType').value;
-  const box = document.getElementById('verificationFields');
-  const label = document.getElementById('verificationLabel');
-
-  box.style.display = 'none';
-
-  if(type === 'Commercial Shop Frontage'){
-    box.style.display = 'block';
-    label.textContent = 'Shop Frontage Verification';
-  }
-
-  if(type === 'Commercial Shop-Office'){
-    box.style.display = 'block';
-    label.textContent = 'Shop-Office Typology Verification';
-  }
+  const type=document.getElementById('developmentType').value;
+  const fields={
+    'TOD Development / Mixed Use':'todFields',
+    'Free-Standing Commercial':'freeStandingCommercialFields',
+    'Free-Standing Building':'freeStandingBuildingFields',
+    'Commercial Shop Frontage':'shopFrontageFields',
+    'Commercial Shop-Office':'shopOfficeFields'
+  };
+  document.querySelectorAll('.type-fields').forEach(field=>field.classList.remove('show'));
+  document.getElementById(fields[type]).classList.add('show');
 }
 
-document.getElementById('developmentType')
-  .addEventListener('change', updateDevelopmentFields);
-
+document.getElementById('developmentType').addEventListener('change',updateDevelopmentFields);
 updateDevelopmentFields();
 
+function optionalNumber(id){
+  const value=document.getElementById(id).value;
+  return value === '' ? null : Number(value);
+}
+
+function currentPlotRatio(type){
+  return Number(type === 'Free-Standing Commercial'
+    ? document.getElementById('commercialPlotRatio').value
+    : document.getElementById('plotRatio').value);
+}
 
 async function analyse(){
   const btn=document.getElementById('analyseBtn');
@@ -252,29 +271,19 @@ async function analyse(){
   const developmentType =
     document.getElementById('developmentType').value;
 
-  const verified =
-    document.getElementById('verification').value === 'true';
-
   const payload={
     site_lat:Number(document.getElementById('siteLat').value),
     site_lon:Number(document.getElementById('siteLon').value),
     tod_lat:TOD.lat,
     tod_lon:TOD.lon,
-    plot_ratio:Number(document.getElementById('plotRatio').value),
-    precinct:
-      document.getElementById('precinct').value.trim() || TOD.name,
-
-    development_type: developmentType,
-
-    shop_frontage_verified:
-      developmentType === 'Commercial Shop Frontage'
-        ? verified
-        : false,
-
-    shop_office_verified:
-      developmentType === 'Commercial Shop-Office'
-        ? verified
-        : false
+    plot_ratio:currentPlotRatio(developmentType),
+    precinct:document.getElementById('precinct').value.trim() || TOD.name,
+    development_type:developmentType,
+    building_height:developmentType === 'Commercial Shop-Office' ? optionalNumber('buildingHeight') : null,
+    perimeter_planting:developmentType === 'Free-Standing Building' ? optionalNumber('perimeterPlanting') : developmentType === 'Free-Standing Commercial' ? optionalNumber('commercialPerimeterPlanting') : null,
+    landscaped_pedestrian_walkway:developmentType === 'Commercial Shop Frontage' ? optionalNumber('landscapedPedestrianWalkway') : null,
+    shop_frontage_verified:developmentType === 'Commercial Shop Frontage' && document.getElementById('shopFrontageVerified').value === 'true',
+    shop_office_verified:developmentType === 'Commercial Shop-Office' && document.getElementById('shopOfficeVerified').value === 'true'
   };
 
   if(
