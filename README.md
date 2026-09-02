@@ -6,20 +6,16 @@ URBION turns a development site into an explainable planning-screening workflow:
 
 **SITE → SPATIAL → TYPOLOGY → POLICY → EVIDENCE → COMPLIANCE → KM/OSC → DECISION → WHAT-IF**
 
-## What it demonstrates
-- Site and TOD spatial intelligence
-- Development-class and typology-aware screening
-- Verified RT MBMB 2035 rule retrieval for supported typologies
-- Applicability and compliance evaluation
-- Suitability scoring
-- Decision confidence and recommendation
-- Evidence-state transparency and decision trace
-- Planning-value findings, blockers and next actions
-- i-Plan point context and official committed-land-use WMS visualisation
-- Elysian project-reference reconciliation against official context
-- KM/OSC workflow-readiness support
-- Deterministic showcase scenarios for judging
-- Executable What-If scenario comparison and ranking
+## Core workflow
+1. **SITE** — location, PBT, district and parcel inputs.
+2. **SPATIAL** — TOD distance, spatial bands and map-source context.
+3. **TYPOLOGY** — development class/type determines which planning controls are relevant.
+4. **POLICY** — verified RT MBMB 2035 rules are retrieved for supported typologies.
+5. **EVIDENCE** — every important input is labelled by evidence state rather than assumed authoritative.
+6. **COMPLIANCE** — applicable controls are evaluated against proposal inputs.
+7. **KM/OSC** — submission readiness, missing evidence and technical-review blockers are surfaced.
+8. **DECISION** — recommendation, confidence, planning value and trace are returned.
+9. **WHAT-IF** — alternative proposal variants are independently assessed and ranked.
 
 ## API
 - `GET /health`
@@ -38,17 +34,23 @@ URBION turns a development site into an explainable planning-screening workflow:
 - `POST /decision-center`
 - `GET /judge-mode`
 
-### KM / OSC readiness contract
-`POST /km/readiness` accepts the PBT, development type, submitted core documents, KM category and technical-review states. It returns category state, missing core evidence, technical-review status, blockers and `READY_FOR_WORKFLOW_REVIEW` or `REQUIRES_REVIEW`. It does **not** grant or predict statutory approval.
+### KM / OSC readiness
+`POST /km/readiness` accepts the PBT, development type, submitted core documents, KM category and technical-review states. It returns category state, missing core evidence, technical-review status, blockers and `READY_FOR_WORKFLOW_REVIEW` or `REQUIRES_REVIEW`.
 
-### What-If contract
-`POST /what-if` accepts a `baseline` assessment payload and up to 12 `variants`. Each variant contains an `id`, optional `name`, and `overrides` object. URBION evaluates each variant independently through the same assessment engine, then returns status change, score delta, blockers, evidence gaps, ranked scenarios, best candidate and a decision pathway.
+**Boundary:** KM/OSC readiness support is not statutory approval and does not predict approval outcomes.
 
-## Verified local policy coverage
-MBMB / RT MBMB 2035 for the supported verified typologies. Other PBTs can be screened for spatial context, but their local statutory rule sets are not presented as loaded evidence.
+### What-If
+`POST /what-if` accepts a `baseline` assessment payload and up to 12 variants. Each variant contains an `id`, optional `name`, and `overrides` object. Every variant is evaluated through the same assessment engine before ranking.
 
-## Evidence principle
-URBION separates `USER_PROVIDED`, `CALCULATED`, `SOURCE_CONTEXT`, `VERIFIED` and `UNVERIFIED` evidence states. Discovery, planned or unavailable external sources are never promoted to fake verified evidence. External GIS availability is disclosed separately from statutory verification.
+## Evidence model
+URBION uses five explicit evidence states:
+
+`USER_PROVIDED` · `CALCULATED` · `SOURCE_CONTEXT` · `VERIFIED` · `UNVERIFIED`
+
+Live/public GIS availability is treated as **source context** unless verification evidence supports a stronger state. Missing evidence becomes an explicit review gap instead of fabricated certainty.
+
+## Data-source boundary
+The platform separates official public GIS/map services, public portals, project-reference data and planning-rule evidence. i-Plan point queries and official WMS layers provide spatial source context; statutory currency and applicability must still be verified against the authoritative plan/PBT workflow.
 
 ## Demo cases
 `TOD-COMPLY` · `SHOP-COMPLY` · `SHOP-FAIL` · `OFFICE-REVIEW` · `NON-MBMB`
