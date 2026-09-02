@@ -4,7 +4,7 @@
 
 URBION turns a development site into an explainable planning-screening workflow:
 
-**SITE → SPATIAL → TYPOLOGY → POLICY → EVIDENCE → COMPLIANCE → DECISION**
+**SITE → SPATIAL → TYPOLOGY → POLICY → EVIDENCE → COMPLIANCE → DECISION → WHAT-IF**
 
 ## What it demonstrates
 - Site and TOD spatial intelligence
@@ -14,7 +14,9 @@ URBION turns a development site into an explainable planning-screening workflow:
 - Suitability scoring
 - Decision confidence and recommendation
 - Evidence-state transparency and decision trace
+- Planning-value findings, blockers and next actions
 - Deterministic showcase scenarios for judging
+- Executable What-If scenario comparison and ranking
 
 ## API
 - `GET /health`
@@ -23,6 +25,11 @@ URBION turns a development site into an explainable planning-screening workflow:
 - `GET /evidence-summary`
 - `POST /assess`
 - `POST /demo-scenarios/{scenario_id}`
+- `POST /planning-value`
+- `POST /what-if`
+
+### What-If contract
+`POST /what-if` accepts a `baseline` assessment payload and up to 12 `variants`. Each variant contains an `id`, optional `name`, and `overrides` object. URBION evaluates each variant independently through the same assessment engine, then returns status change, score delta, blockers, evidence gaps, ranked scenarios, best candidate and a decision pathway.
 
 ## Verified local policy coverage
 MBMB / RT MBMB 2035 for the supported verified typologies. Other PBTs can be screened for spatial context, but their local statutory rule sets are not presented as loaded evidence.
