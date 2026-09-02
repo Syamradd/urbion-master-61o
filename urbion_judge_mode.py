@@ -15,16 +15,19 @@ def build_judge_mode(*, scenarios: list[dict[str, Any]]) -> dict[str, Any]:
             "suitability": (assessment.get("site_analysis") or {}).get("suitability_score"),
             "confidence": (assessment.get("decision_confidence") or {}).get("band"),
             "recommendation": (assessment.get("recommendation") or {}).get("headline", ""),
+            "evidence_state": (assessment.get("evidence_state") or {}).get("final_decision", "UNVERIFIED"),
+            "statutory_verification": (assessment.get("evidence_state") or {}).get("statutory_verification", "NOT_CLAIMED"),
         })
     counts = {}
     for row in rows:
         counts[row["status"]] = counts.get(row["status"], 0) + 1
     return {
         "project": "URBION HORIZON",
-        "version": "PHASE-E.6",
+        "version": "PHASE-E.7",
         "headline": "See the site. Read the policy. Make the decision.",
         "scoreboard": rows,
         "status_counts": counts,
         "scenario_count": len(rows),
-        "disclaimer": "Deterministic showcase scenarios for judging; not statutory approval.",
+        "decision_boundary": "Deterministic showcase and decision-support output; not statutory approval.",
+        "disclaimer": "Deterministic showcase scenarios for judging; evidence and statutory verification remain explicitly bounded.",
     }
