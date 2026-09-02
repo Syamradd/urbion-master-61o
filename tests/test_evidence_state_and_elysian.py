@@ -34,6 +34,22 @@ class EvidenceStateAndElysianTests(unittest.TestCase):
         self.assertEqual(result["conflicts"][0]["official"], "Perumahan")
         self.assertFalse(result["decision_safe"])
 
+    def test_elysian_reconciles_area_lot_district_and_mukim_when_exposed(self):
+        result = compare_official_context({
+            "status": "LIVE_ARCGIS_REST",
+            "attributes": {
+                "gunatanah1": "Pertanian",
+                "area_ha": 1.200,
+                "lot_no": "11213",
+                "district": "Melaka Tengah",
+                "mukim": "Padang Semabok",
+            },
+        })
+        fields = {item["field"] for item in result["conflicts"]}
+        self.assertEqual(fields, {"area_ha"})
+        self.assertEqual(result["conflict_count"], 1)
+        self.assertEqual(result["official_values"]["lot_no"], "11213")
+
 
 if __name__ == "__main__":
     unittest.main()
