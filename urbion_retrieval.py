@@ -76,117 +76,16 @@ def urbion_retrieve_rules(
             ).lower()
         )
 
-        applicability = (
-            rule.get(
-                "applicability",
-                ""
-            )
-        )
-
         development_match = False
 
 
         # ====================================================
-        # 1. EXACT / TYPOLOGY MATCH
+        # TYPOLOGY MATCH
         # ====================================================
-
-        if (
-            development_lower
-            in rule_type
-        ):
-
-            development_match = True
-
-
-        # ====================================================
-        # 2. FREE-STANDING COMMERCIAL
-        # ====================================================
-
-        elif (
-            "free-standing"
-            in development_lower
-            and
-            (
-                "commercial"
-                in rule_type
-                or
-                "building"
-                in rule_type
-            )
-        ):
-
-            development_match = True
-
-
-        # ====================================================
-        # 3. SHOP-OFFICE
-        # ====================================================
-
-        elif (
-            "shop-office"
-            in development_lower
-            and
-            (
-                "shop-office"
-                in rule_type
-                or
-                "shop frontage"
-                in rule_type
-            )
-        ):
-
-            development_match = True
-
-
-        # ====================================================
-        # 4. MIXED DEVELOPMENT / TOD
-        # ====================================================
-
-        elif (
-            (
-                "mixed"
-                in development_lower
-            )
-            and
-            (
-                "tod"
-                in rule_type
-            )
-        ):
-
-            development_match = True
-
-
-        # ====================================================
-        # 5. TOD SPATIAL CANDIDATES
-        # ====================================================
-
-        elif (
-            applicability
-            == "TOD_SPATIAL_DEPENDENT"
-        ):
-
-            # TOD rules remain candidates because the
-            # retrieval layer should not independently decide
-            # whether the parcel is actually inside the radius.
-
-            development_match = True
-
-
-        # ====================================================
-        # 6. COMMERCIAL RULES
-        # ====================================================
-
-        elif (
-            "commercial"
-            in development_lower
-            and
-            rule.get(
-                "land_use",
-                ""
-            ).lower()
-            == "commercial"
-        ):
+        # Candidate retrieval is deliberately limited to the selected
+        # rule typology. Applicability then evaluates spatial and
+        # verification conditions without cross-typology rule leakage.
+        if development_lower in rule_type:
 
             development_match = True
 
