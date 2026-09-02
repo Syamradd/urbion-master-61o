@@ -1,0 +1,11 @@
+"""Deterministic URBION showcase scenarios for judging/demo use."""
+DEMO_SCENARIOS = [
+ {"id":"TOD-COMPLY","name":"TOD Mixed-Use Candidate","tag":"COMPLY + HIGH POTENTIAL","inputs":{"site_lat":2.3000,"site_lon":102.2000,"tod_lat":2.3020,"tod_lon":102.2000,"plot_ratio":4.5,"precinct":"Terminal Sg. Udang","development_type":"TOD Development / Mixed Use","development_class":"Mixed Use","state":"Melaka","district":"Melaka Tengah","pbt":"Majlis Bandaraya Melaka Bersejarah","lot_no":"DEMO-TOD-01"}},
+ {"id":"SHOP-COMPLY","name":"Shop Frontage — Verified","tag":"COMPLY","inputs":{"site_lat":2.3000,"site_lon":102.2000,"tod_lat":2.3020,"tod_lon":102.2000,"plot_ratio":4.5,"precinct":"Terminal Sg. Udang","development_type":"Commercial Shop Frontage","development_class":"Commercial","state":"Melaka","district":"Melaka Tengah","pbt":"Majlis Bandaraya Melaka Bersejarah","lot_no":"DEMO-COM-01","landscaped_pedestrian_walkway":1.5,"shop_frontage_verified":True}} ,
+ {"id":"SHOP-FAIL","name":"Shop Frontage — Missing Walkway","tag":"NON-COMPLIANCE","inputs":{"site_lat":2.3000,"site_lon":102.2000,"tod_lat":2.3020,"tod_lon":102.2000,"plot_ratio":4.5,"precinct":"Terminal Sg. Udang","development_type":"Commercial Shop Frontage","development_class":"Commercial","state":"Melaka","district":"Melaka Tengah","pbt":"Majlis Bandaraya Melaka Bersejarah","lot_no":"DEMO-COM-02","landscaped_pedestrian_walkway":0.5,"shop_frontage_verified":True}} ,
+ {"id":"OFFICE-REVIEW","name":"Shop-Office — Verification Gap","tag":"REQUIRES REVIEW","inputs":{"site_lat":2.3000,"site_lon":102.2000,"tod_lat":2.3020,"tod_lon":102.2000,"plot_ratio":4.5,"precinct":"Terminal Sg. Udang","development_type":"Commercial Shop-Office","development_class":"Commercial","state":"Melaka","district":"Melaka Tengah","pbt":"Majlis Bandaraya Melaka Bersejarah","lot_no":"DEMO-COM-03","building_height":4,"shop_office_verified":False}} ,
+ {"id":"NON-MBMB","name":"Cross-PBT Evidence Guard","tag":"EVIDENCE REQUIRED","inputs":{"site_lat":3.0700,"site_lon":101.5200,"tod_lat":3.0710,"tod_lon":101.5200,"plot_ratio":3.0,"precinct":"Demo Precinct","development_type":"Urban Mixed Use","development_class":"Mixed Use","state":"Selangor","district":"Klang","pbt":"Majlis Bandaraya DiRaja Klang","lot_no":"DEMO-PBT-01"}}
+]
+
+def demo_scenarios():
+ return DEMO_SCENARIOS
