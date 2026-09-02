@@ -1,0 +1,1 @@
+MASTER-64 STATUS: backend decision outputs are live in the main codebase via MASTER-63. This checkpoint records the visual analytics target without changing the frozen rule engine.
