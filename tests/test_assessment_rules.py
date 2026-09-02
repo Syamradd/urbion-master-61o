@@ -22,7 +22,11 @@ class AssessmentRuleMappingTests(unittest.TestCase):
         return result
 
     def test_free_standing_commercial_retrieves_com_01(self):
-        self.assert_rule("Free-Standing Commercial", "RT-MBMB-2035-COM-01")
+        result = self.assessment(development_type="Free-Standing Commercial")
+        self.assertEqual([rule["rule_id"] for rule in result["retrieved_rules"]], ["RT-MBMB-2035-COM-01"])
+        self.assertIsNone(result["final_rule"])
+        self.assertEqual(result["final_status"], "REQUIRES REVIEW")
+        self.assertEqual(result["evidence_state"]["final_decision"], "CALCULATED")
 
     def test_free_standing_building_retrieves_com_02(self):
         self.assert_rule("Free-Standing Building", "RT-MBMB-2035-COM-02", perimeter_planting=3)
