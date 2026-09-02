@@ -15,7 +15,7 @@ def landuse_evidence(*, land_use: str | None = None, zoning: str | None = None, 
 
 def compatibility_signal(*, development_class: str, land_use: str | None, zoning: str | None) -> dict[str, Any]:
     """Provide a non-statutory signal; never converts a missing policy rule into compliance."""
-    text = " ".join(str(x or "") for x in (land_use, zoning)).lower()
+    text = " ".join(str(x or "") for x in (land_use, zoning)).strip().lower()
     cls = development_class.lower()
     if not text:
         return {"signal": "UNKNOWN", "reason": "No land-use or zoning evidence supplied."}
