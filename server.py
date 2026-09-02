@@ -15,7 +15,8 @@ from urbion_planning_value import build_planning_value
 from urbion_what_if import build_scenario_plan,compare_assessments
 from urbion_scenario_ranking import rank_scenarios
 from urbion_decision_center import build_decision_center
-app=FastAPI(title='URBION API',version='PHASE-E.5');app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=False,allow_methods=['*'],allow_headers=['*'])
+from urbion_judge_mode import build_judge_mode
+app=FastAPI(title='URBION API',version='PHASE-E.6');app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=False,allow_methods=['*'],allow_headers=['*'])
 class AssessmentRequest(BaseModel):
  site_lat:float=Field(...,ge=-90,le=90);site_lon:float=Field(...,ge=-180,le=180);tod_lat:float=Field(...,ge=-90,le=90);tod_lon:float=Field(...,ge=-180,le=180);plot_ratio:float=Field(default=4.5,gt=0);precinct:str='Terminal Sg. Udang';development_type:str='TOD Development / Mixed Use';development_class:str='Mixed Use';state:str='Melaka';district:str='Melaka Tengah';pbt:str='Majlis Bandaraya Melaka Bersejarah';lot_no:str='';building_height:float|None=Field(default=None,ge=0);perimeter_planting:float|None=Field(default=None,ge=0);landscaped_pedestrian_walkway:float|None=Field(default=None,ge=0);shop_frontage_verified:bool=False;shop_office_verified:bool=False
 class WhatIfRequest(BaseModel):
@@ -42,13 +43,13 @@ def assess_core(r):
    fr=applicable[0].get('rule_id');overall=urbion_calculate_overall_status(cr);fs='NON-COMPLIANCE'if'NON-COMPLIANCE'in overall else('CONDITIONAL RISK'if'CONDITIONAL RISK'in overall else('COMPLY'if'COMPLY'in overall else fs))
   elif cl=='OUTSIDE TOD 800m'and('tod'in r.development_type.lower()or'mixed'in r.development_type.lower()):fs='NOT APPLICABLE'
  else:cr=[{'rule_id':None,'applicability':'NOT_LOADED','status':'REQUIRES REVIEW','reason':'Local statutory rule set is not loaded into the verified decision engine.'}]
- sa=build_site_analysis(state=r.state,district=r.district,pbt=r.pbt,lot_no=r.lot_no,latitude=r.site_lat,longitude=r.site_lon,tod_distance_m=d,development_class=dc,development_type=r.development_type,policy_status=fs,final_status=fs,retrieved_rules=len(rr));reg=source_registry_snapshot();ei=summarise_sources(reg);trace=decision_trace(fs,rr,ar,cr);site={'latitude':r.site_lat,'longitude':r.site_lon,'state':r.state,'district':r.district,'pbt':r.pbt,'lot_no':r.lot_no or'Not specified','tod_distance_m':d};pv=build_planning_value(site=site,final_status=fs,policy_coverage=cov,retrieved_rules=rr,compliance_results=cr,site_analysis=sa,evidence_intelligence=ei);return{'project':'URBION','version':'PHASE-E.5','site':site,'tod':{'latitude':r.tod_lat,'longitude':r.tod_lon},'precinct':r.precinct,'development_class':dc,'development_type':r.development_type,'proposal':prop,'tod_distance_m':d,'classification':cl,'policy_coverage':cov,'retrieved_rules':rr,'applicability_results':ar,'compliance_results':cr,'final_rule':fr,'final_status':fs,'site_analysis':sa,'recommendation':sa['recommendation'],'decision_confidence':sa['decision_confidence'],'planning_value':pv,'source_registry':reg,'evidence_intelligence':ei,'decision_trace':trace,'gis_provenance':'URBION GIS decision pipeline + source registry; external portal live-query status is explicitly disclosed.'}
+ sa=build_site_analysis(state=r.state,district=r.district,pbt=r.pbt,lot_no=r.lot_no,latitude=r.site_lat,longitude=r.site_lon,tod_distance_m=d,development_class=dc,development_type=r.development_type,policy_status=fs,final_status=fs,retrieved_rules=len(rr));reg=source_registry_snapshot();ei=summarise_sources(reg);trace=decision_trace(fs,rr,ar,cr);site={'latitude':r.site_lat,'longitude':r.site_lon,'state':r.state,'district':r.district,'pbt':r.pbt,'lot_no':r.lot_no or'Not specified','tod_distance_m':d};pv=build_planning_value(site=site,final_status=fs,policy_coverage=cov,retrieved_rules=rr,compliance_results=cr,site_analysis=sa,evidence_intelligence=ei);return{'project':'URBION','version':'PHASE-E.6','site':site,'tod':{'latitude':r.tod_lat,'longitude':r.tod_lon},'precinct':r.precinct,'development_class':dc,'development_type':r.development_type,'proposal':prop,'tod_distance_m':d,'classification':cl,'policy_coverage':cov,'retrieved_rules':rr,'applicability_results':ar,'compliance_results':cr,'final_rule':fr,'final_status':fs,'site_analysis':sa,'recommendation':sa['recommendation'],'decision_confidence':sa['decision_confidence'],'planning_value':pv,'source_registry':reg,'evidence_intelligence':ei,'decision_trace':trace,'gis_provenance':'URBION GIS decision pipeline + source registry; external portal live-query status is explicitly disclosed.'}
 @app.get('/')
-def root():return{'project':'URBION','version':'PHASE-E.5','status':'ONLINE'}
+def root():return{'project':'URBION','version':'PHASE-E.6','status':'ONLINE'}
 @app.get('/health')
-def health():return{'status':'healthy','engine':'URBION PHASE-E.5'}
+def health():return{'status':'healthy','engine':'URBION PHASE-E.6'}
 @app.get('/metadata')
-def metadata():return{'project':'URBION HORIZON','version':'PHASE-E.5','states':sorted(STATE_PBT.keys()),'pbt':STATE_PBT,'development_classes':DEVELOPMENT_CLASSES,'source_registry':source_registry_snapshot(),'policy_coverage':'RT MBMB 2035 rule engine active for supported typologies; other PBTs are spatial-demo coverage only.','decision_layer':'Explainable recommendation + evidence confidence + planning value + What-If scenario intelligence + championship decision center; not statutory approval.'}
+def metadata():return{'project':'URBION HORIZON','version':'PHASE-E.6','states':sorted(STATE_PBT.keys()),'pbt':STATE_PBT,'development_classes':DEVELOPMENT_CLASSES,'source_registry':source_registry_snapshot(),'policy_coverage':'RT MBMB 2035 rule engine active for supported typologies; other PBTs are spatial-demo coverage only.','decision_layer':'Explainable recommendation + evidence confidence + planning value + What-If scenario intelligence + championship decision center + deterministic judge mode; not statutory approval.'}
 @app.get('/evidence-summary')
 def evidence_summary():return summarise_sources(source_registry_snapshot())
 @app.get('/demo-scenarios')
@@ -68,6 +69,9 @@ def what_if(r:WhatIfRequest):
  for plan in plans:executed.append({'id':plan['id'],'name':plan['name'],'assessment':assess_core(AssessmentRequest(**plan['inputs']))})
  return rank_scenarios(compare_assessments(baseline,executed))
 @app.post('/decision-center')
-def decision_center(r:AssessmentRequest):
- assessment=assess_core(r)
- return build_decision_center(assessment=assessment)
+def decision_center(r:AssessmentRequest):return build_decision_center(assessment=assess_core(r))
+@app.get('/judge-mode')
+def judge_mode():
+ executed=[]
+ for item in demo_scenarios():executed.append({'id':item['id'],'name':item['name'],'assessment':assess_core(AssessmentRequest(**item['inputs']))})
+ return build_judge_mode(scenarios=executed)
