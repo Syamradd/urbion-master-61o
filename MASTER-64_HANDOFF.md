@@ -1,0 +1,1 @@
+MASTER-64 handoff: use the existing MASTER-63 /assess recommendation, decision_confidence and site_analysis indicators as the source of truth for the visual dashboard.
