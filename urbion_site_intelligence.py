@@ -1,37 +1,24 @@
 """URBION site intelligence layer.
 
-Safe-by-design: this module does not pretend to have live access to external
-GIS portals. It records source coverage/status and computes transparent
-preliminary suitability and recommendation indicators from inputs already
-available to URBION.
+Safe-by-design: external GIS attributes are disclosed as source context and
+never treated as statutory approval or compliance by themselves.
 """
 from __future__ import annotations
 from typing import Any
-
 STATE_PBT={"Melaka":["Majlis Bandaraya Melaka Bersejarah","Majlis Perbandaran Alor Gajah","Majlis Perbandaran Jasin","Majlis Perbandaran Hang Tuah Jaya"],"Selangor":["Majlis Bandaraya Shah Alam","Majlis Bandaraya Petaling Jaya","Majlis Bandaraya Subang Jaya","Majlis Bandaraya DiRaja Klang","Majlis Perbandaran Ampang Jaya","Majlis Perbandaran Kajang","Majlis Perbandaran Selayang","Majlis Perbandaran Sepang","Majlis Perbandaran Kuala Langat","Majlis Perbandaran Hulu Selangor","Majlis Perbandaran Kuala Selangor","Majlis Daerah Sabak Bernam"],"Johor":["Majlis Bandaraya Johor Bahru","Majlis Bandaraya Iskandar Puteri","Majlis Bandaraya Pasir Gudang","Majlis Perbandaran Batu Pahat","Majlis Perbandaran Kluang","Majlis Perbandaran Muar","Majlis Perbandaran Kulai","Majlis Perbandaran Segamat"],"Pulau Pinang":["Majlis Bandaraya Pulau Pinang","Majlis Bandaraya Seberang Perai"],"Perak":["Majlis Bandaraya Ipoh","Majlis Perbandaran Manjung","Majlis Perbandaran Taiping","Majlis Perbandaran Kuala Kangsar","Majlis Perbandaran Teluk Intan"],"Negeri Sembilan":["Majlis Bandaraya Seremban","Majlis Perbandaran Port Dickson","Majlis Perbandaran Jempol","Majlis Daerah Jelebu","Majlis Daerah Kuala Pilah","Majlis Daerah Rembau","Majlis Daerah Tampin"],"Pahang":["Majlis Bandaraya Kuantan","Majlis Perbandaran Temerloh","Majlis Perbandaran Bentong","Majlis Perbandaran Pekan"],"Terengganu":["Majlis Bandaraya Kuala Terengganu","Majlis Perbandaran Kemaman","Majlis Perbandaran Dungun","Majlis Daerah Besut"],"Kedah":["Majlis Bandaraya Alor Setar","Majlis Perbandaran Langkawi Bandaraya Pelancongan","Majlis Perbandaran Sungai Petani","Majlis Perbandaran Kulim"],"Perlis":["Majlis Perbandaran Kangar"],"Kelantan":["Majlis Perbandaran Kota Bharu Bandaraya Islam","Majlis Daerah Ketereh","Majlis Daerah Tanah Merah"],"Wilayah Persekutuan":["Dewan Bandaraya Kuala Lumpur"],"Sabah":["Dewan Bandaraya Kota Kinabalu","Majlis Perbandaran Sandakan","Majlis Perbandaran Tawau"],"Sarawak":["Dewan Bandaraya Kuching Utara","Majlis Bandaraya Kuching Selatan","Majlis Bandaraya Miri","Majlis Perbandaran Sibu"]}
 DEVELOPMENT_CLASSES={"Residential":["Apartment / High-Rise","Terrace Housing","Semi-Detached","Detached Housing","Cluster Housing"],"Commercial":["Free-Standing Commercial","Free-Standing Building","Commercial Shop Frontage","Commercial Shop-Office"],"Industrial":["Light Industry","Medium Industry","Heavy Industry","SME / Cottage Industry"],"Institutional":["Education","Healthcare","Government / Civic","Religious / Community"],"Recreation":["Public Open Space","Sports / Recreation","Tourism / Leisure"],"Infrastructure":["Transport","Utility","Infrastructure Support"],"Mixed Use":["TOD Development / Mixed Use","Transit-Oriented Mixed Use","Urban Mixed Use"]}
-SOURCE_REGISTRY=[{"source":"PLANMalaysia / Rancangan Tempatan","category":"PLANNING","status":"REFERENCE_REGISTERED","evidence":"Planning policy / RT context","note":"RT MBMB 2035 rule engine is active for covered typologies."},{"source":"PBT GIS / MelGIS","category":"PBT / GIS","status":"DISCOVERY_COMPLETE","evidence":"Parcel / zoning / land-use architecture","note":"Public layer architecture was discovered; live parcel query is not claimed here."},{"source":"i-Plan","category":"PLANNING","status":"PLANNED","evidence":"Planning / land-use context","note":"Connector interface registered; no live query is claimed."},{"source":"JUPEM","category":"CADASTRAL","status":"PLANNED","evidence":"Parcel / cadastral","note":"Connector interface registered; no live query is claimed."},{"source":"MyGEMS","category":"GEOLOGY","status":"QUERY_UNAVAILABLE","evidence":"Geology / lithology","note":"Recovered diagnostic recorded query unavailability."},{"source":"MyEQMS","category":"ENVIRONMENT","status":"PLANNED","evidence":"Air / river / marine environment","note":"Connector interface registered; no live query is claimed."},{"source":"Manual Planner Verification","category":"VERIFICATION","status":"AVAILABLE","evidence":"Site observation / planning context","note":"Can be used when a planner supplies verified site evidence."}]
-
-def pbt_options(state:str)->list[str]: return STATE_PBT.get(state,[])
+SOURCE_REGISTRY=[{"source":"PLANMalaysia / Rancangan Tempatan","category":"PLANNING","status":"REFERENCE_REGISTERED","evidence":"Planning policy / RT context","note":"RT MBMB 2035 rule engine is active for covered typologies."},{"source":"PBT GIS / MelGIS","category":"PBT / GIS","status":"DISCOVERY_COMPLETE","evidence":"Parcel / zoning / land-use architecture","note":"Public layer architecture was discovered; live parcel query is not claimed here."},{"source":"i-Plan","category":"PLANNING","status":"LIVE_QUERY_AVAILABLE","evidence":"Current land-use / zoning source context","note":"Public ArcGIS REST query is exposed through /iplan/context; returned attributes remain source context and require planner verification."},{"source":"JUPEM","category":"CADASTRAL","status":"PLANNED","evidence":"Parcel / cadastral","note":"Connector interface registered; no live query is claimed."},{"source":"MyGEMS","category":"GEOLOGY","status":"QUERY_UNAVAILABLE","evidence":"Geology / lithology","note":"Recovered diagnostic recorded query unavailability."},{"source":"MyEQMS","category":"ENVIRONMENT","status":"PLANNED","evidence":"Air / river / marine environment","note":"Connector interface registered; no live query is claimed."},{"source":"Manual Planner Verification","category":"VERIFICATION","status":"AVAILABLE","evidence":"Site observation / planning context","note":"Can be used when a planner supplies verified site evidence."}]
+def pbt_options(state:str)->list[str]:return STATE_PBT.get(state,[])
 def policy_coverage(pbt:str)->dict[str,Any]:
- if pbt=="Majlis Bandaraya Melaka Bersejarah": return {"coverage":"FULL_RULE_ENGINE","reference":"RT MBMB 2035","message":"Verified MASTER-61O planning rules are active for the supported typologies."}
+ if pbt=="Majlis Bandaraya Melaka Bersejarah":return {"coverage":"FULL_RULE_ENGINE","reference":"RT MBMB 2035","message":"Verified MASTER-61O planning rules are active for the supported typologies."}
  return {"coverage":"SPATIAL_DEMO_ONLY","reference":"PBT selected; local policy rules not loaded","message":"Local planning rules are not loaded; URBION does not invent local development controls."}
 def _clamp(value:float,low:float=0,high:float=100)->float:return max(low,min(high,value))
 def _recommendation(final_status:str,suitability:float,pbt:str,development_type:str)->dict[str,Any]:
- if final_status=="NON-COMPLIANCE":
-  text="REDESIGN BEFORE PROCEEDING"
-  return {"text":text,"headline":text,"level":"BLOCKED","reason":"One or more applicable planning controls are not satisfied."}
- if final_status=="COMPLY" and suitability>=80:
-  text="STRONG CANDIDATE FOR FURTHER STUDY"
-  return {"text":text,"headline":text,"level":"POSITIVE","reason":"Applicable controls are satisfied and screening indicators are strong."}
- if final_status=="NOT APPLICABLE":
-  text="RECONSIDER DEVELOPMENT POSITION"
-  return {"text":text,"headline":text,"level":"CAUTION","reason":"The selected policy pathway is not applicable to this spatial position."}
- if pbt!="Majlis Bandaraya Melaka Bersejarah":
-  text="EVIDENCE REQUIRED BEFORE DECISION"
-  return {"text":text,"headline":text,"level":"REVIEW","reason":"Local statutory rules are not loaded for this PBT."}
- text="PROCEED WITH PLANNER REVIEW"
- return {"text":text,"headline":text,"level":"REVIEW","reason":"Screening is not a substitute for planner verification."}
+ if final_status=="NON-COMPLIANCE":return {"text":"REDESIGN BEFORE PROCEEDING","headline":"REDESIGN BEFORE PROCEEDING","level":"BLOCKED","reason":"One or more applicable planning controls are not satisfied."}
+ if final_status=="COMPLY" and suitability>=80:return {"text":"STRONG CANDIDATE FOR FURTHER STUDY","headline":"STRONG CANDIDATE FOR FURTHER STUDY","level":"POSITIVE","reason":"Applicable controls are satisfied and screening indicators are strong."}
+ if final_status=="NOT APPLICABLE":return {"text":"RECONSIDER DEVELOPMENT POSITION","headline":"RECONSIDER DEVELOPMENT POSITION","level":"CAUTION","reason":"The selected policy pathway is not applicable to this spatial position."}
+ if pbt!="Majlis Bandaraya Melaka Bersejarah":return {"text":"EVIDENCE REQUIRED BEFORE DECISION","headline":"EVIDENCE REQUIRED BEFORE DECISION","level":"REVIEW","reason":"Local statutory rules are not loaded for this PBT."}
+ return {"text":"PROCEED WITH PLANNER REVIEW","headline":"PROCEED WITH PLANNER REVIEW","level":"REVIEW","reason":"Screening is not a substitute for planner verification."}
 def _decision_confidence(final_status:str,pbt:str,lot_no:str,tod_distance_m:float,retrieved_rules:int)->dict[str,Any]:
  score=55
  if pbt=="Majlis Bandaraya Melaka Bersejarah":score+=22
