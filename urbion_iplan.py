@@ -1,4 +1,9 @@
-"""Safe i-Plan (PLANMalaysia) spatial connector."""
+"""Safe i-Plan (PLANMalaysia) spatial connector.
+
+The connector separates queryable ArcGIS REST context from the official
+GeoServer WMS committed-land-use layer. Availability is never promoted to
+statutory verification.
+"""
 from __future__ import annotations
 import json
 from urllib.parse import urlencode
@@ -6,6 +11,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 BASE = "https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN"
+GEOSERVER_WMS = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 STATE_CODES = {"Johor":"01","Kedah":"02","Kelantan":"03","Melaka":"04","Negeri Sembilan":"05","Pahang":"06","Pulau Pinang":"07","Perak":"08","Perlis":"09","Selangor":"10","Terengganu":"11","Sabah":"12","Sarawak":"13","Wilayah Persekutuan":"14","Labuan":"15","Putrajaya":"16"}
 
 
@@ -31,23 +37,22 @@ def query_iplan_context(lat: float, lon: float, state: str = "Melaka") -> dict:
     code = STATE_CODES.get(state)
     if not code:
         return {"status":"UNSUPPORTED_STATE","state":state}
-    current = _query_layer(f"GTsemasa_{code}",lat,lon)
-    zoning = _query_layer(f"GTzoning_{code}",lat,lon)
-    # i-Plan's public REST folder does not currently establish a GTkomited_<state>
-    # MapServer endpoint. Keep committed land use explicit rather than inventing a
-    # queryable service. The portal can still be used as the reference source.
+    current = _query_layer(f"GTsemasa_{code}", lat, lon)
+    zoning = _query_layer(f"GTzoning_{code}", lat, lon)
+    lot = _query_layer(f"LOT_{code}", lat, lon)
+    contour = _query_layer(f"KONTUR5M_{code}", lat, lon)
     committed = {
-        "status":"PORTAL_REFERENCE",
+        "status":"LIVE_WMS",
         "provider":"PLANMalaysia i-Plan",
-        "message":"Committed land use is referenced through the i-Plan portal; no public ArcGIS MapServer endpoint is asserted here.",
-        "reference":"https://iplan.planmalaysia.gov.my/"
+        "url":GEOSERVER_WMS,
+        "layers":f"iplan:gunatanah_komited_{code}",
+        "message":"Official i-Plan GeoServer WMS committed-land-use layer is available for map visualisation. Attribute-level filtering/querying may require the portal's authorised GeoServer workflow.",
+        "decision_use":"SOURCE_CONTEXT_ONLY",
     }
-    lot = _query_layer(f"LOT_{code}",lat,lon)
-    contour = _query_layer(f"KONTUR5M_{code}",lat,lon)
     return {
         "provider":"PLANMalaysia i-Plan","state":state,"latitude":lat,"longitude":lon,
         "current_land_use":current,"zoning":zoning,"committed_land_use":committed,
         "cadastral_lot":lot,"terrain_contour_5m":contour,
-        "source_type":"PUBLIC_ARCGIS_REST","decision_use":"SOURCE_CONTEXT_ONLY",
+        "source_type":"PUBLIC_ARCGIS_REST + OFFICIAL_GEoserver_WMS","decision_use":"SOURCE_CONTEXT_ONLY",
         "disclaimer":"i-Plan source context; verify currency, plan status and statutory applicability before relying on it for a planning decision. A successful query is not itself statutory verification."
     }
