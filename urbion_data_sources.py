@@ -1,4 +1,4 @@
-"""URBION national geospatial source registry.
+"""URBION national geospatial and planning source registry.
 
 Live/public map services are separated from portals and reference-only sources.
 No reachable source is promoted to statutory evidence merely because it responds.
@@ -7,6 +7,9 @@ from __future__ import annotations
 
 SOURCE_CATALOG = [
     {"id":"iplan","name":"PLANMalaysia i-Plan","agency":"PLANMalaysia","category":"PLANNING","status":"LIVE_ARCGIS_REST + LIVE_WMS","role":"Current land use, zoning, committed land use, cadastral context and planning layers","url":"https://iplan.planmalaysia.gov.my/","acquisition":"Public geoportal; public ArcGIS REST layers and official GeoServer WMS are available; data request module is also available."},
+    {"id":"myplan","name":"PLANMalaysia MyPLAN","agency":"PLANMalaysia","category":"PLANNING_DOCUMENTS","status":"PUBLIC_PORTAL","role":"National development-plan documents, GIS manuals and planning publications","url":"https://myplan.planmalaysia.gov.my/","acquisition":"Public document platform; supports document search and PDF access."},
+    {"id":"jpbdm-geospatial","name":"PLANMalaysia Melaka · Geospatial Melaka","agency":"PLANMalaysia Melaka","category":"PLANNING_GIS","status":"PUBLIC_PORTAL","role":"State planning GIS/data portal and non-classified planning information request workflow","url":"https://www.jpbdmelaka.gov.my/maklumat-gunatanah-negeri","acquisition":"Public portal; detailed AOI data may require the department's user/application workflow."},
+    {"id":"osc3plus","name":"OSC 3.0 Plus Online","agency":"KPKT","category":"DEVELOPMENT_CONTROL","status":"PUBLIC_WORKFLOW","role":"Planning-permission/OSC submission, technical review and application-status workflow context","url":"https://osc3plus.kpkt.gov.my/","acquisition":"Public workflow portal; user authentication and PBT-specific submission access apply."},
     {"id":"jupem-mylot","name":"JUPEM MyLot","agency":"JUPEM","category":"CADASTRAL","status":"PUBLIC_PORTAL","role":"Online location and boundary reference for surveyed land lots","url":"https://jupem2u.kul.jupem.gov.my/mylot/index.html","acquisition":"Public portal for lot-location and boundary reference."},
     {"id":"jmg-mygems","name":"JMG MyGEMS","agency":"Jabatan Mineral dan Geosains Malaysia","category":"GEOLOGY","status":"LIVE_ARCGIS_REST","role":"Geology, geohazard, mineral, groundwater and related geoscience layers","url":"https://mygems.jmg.gov.my/","acquisition":"Public geospatial portal and ArcGIS map services."},
     {"id":"doe-myeqms","name":"JAS MyEQMS / EQMP","agency":"Jabatan Alam Sekitar","category":"ENVIRONMENT","status":"PUBLIC_DATA_PORTAL","role":"Air, river-water and marine-water environmental monitoring context","url":"https://www.doe.gov.my/en/environmental-quality-monitoring/","acquisition":"Public environmental monitoring portal; use official data-access route for detailed datasets."},
