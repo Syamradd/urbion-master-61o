@@ -3,13 +3,13 @@ from pathlib import Path
 
 
 class MapStudioContractTests(unittest.TestCase):
-    def test_map_studio_uses_live_same_origin_and_verified_layer_contract(self):
+    def test_map_studio_uses_live_same_origin_and_dynamic_layer_contract(self):
         html = (Path(__file__).resolve().parents[1] / "map-studio.html").read_text(encoding="utf-8")
         required = [
             "const API=location.origin",
             "L.tileLayer.wms",
             "GEOSERVER_WMS",
-            "gunatanah_komited_",
+            "item.layers",
             "/map/layers?state=Melaka",
             "/iplan/context?site_lat=",
         ]
