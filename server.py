@@ -20,14 +20,8 @@ from urbion_site_intelligence import (
     source_registry_snapshot,
 )
 
-app = FastAPI(title="URBION API", version="MASTER-62")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="URBION API", version="MASTER-63")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 
 class AssessmentRequest(BaseModel):
     site_lat: float = Field(..., ge=-90, le=90)
@@ -50,87 +44,64 @@ class AssessmentRequest(BaseModel):
 
 def distance_m(lat1, lon1, lat2, lon2):
     R = 6371000
-    p1 = math.radians(lat1)
-    p2 = math.radians(lat2)
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lon2 - lon1)
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+    return R * (2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
 
 def classify(distance):
-    if distance <= 400:
-        return "TOD 400m"
-    if distance <= 800:
-        return "TOD 800m"
+    if distance <= 400: return "TOD 400m"
+    if distance <= 800: return "TOD 800m"
     return "OUTSIDE TOD 800m"
 
 def normalise_class(development_type: str, development_class: str) -> str:
-    if development_class in DEVELOPMENT_CLASSES:
-        return development_class
+    if development_class in DEVELOPMENT_CLASSES: return development_class
     value = development_type.lower()
-    if "residential" in value or "housing" in value:
-        return "Residential"
-    if "industrial" in value:
-        return "Industrial"
-    if "institution" in value or "education" in value or "health" in value:
-        return "Institutional"
-    if "recreation" in value or "tourism" in value:
-        return "Recreation"
-    if "infrastructure" in value or "utility" in value:
-        return "Infrastructure"
-    if "mixed" in value or "tod" in value:
-        return "Mixed Use"
+    if "residential" in value or "housing" in value: return "Residential"
+    if "industrial" in value: return "Industrial"
+    if "institution" in value or "education" in value or "health" in value: return "Institutional"
+    if "recreation" in value or "tourism" in value: return "Recreation"
+    if "infrastructure" in value or "utility" in value: return "Infrastructure"
+    if "mixed" in value or "tod" in value: return "Mixed Use"
     return "Commercial"
 
 @app.get("/")
 def root():
-    return {"project": "URBION", "version": "MASTER-62", "status": "ONLINE"}
+    return {"project": "URBION", "version": "MASTER-63", "status": "ONLINE"}
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "engine": "URBION MASTER-62"}
+    return {"status": "healthy", "engine": "URBION MASTER-63"}
 
 @app.get("/metadata")
 def metadata():
     return {
-        "project": "URBION HORIZON",
-        "version": "MASTER-62",
-        "states": sorted(STATE_PBT.keys()),
-        "pbt": STATE_PBT,
+        "project": "URBION HORIZON", "version": "MASTER-63",
+        "states": sorted(STATE_PBT.keys()), "pbt": STATE_PBT,
         "development_classes": DEVELOPMENT_CLASSES,
         "source_registry": source_registry_snapshot(),
         "policy_coverage": "RT MBMB 2035 rule engine active for supported typologies; other PBTs are spatial-demo coverage only.",
+        "decision_layer": "Explainable recommendation + evidence confidence; not statutory approval.",
     }
 
 @app.post("/assess")
 def assess(request: AssessmentRequest):
     distance = distance_m(request.site_lat, request.site_lon, request.tod_lat, request.tod_lon)
     classification = classify(distance)
-    tod_400 = distance <= 400
-    tod_800 = distance <= 800
+    tod_400, tod_800 = distance <= 400, distance <= 800
     development_class = normalise_class(request.development_type, request.development_class)
     coverage = policy_coverage(request.pbt)
-
-    # The frozen MASTER-61O decision engine remains the statutory-rule layer.
-    # MASTER-62 adds site intelligence around it without inventing new rules.
     spatial_context = urbion_create_spatial_context(
-        precinct=request.precinct,
-        precinct_verified=True,
-        tod_verified=(tod_400 or tod_800),
-        tod_400_verified=tod_400,
-        tod_800_verified=tod_800,
+        precinct=request.precinct, precinct_verified=True,
+        tod_verified=(tod_400 or tod_800), tod_400_verified=tod_400, tod_800_verified=tod_800,
         shop_frontage_verified=request.shop_frontage_verified,
-        shop_office_verified=request.shop_office_verified,
-        tod_distance_m=distance,
+        shop_office_verified=request.shop_office_verified, tod_distance_m=distance,
     )
-
     proposal = {
         "development_type": request.development_type,
         "authority": "MBMB" if request.pbt == "Majlis Bandaraya Melaka Bersejarah" else request.pbt,
         "planning_reference": "RT MBMB 2035" if request.pbt == "Majlis Bandaraya Melaka Bersejarah" else "Local planning policy not loaded",
-        "Plot Ratio": request.plot_ratio,
-        "Building Height": request.building_height,
+        "Plot Ratio": request.plot_ratio, "Building Height": request.building_height,
         "Perimeter Planting": request.perimeter_planting,
         "Landscaped Pedestrian Walkway": request.landscaped_pedestrian_walkway,
         "shop_frontage_verified": request.shop_frontage_verified,
@@ -138,83 +109,45 @@ def assess(request: AssessmentRequest):
         "spatial_context": spatial_context,
     }
 
-    retrieved_rules = []
-    applicability_results = []
-    compliance_results = []
-    final_rule = None
-    final_status = "REQUIRES REVIEW"
-
+    retrieved_rules, applicability_results, compliance_results = [], [], []
+    final_rule, final_status = None, "REQUIRES REVIEW"
     if request.pbt == "Majlis Bandaraya Melaka Bersejarah":
-        retrieved_rules = urbion_retrieve_rules(
-            development_type=proposal["development_type"],
-            authority=proposal["authority"],
-            spatial_context=spatial_context,
-        )
+        retrieved_rules = urbion_retrieve_rules(development_type=proposal["development_type"], authority=proposal["authority"], spatial_context=spatial_context)
         applicability_results = urbion_check_applicability(proposal, retrieved_rules)
         compliance_results = urbion_evaluate_compliance(applicability_results, proposal)
         applicable = [item for item in compliance_results if item.get("applicability") == "APPLICABLE"]
-
         if applicable:
             final_rule = applicable[0].get("rule_id")
             overall = urbion_calculate_overall_status(compliance_results)
-            if "NON-COMPLIANCE" in overall:
-                final_status = "NON-COMPLIANCE"
-            elif "CONDITIONAL RISK" in overall:
-                final_status = "CONDITIONAL RISK"
-            elif "COMPLY" in overall:
-                final_status = "COMPLY"
-            else:
-                final_status = "REQUIRES REVIEW"
+            if "NON-COMPLIANCE" in overall: final_status = "NON-COMPLIANCE"
+            elif "CONDITIONAL RISK" in overall: final_status = "CONDITIONAL RISK"
+            elif "COMPLY" in overall: final_status = "COMPLY"
         elif classification == "OUTSIDE TOD 800m" and ("tod" in request.development_type.lower() or "mixed" in request.development_type.lower()):
             final_status = "NOT APPLICABLE"
     else:
-        final_status = "REQUIRES REVIEW"
         compliance_results = [{
-            "rule_id": None,
-            "applicability": "NOT_LOADED",
-            "status": "REQUIRES REVIEW",
+            "rule_id": None, "applicability": "NOT_LOADED", "status": "REQUIRES REVIEW",
             "reason": "URBION has site intelligence for this PBT, but its local statutory rule set is not loaded into the verified decision engine.",
         }]
 
     site_analysis = build_site_analysis(
-        state=request.state,
-        district=request.district,
-        pbt=request.pbt,
-        lot_no=request.lot_no,
-        latitude=request.site_lat,
-        longitude=request.site_lon,
-        tod_distance_m=distance,
-        development_class=development_class,
-        development_type=request.development_type,
-        policy_status=final_status,
-        final_status=final_status,
+        state=request.state, district=request.district, pbt=request.pbt, lot_no=request.lot_no,
+        latitude=request.site_lat, longitude=request.site_lon, tod_distance_m=distance,
+        development_class=development_class, development_type=request.development_type,
+        policy_status=final_status, final_status=final_status,
     )
-
     return {
-        "project": "URBION",
-        "version": "MASTER-62",
-        "site": {
-            "latitude": request.site_lat,
-            "longitude": request.site_lon,
-            "state": request.state,
-            "district": request.district,
-            "pbt": request.pbt,
-            "lot_no": request.lot_no or "Not specified",
-        },
-        "tod": {"latitude": request.tod_lat, "longitude": request.tod_lon},
-        "precinct": request.precinct,
-        "development_class": development_class,
-        "development_type": request.development_type,
-        "proposal": proposal,
-        "tod_distance_m": distance,
-        "classification": classification,
-        "policy_coverage": coverage,
-        "retrieved_rules": retrieved_rules,
-        "applicability_results": applicability_results,
-        "compliance_results": compliance_results,
-        "final_rule": final_rule,
-        "final_status": final_status,
+        "project": "URBION", "version": "MASTER-63",
+        "site": {"latitude": request.site_lat, "longitude": request.site_lon, "state": request.state, "district": request.district, "pbt": request.pbt, "lot_no": request.lot_no or "Not specified"},
+        "tod": {"latitude": request.tod_lat, "longitude": request.tod_lon}, "precinct": request.precinct,
+        "development_class": development_class, "development_type": request.development_type,
+        "proposal": proposal, "tod_distance_m": distance, "classification": classification,
+        "policy_coverage": coverage, "retrieved_rules": retrieved_rules,
+        "applicability_results": applicability_results, "compliance_results": compliance_results,
+        "final_rule": final_rule, "final_status": final_status,
         "site_analysis": site_analysis,
+        "recommendation": site_analysis["recommendation"],
+        "decision_confidence": site_analysis["decision_confidence"],
         "source_registry": source_registry_snapshot(),
         "gis_provenance": "URBION GIS decision pipeline + source registry; external portal live-query status is explicitly disclosed.",
     }
