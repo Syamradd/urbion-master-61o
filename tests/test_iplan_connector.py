@@ -22,6 +22,7 @@ def test_iplan_melaka_contract(monkeypatch):
     assert result["provider"] == "PLANMalaysia i-Plan"
     assert result["current_land_use"]["attributes"]["gunatanah1"] == "Komersial"
     assert result["zoning"]["attributes"]["tahun_data"] == 2025
+    assert result["committed_land_use"]["status"] == "PORTAL_REFERENCE"
     assert result["cadastral_lot"]["status"] == "LIVE_QUERY"
     assert result["terrain_contour_5m"]["status"] == "LIVE_QUERY"
     assert calls == ["GTsemasa_04", "GTzoning_04", "LOT_04", "KONTUR5M_04"]
