@@ -1,0 +1,1 @@
+MASTER-64 scope locked: presentation-ready analytics using existing recommendation, confidence, suitability indicators, evidence status and next actions. No new statutory rules are introduced.
