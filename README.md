@@ -15,18 +15,27 @@ URBION turns a development site into an explainable planning-screening workflow:
 - Decision confidence and recommendation
 - Evidence-state transparency and decision trace
 - Planning-value findings, blockers and next actions
+- i-Plan point context and official committed-land-use WMS visualisation
+- Elysian project-reference reconciliation against official context
+- KM/OSC workflow-readiness module (process support, not approval prediction)
 - Deterministic showcase scenarios for judging
 - Executable What-If scenario comparison and ranking
 
 ## API
 - `GET /health`
 - `GET /metadata`
-- `GET /demo-scenarios`
 - `GET /evidence-summary`
+- `GET /sources`
+- `GET /map/layers`
+- `GET /iplan/context`
+- `GET /elysian/reconcile`
 - `POST /assess`
+- `GET /demo-scenarios`
 - `POST /demo-scenarios/{scenario_id}`
 - `POST /planning-value`
 - `POST /what-if`
+- `POST /decision-center`
+- `GET /judge-mode`
 
 ### What-If contract
 `POST /what-if` accepts a `baseline` assessment payload and up to 12 `variants`. Each variant contains an `id`, optional `name`, and `overrides` object. URBION evaluates each variant independently through the same assessment engine, then returns status change, score delta, blockers, evidence gaps, ranked scenarios, best candidate and a decision pathway.
@@ -35,7 +44,7 @@ URBION turns a development site into an explainable planning-screening workflow:
 MBMB / RT MBMB 2035 for the supported verified typologies. Other PBTs can be screened for spatial context, but their local statutory rule sets are not presented as loaded evidence.
 
 ## Evidence principle
-URBION never converts discovery, planned or unavailable external sources into fake verified evidence. Missing evidence becomes an explicit planner action.
+URBION never converts discovery, planned or unavailable external sources into fake verified evidence. Missing evidence becomes an explicit planner action. External GIS availability is disclosed separately from statutory verification.
 
 ## Demo cases
 `TOD-COMPLY` · `SHOP-COMPLY` · `SHOP-FAIL` · `OFFICE-REVIEW` · `NON-MBMB`
