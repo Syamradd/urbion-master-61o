@@ -21,4 +21,4 @@ def planning_source_summary() -> dict[str, Any]:
     for source in PLANNING_SOURCES:
         status = source["status"]
         counts[status] = counts.get(status, 0) + 1
-    return {"sources":PLANNING_SOURCES,"status_counts":counts,"verified_query_sources":[s["id"] for s in PLANNING_SOURCES if s["status"]=="VERIFIED"],"evidence_gaps":[s["id"] for s in PLANNING_SOURCES if s["status"] in {"PLANNED","DISCOVERY_COMPLETE"}],"version":"MASTER-163"}
+    return {"sources":PLANNING_SOURCES,"status_counts":counts,"verified_query_sources":[s["id"] for s in PLANNING_SOURCES if s["status"]=="VERIFIED"],"evidence_gaps":[s["id"] for s in PLANNING_SOURCES if s["status"] in {"PLANNED","DISCOVERY_COMPLETE","LIVE_ARCGIS_REST"}],"version":"MASTER-164"}
