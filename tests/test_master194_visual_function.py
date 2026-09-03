@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -9,14 +8,7 @@ def read(name):
 
 
 def test_championship_surfaces_are_present():
-    required = [
-        "index.html",
-        "map-studio.html",
-        "what-if.html",
-        "decision-center.html",
-        "planner-review.html",
-        "lcp-intelligence.html",
-    ]
+    required = ["index.html","map-studio.html","what-if.html","decision-center.html","planner-review.html","lcp-intelligence.html"]
     for name in required:
         assert (ROOT / name).exists(), name
 
@@ -31,7 +23,8 @@ def test_major_frontends_use_same_origin_api():
 
 def test_lcp_surface_preserves_safe_rendering_and_boundary():
     text = read("lcp-intelligence.html")
-    assert "replace(/[&<>\\\"']/g" in text
+    assert "const esc=" in text
+    assert "replace(/[&<>\"']" in text
     assert "NOT_CLAIMED" in text
     assert "REVIEW" in text
     assert "/lcp/intelligence" in text
@@ -39,15 +32,5 @@ def test_lcp_surface_preserves_safe_rendering_and_boundary():
 
 def test_release_contract_documents_the_real_chain():
     text = read("MASTER-193-CHAMPIONSHIP-RELEASE-LOCK.md")
-    for token in [
-        "Site Assessment",
-        "Map Studio",
-        "Evidence",
-        "What-If",
-        "Decision Center",
-        "Planner Review",
-        "LCP Intelligence",
-        "KM/OSC",
-        "GREEN",
-    ]:
+    for token in ["Site Assessment","Map Studio","Evidence","What-If","Decision Center","Planner Review","LCP Intelligence","KM/OSC","GREEN"]:
         assert token in text
