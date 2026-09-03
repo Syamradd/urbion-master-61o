@@ -6,7 +6,10 @@ from urbion_live_stations import build_live_station_snapshot
 from urbion_station_intelligence import build_station_intelligence
 from urbion_lcp_intelligence import build_lcp_intelligence
 from urbion_release_packet import build_release_packet
+from urbion_release_contract import build_championship_gate
 from urbion_what_if import execute_what_if
+import json
+from pathlib import Path
 
 
 @app.get("/gemini/status")
@@ -101,3 +104,10 @@ def lcp_release_packet(payload: dict = Body(...)):
     if not isinstance(lcp, dict):
         raise HTTPException(status_code=422, detail={"code":"LCP_RESULT_REQUIRED","message":"Provide an LCP intelligence result."})
     return build_release_packet(lcp)
+
+
+@app.get("/championship-gate")
+def championship_gate():
+    """Run the deterministic championship contract gate against the checked-in deployment manifest."""
+    manifest = json.loads((Path(__file__).resolve().parent / "DEPLOYMENT_MANIFEST.json").read_text(encoding="utf-8"))
+    return build_championship_gate(lcp=build_lcp_intelligence(assessment=assess_core(AssessmentRequest(site_lat=2.285, site_lon=102.196, tod_lat=2.286, tod_lon=102.197))), manifest=manifest)
