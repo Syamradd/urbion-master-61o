@@ -8,5 +8,5 @@ def test_lcp_judge_surface_exists_and_is_same_origin():
     assert "Integrated LCP Intelligence" in text
     assert "SITE" in text and "SPATIAL" in text and "STATION" in text
     assert "POLICY / SDG" in text and "RECOMMENDATION" in text
-    assert "function" in text
+    assert "const esc=" in text
     assert "replace(/[&<>\"']/g" in text
