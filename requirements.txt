@@ -5,4 +5,4 @@ folium
 pandas
 numpy
 pytest
-httpx2
+httpx>=0.27,<1.0

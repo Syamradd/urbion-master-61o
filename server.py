@@ -1,7 +1,7 @@
 from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse,HTMLResponse
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,field_validator
 import math,sys,json
 from pathlib import Path
 BASE_DIR=Path(__file__).resolve().parent;sys.path.insert(0,str(BASE_DIR))
@@ -27,7 +27,12 @@ app=FastAPI(title='URBION API',version='PHASE-E.7');app.add_middleware(CORSMiddl
 class AssessmentRequest(BaseModel):
  site_lat:float=Field(...,ge=-90,le=90);site_lon:float=Field(...,ge=-180,le=180);tod_lat:float=Field(...,ge=-90,le=90);tod_lon:float=Field(...,ge=-180,le=180);plot_ratio:float=Field(default=4.5,gt=0);precinct:str='Terminal Sg. Udang';development_type:str='TOD Development / Mixed Use';development_class:str='Mixed Use';state:str='Melaka';district:str='Melaka Tengah';pbt:str='Majlis Bandaraya Melaka Bersejarah';lot_no:str='';building_height:float|None=Field(default=None,ge=0);perimeter_planting:float|None=Field(default=None,ge=0);landscaped_pedestrian_walkway:float|None=Field(default=None,ge=0);shop_frontage_verified:bool=False;shop_office_verified:bool=False
 class WhatIfRequest(BaseModel):
- baseline:AssessmentRequest;variants:list[dict]=Field(default_factory=list,max_length=12)
+ baseline:AssessmentRequest;variants:list[dict]=Field(default_factory=list)
+ @field_validator('variants')
+ @classmethod
+ def validate_variant_count(cls,value):
+  if len(value)>12:raise ValueError('variants must contain at most 12 scenarios')
+  return value
 def distance_m(a,b,c,d):
  R=6371000;p1,p2=math.radians(a),math.radians(c);dp,dl=math.radians(c-a),math.radians(d-b);x=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2;return R*2*math.atan2(math.sqrt(x),math.sqrt(1-x))
 def classify(d):return'TOD 400m'if d<=400 else('TOD 800m'if d<=800 else'OUTSIDE TOD 800m')
