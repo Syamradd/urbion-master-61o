@@ -3,6 +3,7 @@ from fastapi import Body
 from server import AssessmentRequest, app, assess_core
 from urbion_gemini_redteam import gemini_configured, review_with_gemini
 from urbion_live_stations import build_live_station_snapshot
+from urbion_station_intelligence import build_station_intelligence
 
 
 @app.get("/gemini/status")
@@ -45,3 +46,13 @@ def stations_nearby(site_lat: float, site_lon: float, state: str = "Melaka", lim
         from fastapi import HTTPException
         raise HTTPException(status_code=422, detail={"code":"INVALID_SPATIAL_INPUT","message":"Placeholder coordinates cannot be used."})
     return build_live_station_snapshot(site_lat, site_lon, state, limit)
+
+
+@app.get("/station-intelligence")
+def station_intelligence(site_lat: float, site_lon: float, state: str = "Melaka"):
+    """Unified LCP evidence contract; live adapters are injected/configured separately."""
+    try:
+        return build_station_intelligence(site_lat, site_lon, state)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail={"code": str(exc), "message": "Site coordinates are invalid or placeholder coordinates."})
