@@ -8,6 +8,7 @@ from urbion_lcp_intelligence import build_lcp_intelligence
 from urbion_environment_intelligence import build_environment_intelligence
 from urbion_iplan import query_environment_context
 from urbion_release_packet import build_release_packet
+from urbion_review_packet import build_review_packet
 from urbion_release_contract import build_championship_gate
 from urbion_what_if import execute_what_if
 import json
@@ -58,6 +59,11 @@ def lcp_release_packet(payload:dict=Body(...)):
     lcp=payload.get("lcp") or payload.get("lcp_intelligence")
     if not isinstance(lcp,dict): raise HTTPException(status_code=422,detail={"code":"LCP_RESULT_REQUIRED"})
     return build_release_packet(lcp)
+@app.post("/lcp/review-packet")
+def lcp_review_packet(payload:dict=Body(...)):
+    lcp=payload.get("lcp") or payload.get("lcp_intelligence")
+    if not isinstance(lcp,dict): raise HTTPException(status_code=422,detail={"code":"LCP_RESULT_REQUIRED"})
+    return build_review_packet(lcp=lcp)
 @app.get("/championship-gate")
 def championship_gate():
     manifest=json.loads((Path(__file__).resolve().parent/"DEPLOYMENT_MANIFEST.json").read_text(encoding="utf-8"));return build_championship_gate(lcp=build_lcp_intelligence(assessment=assess_core(AssessmentRequest(site_lat=2.285,site_lon=102.196,tod_lat=2.286,tod_lon=102.197))),manifest=manifest)
