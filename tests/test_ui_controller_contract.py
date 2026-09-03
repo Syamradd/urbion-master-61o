@@ -24,3 +24,13 @@ def test_shared_ui_controller_has_safe_storage_defaults():
     assert "||'en'" in text
     assert "||'system'" in text
     assert "eval(" not in text
+
+
+def test_dashboard_surfaces_live_decision_command_center():
+    p = Path(__file__).resolve().parents[1] / "urbion_ui.js"
+    text = p.read_text(encoding="utf-8")
+    assert "urbion-live-command" in text
+    assert "MAP STUDIO" in text
+    assert "WHAT-IF" in text
+    assert "DECISION CENTER" in text
+    assert "location.origin+'/health'" in text
