@@ -5,6 +5,7 @@ from urbion_gemini_redteam import gemini_configured, review_with_gemini
 from urbion_live_stations import build_live_station_snapshot
 from urbion_station_intelligence import build_station_intelligence
 from urbion_lcp_intelligence import build_lcp_intelligence
+from urbion_release_packet import build_release_packet
 
 
 @app.get("/gemini/status")
@@ -69,3 +70,12 @@ def lcp_intelligence(payload: dict = Body(...), live_stations: bool = False):
         station_snapshot=station_snapshot,
         km_inputs=payload.get("km_inputs"),
     )
+
+
+@app.post("/lcp/release-packet")
+def lcp_release_packet(payload: dict = Body(...)):
+    """Create a compact auditable handoff packet from an existing LCP result."""
+    lcp = payload.get("lcp") or payload.get("lcp_intelligence")
+    if not isinstance(lcp, dict):
+        raise HTTPException(status_code=422, detail={"code":"LCP_RESULT_REQUIRED","message":"Provide an LCP intelligence result."})
+    return build_release_packet(lcp)
