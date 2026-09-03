@@ -16,7 +16,9 @@ REQUIRED_LCP_KEYS = (
 )
 REQUIRED_MANIFEST_KEYS = ("framework", "server", "health_endpoint", "assessment_endpoint", "frontend", "deployment_ready")
 EVIDENCE_STATES = {"USER_PROVIDED", "CALCULATED", "SOURCE_CONTEXT", "VERIFIED", "UNVERIFIED"}
-REQUIRED_TRACE = ("SITE", "SPATIAL", "STATION", "IMPACT", "POLICY/SDG", "RECOMMENDATION", "WHAT-IF", "DECISION CENTER", "LCP/PLANNER REVIEW")
+# Keep the legacy POLICY/SDG contract token while accepting the richer
+# GUIDELINES/POLICY trace introduced by context intelligence.
+REQUIRED_TRACE = ("SITE", "SPATIAL", "STATION", "IMPACT", "RECOMMENDATION", "WHAT-IF", "DECISION CENTER", "LCP/PLANNER REVIEW")
 
 
 def audit_lcp_contract(result: dict[str, Any] | None) -> dict[str, Any]:
@@ -37,6 +39,8 @@ def audit_lcp_contract(result: dict[str, Any] | None) -> dict[str, Any]:
     for token in REQUIRED_TRACE:
         if token not in trace:
             failures.append(f"trace:{token}")
+    if "POLICY/SDG" not in trace and "GUIDELINES/POLICY" not in trace:
+        failures.append("trace:POLICY/SDG")
 
     counts = (result.get("evidence_summary") or {}).get("counts", {})
     invalid_states = sorted(set(counts) - EVIDENCE_STATES)
