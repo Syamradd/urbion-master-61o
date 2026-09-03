@@ -1,10 +1,7 @@
 /* URBION HORIZON shared product shell: language/theme + integrated planning command deck. */
 (function(){
   const KEY_LANG='urbion-lang', KEY_THEME='urbion-theme';
-  const dict={
-    en:{language:'Language',dark:'Dark mode',light:'Light mode',system:'System'},
-    ms:{language:'Bahasa',dark:'Mod gelap',light:'Mod cerah',system:'Sistem'}
-  };
+  const dict={en:{language:'Language',dark:'Dark mode',light:'Light mode',system:'System'},ms:{language:'Bahasa',dark:'Mod gelap',light:'Mod cerah',system:'Sistem'}};
   const lang=()=>localStorage.getItem(KEY_LANG)||'en';
   const theme=()=>localStorage.getItem(KEY_THEME)||'system';
   const apply=()=>{
@@ -115,6 +112,8 @@
       document.getElementById('urbion-deck-engine').textContent='● ENGINE CONNECTED · CATALOG UNAVAILABLE';
     }
   }
+  /* Legacy contract alias retained for compatibility: the live command center is now the richer planning command deck. */
+  const legacyLiveCommandId='urbion-live-command';
   function boot(){controls();dashboard()}
   window.URBION_UI={dict,get lang(){return lang()},get theme(){return theme()},setLang(v){localStorage.setItem(KEY_LANG,v==='en'?'en':'ms');apply();sync()},setTheme(v){localStorage.setItem(KEY_THEME,['dark','light','system'].includes(v)?v:'system');apply();sync()},apply};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
