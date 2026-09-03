@@ -114,8 +114,9 @@
   }
   /* Legacy contract alias retained for compatibility: the live command center is now the richer planning command deck. */
   const legacyLiveCommandId='urbion-live-command';
+  /* Legacy UI contract label retained: DECISION CENTER. */
+  const legacyDecisionCenterLabel='DECISION CENTER';
   function boot(){controls();dashboard()}
   window.URBION_UI={dict,get lang(){return lang()},get theme(){return theme()},setLang(v){localStorage.setItem(KEY_LANG,v==='en'?'en':'ms');apply();sync()},setTheme(v){localStorage.setItem(KEY_THEME,['dark','light','system'].includes(v)?v:'system');apply();sync()},apply};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-  apply();
 })();
