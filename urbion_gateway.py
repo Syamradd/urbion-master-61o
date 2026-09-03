@@ -2,6 +2,7 @@
 from fastapi import Body
 from server import AssessmentRequest, app, assess_core
 from urbion_gemini_redteam import gemini_configured, review_with_gemini
+from urbion_live_stations import build_live_station_snapshot
 
 
 @app.get("/gemini/status")
@@ -32,3 +33,15 @@ def gemini_red_team_assessment(r: AssessmentRequest):
         },
     }
     return review_with_gemini(packet)
+
+
+@app.get("/stations/nearby")
+def stations_nearby(site_lat: float, site_lon: float, state: str = "Melaka", limit: int = 5):
+    """Find nearby JPS rainfall and configured DOE air-quality stations."""
+    if not (-90 <= site_lat <= 90 and -180 <= site_lon <= 180):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail={"code":"INVALID_SPATIAL_INPUT","message":"Site coordinates are outside valid bounds."})
+    if (site_lat, site_lon) == (-90.0, -180.0):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail={"code":"INVALID_SPATIAL_INPUT","message":"Placeholder coordinates cannot be used."})
+    return build_live_station_snapshot(site_lat, site_lon, state, limit)
