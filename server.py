@@ -2,7 +2,7 @@ from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse,HTMLResponse
 from pydantic import BaseModel,Field
-import math,sys
+import math,sys,json
 from pathlib import Path
 BASE_DIR=Path(__file__).resolve().parent;sys.path.insert(0,str(BASE_DIR))
 from urbion_spatial import urbion_create_spatial_context
@@ -21,6 +21,8 @@ from urbion_iplan import query_iplan_context
 from urbion_data_sources import source_catalog,map_layer_catalog
 from urbion_elysian import ELYSIAN_LOT_11213,compare_official_context,elysian_source_record
 from urbion_kebenaran_merancang import build_km_readiness
+from urbion_lcp_intelligence import build_lcp_intelligence
+from urbion_release_contract import build_championship_gate
 app=FastAPI(title='URBION API',version='PHASE-E.7');app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=False,allow_methods=['*'],allow_headers=['*'])
 class AssessmentRequest(BaseModel):
  site_lat:float=Field(...,ge=-90,le=90);site_lon:float=Field(...,ge=-180,le=180);tod_lat:float=Field(...,ge=-90,le=90);tod_lon:float=Field(...,ge=-180,le=180);plot_ratio:float=Field(default=4.5,gt=0);precinct:str='Terminal Sg. Udang';development_type:str='TOD Development / Mixed Use';development_class:str='Mixed Use';state:str='Melaka';district:str='Melaka Tengah';pbt:str='Majlis Bandaraya Melaka Bersejarah';lot_no:str='';building_height:float|None=Field(default=None,ge=0);perimeter_planting:float|None=Field(default=None,ge=0);landscaped_pedestrian_walkway:float|None=Field(default=None,ge=0);shop_frontage_verified:bool=False;shop_office_verified:bool=False
@@ -112,6 +114,10 @@ def judge_mode():
  executed=[]
  for item in demo_scenarios():executed.append({'id':item['id'],'name':item['name'],'assessment':assess_core(AssessmentRequest(**item['inputs']))})
  return build_judge_mode(scenarios=executed)
+@app.get('/championship-gate')
+def championship_gate():
+ manifest=json.loads((BASE_DIR/'DEPLOYMENT_MANIFEST.json').read_text(encoding='utf-8'))
+ return build_championship_gate(lcp=build_lcp_intelligence(assessment=assess_core(AssessmentRequest(site_lat=2.285,site_lon=102.196,tod_lat=2.286,tod_lon=102.197))),manifest=manifest)
 import urbion_gateway
 @app.get('/{page}.html',include_in_schema=False)
 def html_workspace(page:str):
