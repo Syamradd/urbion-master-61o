@@ -67,3 +67,46 @@ def lcp_review_packet(payload:dict=Body(...)):
 @app.get("/championship-gate")
 def championship_gate():
     manifest=json.loads((Path(__file__).resolve().parent/"DEPLOYMENT_MANIFEST.json").read_text(encoding="utf-8"));return build_championship_gate(lcp=build_lcp_intelligence(assessment=assess_core(AssessmentRequest(site_lat=2.285,site_lon=102.196,tod_lat=2.286,tod_lon=102.197))),manifest=manifest)
+
+# MASTER-270: championship execution overlay.  It is injected at the gateway so the
+# functional cockpit, judge mode and legacy workspace share one visible QA surface.
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
+_CHAMPIONSHIP_OVERLAY = r'''<script>
+(()=>{
+'use strict';
+if(window.__urbionChampionshipOverlay)return;window.__urbionChampionshipOverlay=1;
+const css=`#uhx{position:fixed;right:16px;bottom:16px;z-index:2147483000;width:min(420px,calc(100vw - 32px));max-height:72vh;overflow:auto;background:#07121cf5;color:#eff8ff;border:1px solid #29445f;border-radius:16px;box-shadow:0 18px 50px #0008;font:10px Inter,system-ui,sans-serif}#uhx *{box-sizing:border-box}#uhx .h{padding:11px 13px;border-bottom:1px solid #203343;display:flex;justify-content:space-between;gap:8px;align-items:center}#uhx .t{font:700 13px 'Space Grotesk',sans-serif}#uhx .k{font-size:7px;letter-spacing:.16em;color:#5ee7c2;font-weight:900}#uhx button{border:1px solid #29445f;background:#07121c;color:#eff8ff;border-radius:7px;padding:6px 8px;font:900 8px Inter;cursor:pointer}#uhx .body{padding:9px}#uhx .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}#uhx .r{border:1px solid #203343;border-radius:8px;padding:7px;display:flex;justify-content:space-between;gap:8px}#uhx .ok{color:#5ee7c2}#uhx .wait{color:#ffd37a}#uhx .bad{color:#ff7b8b}#uhx .muted{color:#7890a3;font-size:8px;line-height:1.4;margin-top:7px}#uhx .foot{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}@media(max-width:560px){#uhx{right:8px;bottom:8px;width:calc(100vw - 16px)}}`;
+const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const el=document.createElement('aside');el.id='uhx';el.innerHTML='<div class="h"><div><div class="k">MASTER-270 · CHAMPIONSHIP EXECUTION</div><div class="t">Planner QA / Evidence / Handoff</div></div><button id="uhx-x">HIDE</button></div><div class="body"><div id="uhx-status" class="grid"></div><div id="uhx-note" class="muted">Runs against the current site inputs when available. Green means the endpoint responded; it does not claim statutory approval.</div><div class="foot"><button id="uhx-run">RUN WORKSTATION CHECK</button><button id="uhx-j">JUDGE MODE</button><button id="uhx-d">DECISION CENTRE</button><button id="uhx-l">LCP INTELLIGENCE</button></div></div>';
+document.body.appendChild(el);document.getElementById('uhx-x').onclick=()=>el.remove();
+function val(id,def){const x=document.getElementById(id);return x&&x.value!==''?x.value:def}
+function payload(){return{site_lat:+val('uc-lat',2.285),site_lon:+val('uc-lon',102.196),tod_lat:+val('uc-todlat',2.286),tod_lon:+val('uc-todlon',102.197),plot_ratio:+val('uc-ratio',4.5),precinct:val('uc-precinct','Terminal Sg. Udang'),development_type:val('uc-devtype','TOD Development / Mixed Use'),development_class:val('uc-devclass','Mixed Use'),state:val('uc-state','Melaka'),district:val('uc-district','Melaka Tengah'),pbt:val('uc-pbt','Majlis Bandaraya Melaka Bersejarah'),lot_no:val('uc-lot','')}}
+async function get(u,o){const r=await fetch(u,o);if(!r.ok)throw Error(String(r.status));return r.json()}
+function row(name,state,detail){return '<div class="r"><span>'+esc(name)+'</span><b class="'+(state==='OK'?'ok':state==='WAIT'?'wait':'bad')+'">'+esc(state)+'</b></div>'}
+async function run(){const p=payload(),s=document.getElementById('uhx-status');s.innerHTML=row('Health','WAIT','')+row('i-Plan / GIS','WAIT','')+row('Environment','WAIT','')+row('Assessment','WAIT','')+row('Decision','WAIT','')+row('Championship Gate','WAIT','');
+const jobs=[['Health',()=>get('/health')],['i-Plan / GIS',()=>get('/iplan/context?site_lat='+p.site_lat+'&site_lon='+p.site_lon+'&state='+encodeURIComponent(p.state))],['Environment',()=>get('/station-intelligence?site_lat='+p.site_lat+'&site_lon='+p.site_lon+'&state='+encodeURIComponent(p.state))],['Assessment',()=>get('/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})],['Decision',()=>get('/decision-center',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})],['Championship Gate',()=>get('/championship-gate')]];
+for(let i=0;i<jobs.length;i++){try{await jobs[i][1]();s.children[i].outerHTML=row(jobs[i][0],'OK','')}catch(e){s.children[i].outerHTML=row(jobs[i][0],'FAIL',e.message)}}}
+document.getElementById('uhx-run').onclick=run;document.getElementById('uhx-j').onclick=()=>location.href='/judge-mode';document.getElementById('uhx-d').onclick=()=>{const p=payload();sessionStorage.setItem('urbion_assessment_inputs',JSON.stringify(p));location.href='/decision-center'};document.getElementById('uhx-l').onclick=async()=>{try{const p=payload();await get('/lcp/intelligence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assessment_inputs:p,live_stations:true,auto_environment:true,scenario_variants:[{id:'LOWER_DENSITY',name:'Lower density',plot_ratio:Math.max(.5,p.plot_ratio-.5)},{id:'HIGHER_DENSITY',name:'Higher density',plot_ratio:p.plot_ratio+.5}]})});alert('LCP intelligence responded successfully. Open Judge Mode or Decision Centre for the visible handoff.')}catch(e){alert('LCP intelligence failed: '+e.message)}};
+setTimeout(run,900);
+})();</script>'''
+
+class ChampionshipOverlayMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        ctype = response.headers.get("content-type", "")
+        if "text/html" not in ctype:
+            return response
+        body = b""
+        async for chunk in response.body_iterator:
+            body += chunk
+        marker = b"</body>"
+        if marker in body and b"MASTER-270" not in body:
+            body = body.replace(marker, _CHAMPIONSHIP_OVERLAY.encode("utf-8") + marker, 1)
+        headers = dict(response.headers)
+        headers.pop("content-length", None)
+        return Response(content=body, status_code=response.status_code, headers=headers, media_type="text/html")
+
+app.add_middleware(ChampionshipOverlayMiddleware)
