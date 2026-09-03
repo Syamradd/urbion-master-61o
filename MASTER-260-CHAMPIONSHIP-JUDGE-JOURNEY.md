@@ -16,4 +16,4 @@ Harden the first-minute judge experience without changing the verified decision 
 This checkpoint documents the championship journey only. It does not convert source-context layers or agency pathways into statutory verification, and it does not alter the current production deployment.
 
 ## Current release anchor
-MASTER-259 is the code checkpoint preceding this audit. Its CI run must remain the release gate for this documentation-only checkpoint.
+MASTER-259 is the code checkpoint preceding this audit. Its CI run remains the release gate for this documentation-only checkpoint.
