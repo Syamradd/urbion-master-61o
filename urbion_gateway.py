@@ -3,7 +3,7 @@ from fastapi import Body, HTTPException
 from server import AssessmentRequest, app, assess_core
 from urbion_gemini_redteam import gemini_configured, review_with_gemini
 from urbion_live_stations import build_live_station_snapshot
-from urbion_station_intelligence import build_station_intelligence
+from urbion_station_intelligence import build_station_intelligence, _valid_coord
 from urbion_lcp_intelligence import build_lcp_intelligence
 from urbion_environment_intelligence import build_environment_intelligence
 from urbion_iplan import query_environment_context
@@ -12,6 +12,13 @@ from urbion_release_contract import build_championship_gate
 from urbion_what_if import execute_what_if
 import json
 from pathlib import Path
+
+
+def _validate_site_coords(site_lat: float, site_lon: float) -> None:
+    if not _valid_coord(site_lat, site_lon) or (float(site_lat), float(site_lon)) == (-90.0, -180.0):
+        raise HTTPException(status_code=422, detail={"code": "INVALID_SPATIAL_INPUT"})
+
+
 @app.get("/gemini/status")
 def gemini_status(): return {"provider":"Google Gemini","role":"RED_TEAM_ADVISORY","configured":gemini_configured(),"decision_authority":"NONE"}
 @app.post("/gemini/red-team")
@@ -20,10 +27,11 @@ def gemini_red_team(packet:dict=Body(...)): return review_with_gemini(packet)
 def gemini_red_team_assessment(r:AssessmentRequest): return review_with_gemini({"assessment":assess_core(r),"guardrails":{"decision_authority":"NONE","statutory_verification":"NOT_CLAIMED","purpose":"independent red-team review only"}})
 @app.get("/stations/nearby")
 def stations_nearby(site_lat:float,site_lon:float,state:str="Melaka",limit:int=5):
-    if not(-90<=site_lat<=90 and -180<=site_lon<=180): raise HTTPException(status_code=422,detail={"code":"INVALID_SPATIAL_INPUT"})
+    _validate_site_coords(site_lat, site_lon)
     return build_live_station_snapshot(site_lat,site_lon,state,limit)
 @app.get("/station-intelligence")
 def station_intelligence(site_lat:float,site_lon:float,state:str="Melaka"):
+    _validate_site_coords(site_lat, site_lon)
     live=build_live_station_snapshot(site_lat,site_lon,state,5);core=build_station_intelligence(site_lat,site_lon,state);core["live_snapshot"]=live;core["decision_boundary"]="OBSERVATION_CONTEXT";core["statutory_verification"]="NOT_CLAIMED";return core
 @app.post("/environment/intelligence")
 def environment_intelligence(payload:dict=Body(default_factory=dict)):
