@@ -20,6 +20,16 @@ class MapStudioContractTests(unittest.TestCase):
         html = (Path(__file__).resolve().parents[1] / "map-studio.html").read_text(encoding="utf-8")
         self.assertIn("'HYDROLOGY'", html)
 
+    def test_map_studio_exposes_judge_controls(self):
+        html = (Path(__file__).resolve().parents[1] / "map-studio.html").read_text(encoding="utf-8")
+        for token in ["legendBtn", "share", "navigator.clipboard", "URLSearchParams", "?lat="]:
+            self.assertIn(token, html)
+
+    def test_map_studio_rejects_invalid_focus_coordinates(self):
+        html = (Path(__file__).resolve().parents[1] / "map-studio.html").read_text(encoding="utf-8")
+        self.assertIn("!Number.isFinite(a)||!Number.isFinite(b)", html)
+        self.assertIn("a<-90||a>90||b<-180||b>180", html)
+
     def test_map_studio_does_not_hardcode_urbion_render_api(self):
         html = (Path(__file__).resolve().parents[1] / "map-studio.html").read_text(encoding="utf-8")
         self.assertNotIn("urbion-master-61o.onrender.com", html)
