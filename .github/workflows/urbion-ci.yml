@@ -39,7 +39,7 @@ jobs:
             impact) python -m pytest -q tests/test_master185_development_impact.py ;;
             policy) python -m pytest -q tests/test_master186_policy_graph.py ;;
             recommendation) python -m pytest -q tests/test_master187_recommendations.py ;;
-            lcp) python -m pytest -q tests/test_master188_lcp_intelligence.py tests/test_master188_lcp_endpoint.py tests/test_master189_integration_ui.py ;;
+            lcp) python -m pytest -q tests/test_master188_lcp_intelligence.py tests/test_master188_lcp_endpoint.py tests/test_master189_integration_ui.py tests/test_master199_integrated_decision_orchestration.py ;;
             redteam) python -m pytest -q tests/test_master190_red_team.py tests/test_master196_integrity_gate.py ;;
             smoke) python -m pytest -q tests/test_master191_deployment_smoke.py ;;
             release) python -m pytest -q tests/test_master193_release_lock.py tests/test_master194_release_candidate.py tests/test_master194_visual_function.py tests/test_master195_release_packet.py ;;

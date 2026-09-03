@@ -12,6 +12,7 @@ from urbion_multi_source import build_spatial_intelligence
 from urbion_policy_graph import build_policy_graph
 from urbion_recommendation_engine import build_recommendations
 from urbion_kebenaran_merancang import build_km_readiness
+from urbion_decision_center import build_decision_center
 
 
 def _dedupe(values: list[Any]) -> list[Any]:
@@ -24,8 +25,9 @@ def build_lcp_intelligence(*, assessment: dict[str, Any], development_inputs: di
                            sdg_links: list[dict[str, Any]] | None = None,
                            spatial_inputs: dict[str, Any] | None = None,
                            station_snapshot: dict[str, Any] | None = None,
-                           km_inputs: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Compose assessment, spatial, station, impact, policy, recommendation and KM evidence."""
+                           km_inputs: dict[str, Any] | None = None,
+                           what_if_summary: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Compose assessment, spatial, station, impact, policy, recommendation, decision and KM evidence."""
     assessment = assessment or {}
     dev = development_inputs or {}
     spatial = spatial_inputs or {}
@@ -75,8 +77,17 @@ def build_lcp_intelligence(*, assessment: dict[str, Any], development_inputs: di
     if station_snapshot:
         evidence_counts[station_snapshot.get("evidence", "SOURCE_CONTEXT")] = evidence_counts.get(station_snapshot.get("evidence", "SOURCE_CONTEXT"), 0) + 1
 
+    decision_center = build_decision_center(assessment=assessment, evidence=policy.get("nodes", {}).get("links", []))
+    if what_if_summary:
+        decision_center["what_if"] = {
+            "baseline_status": what_if_summary.get("baseline_status"),
+            "baseline_score": what_if_summary.get("baseline_score"),
+            "best_candidate": what_if_summary.get("best_candidate"),
+            "ranked_scenarios": what_if_summary.get("ranked_scenarios", []),
+        }
+
     return {
-        "version": "MASTER-188",
+        "version": "MASTER-199",
         "project": "URBION HORIZON",
         "site": assessment.get("site", {}),
         "assessment": {"final_status": assessment.get("final_status"), "decision_confidence": assessment.get("decision_confidence"), "recommendation": assessment.get("recommendation")},
@@ -85,10 +96,12 @@ def build_lcp_intelligence(*, assessment: dict[str, Any], development_inputs: di
         "development_impact": impacts,
         "policy_graph": policy,
         "recommendations": recommendations,
+        "what_if": what_if_summary or {"status": "NOT_PROVIDED", "disclaimer": "Scenario comparison is optional and remains decision support only."},
+        "decision_center": decision_center,
         "km_readiness": km,
         "evidence_summary": {"counts": evidence_counts, "review_gap_count": len(gaps)},
         "review_gaps": gaps,
-        "trace": "SITE → SPATIAL → STATION → IMPACT → ISSUE → POLICY/SDG → RECOMMENDATION → LCP/PLANNER REVIEW",
+        "trace": "SITE → SPATIAL → STATION → IMPACT → ISSUE → POLICY/SDG → RECOMMENDATION → WHAT-IF → DECISION CENTER → LCP/PLANNER REVIEW",
         "decision_boundary": "INTEGRATED_LCP_PLANNING_SUPPORT",
         "statutory_verification": "NOT_CLAIMED",
     }

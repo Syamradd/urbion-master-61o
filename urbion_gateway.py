@@ -6,6 +6,7 @@ from urbion_live_stations import build_live_station_snapshot
 from urbion_station_intelligence import build_station_intelligence
 from urbion_lcp_intelligence import build_lcp_intelligence
 from urbion_release_packet import build_release_packet
+from urbion_what_if import execute_what_if
 
 
 @app.get("/gemini/status")
@@ -60,6 +61,26 @@ def lcp_intelligence(payload: dict = Body(...), live_stations: bool = False):
     station_snapshot = payload.get("station_snapshot")
     if live_stations:
         station_snapshot = build_live_station_snapshot(assessment["site"]["latitude"], assessment["site"]["longitude"], assessment["site"].get("state", "Melaka"), int(payload.get("station_limit", 5)))
+
+    what_if_summary = None
+    variants = payload.get("scenario_variants") or payload.get("variants")
+    if variants:
+        if not isinstance(variants, list):
+            raise HTTPException(status_code=422, detail={"code":"INVALID_SCENARIO_VARIANTS","message":"scenario_variants must be a list."})
+        if len(variants) > 12:
+            raise HTTPException(status_code=422, detail={"code":"INVALID_SCENARIO_VARIANTS","message":"A maximum of 12 scenario variants is supported."})
+        comparison = execute_what_if(raw_assessment, variants, lambda inputs: assess_core(AssessmentRequest(**inputs)))
+        what_if_summary = {
+            "title": comparison.get("title"),
+            "version": comparison.get("version"),
+            "baseline_status": comparison.get("baseline_status"),
+            "baseline_score": comparison.get("baseline_score"),
+            "scenarios": comparison.get("scenarios", []),
+            "ranked_scenarios": comparison.get("ranked_scenarios", []),
+            "best_candidate": comparison.get("best_candidate"),
+            "disclaimer": comparison.get("disclaimer"),
+        }
+
     return build_lcp_intelligence(
         assessment=assessment,
         development_inputs=payload.get("development_inputs"),
@@ -69,6 +90,7 @@ def lcp_intelligence(payload: dict = Body(...), live_stations: bool = False):
         spatial_inputs=payload.get("spatial_inputs"),
         station_snapshot=station_snapshot,
         km_inputs=payload.get("km_inputs"),
+        what_if_summary=what_if_summary,
     )
 
 
