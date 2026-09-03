@@ -23,10 +23,11 @@ def test_lcp_intelligence_endpoint_contract():
     })
     assert response.status_code == 200
     body = response.json()
-    assert body['version'] == 'MASTER-188'
+    assert body['version'] == 'MASTER-199'
     assert body['station_intelligence']['status'] == 'LIVE'
     assert body['policy_graph']['edge_count'] == 1
     assert body['recommendations']['recommendations']
+    assert body['decision_center']['decision']['status'] == body['assessment']['final_status']
     assert body['statutory_verification'] == 'NOT_CLAIMED'
 
 
