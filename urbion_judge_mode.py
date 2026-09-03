@@ -29,5 +29,6 @@ def build_judge_mode(*, scenarios: list[dict[str, Any]]) -> dict[str, Any]:
         "status_counts": counts,
         "scenario_count": len(rows),
         "decision_boundary": "Deterministic showcase and decision-support output; not statutory approval.",
+        "statutory_verification": "NOT_CLAIMED",
         "disclaimer": "Deterministic showcase scenarios for judging; evidence and statutory verification remain explicitly bounded.",
     }
