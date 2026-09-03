@@ -21,5 +21,8 @@ Explicit inputs may be calculated and labelled `CALCULATED`. Missing inputs beco
 ## Boundary
 This is planning decision support, not a statutory SIA, EIA, LCP certification, engineering assessment or development approval.
 
+## Status
+MASTER-185 is integrated and GREEN after the full CI run completed successfully.
+
 ## Next connection
-MASTER-186 will connect impact findings to traceable planning policy, strategy, guideline and SDG relationships.
+MASTER-186 connects impact findings to traceable planning policy, strategy, guideline and SDG relationships. MASTER-187 converts traceable findings into evidence-backed planning recommendations.
