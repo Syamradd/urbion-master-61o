@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lane: [core, frontend, mapping, planning, judge, spatial, station, impact, policy]
+        lane: [core, frontend, mapping, planning, judge, spatial, station, impact, policy, recommendation]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,6 +38,7 @@ jobs:
             station) python -m pytest -q tests/test_master184_station_intelligence.py tests/test_master184_endpoint_contract.py ;;
             impact) python -m pytest -q tests/test_master185_development_impact.py ;;
             policy) python -m pytest -q tests/test_master186_policy_graph.py ;;
+            recommendation) python -m pytest -q tests/test_master187_recommendations.py ;;
           esac
 
   full:
