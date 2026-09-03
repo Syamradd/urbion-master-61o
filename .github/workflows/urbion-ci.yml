@@ -34,7 +34,7 @@ jobs:
             mapping) python -m pytest -q tests/test_map_studio_contract.py tests/test_master170_controls.py tests/test_hydrology_source.py ;;
             planning) python -m pytest -q tests/test_master173_km_planner_surface.py tests/test_km_endpoint_contract.py ;;
             judge) python -m pytest -q tests/test_master175_release_gate.py tests/test_decision_center_contract.py tests/test_master171_evidence_ui.py tests/test_master172_what_if_delta.py ;;
-            spatial) python -m pytest -q tests/test_master183_spatial_sources.py tests/test_master183_multi_source_helpers.py ;;
+            spatial) python -m pytest -q tests/test_master183_spatial_sources.py tests/test_master183_multi_source_helpers.py tests/test_master183_decision_spatial_surface.py ;;
           esac
 
   full:
