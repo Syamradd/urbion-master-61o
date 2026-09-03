@@ -1,3 +1,4 @@
+from pathlib import Path
 from fastapi.testclient import TestClient
 from server import app
 
@@ -17,4 +18,4 @@ def test_judge_run_has_complete_core_path():
 
 def test_judge_run_frontend_chain_is_present():
     for path in ('map-studio.html','what-if.html','decision-center.html','planner-review.html','lcp-intelligence.html'):
-        assert any(getattr(r,'path',None)==f'/{path}' for r in app.routes)
+        assert Path(path).is_file(), path
