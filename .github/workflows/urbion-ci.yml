@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lane: [core, frontend, mapping, planning, judge, spatial, station, impact, policy, recommendation, lcp]
+        lane: [core, frontend, mapping, planning, judge, spatial, station, impact, policy, recommendation, lcp, redteam]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,7 +39,8 @@ jobs:
             impact) python -m pytest -q tests/test_master185_development_impact.py ;;
             policy) python -m pytest -q tests/test_master186_policy_graph.py ;;
             recommendation) python -m pytest -q tests/test_master187_recommendations.py ;;
-            lcp) python -m pytest -q tests/test_master188_lcp_intelligence.py tests/test_master188_lcp_endpoint.py ;;
+            lcp) python -m pytest -q tests/test_master188_lcp_intelligence.py tests/test_master188_lcp_endpoint.py tests/test_master189_integration_ui.py ;;
+            redteam) python -m pytest -q tests/test_master190_red_team.py ;;
           esac
 
   full:
