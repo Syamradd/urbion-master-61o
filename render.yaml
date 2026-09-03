@@ -13,3 +13,7 @@ services:
 
       - key: PYTHON_VERSION
         value: 3.11
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
