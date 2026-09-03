@@ -102,6 +102,9 @@
     });
     deck.querySelectorAll('.intel-card[data-href]').forEach(el=>el.onclick=()=>{location.href=el.dataset.href});
     try{
+      const healthResponse=await fetch(location.origin+'/health');
+      const health=await healthResponse.json();
+      if(health.status!=='healthy')throw new Error('health check failed');
       const r=await fetch(location.origin+'/map/layers?state=Melaka'); const j=await r.json();
       const layers=Array.isArray(j.layers)?j.layers:[];
       const env=layers.filter(x=>['HAZARD','ECOLOGY','ENVIRONMENT','GEOLOGY','GEOHAZARD','GEOHERITAGE','HYDROLOGY'].includes(x.group));
@@ -119,4 +122,5 @@
   function boot(){controls();dashboard()}
   window.URBION_UI={dict,get lang(){return lang()},get theme(){return theme()},setLang(v){localStorage.setItem(KEY_LANG,v==='en'?'en':'ms');apply();sync()},setTheme(v){localStorage.setItem(KEY_THEME,['dark','light','system'].includes(v)?v:'system');apply();sync()},apply};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+  apply();
 })();
