@@ -1,0 +1,11 @@
+/* MASTER-273: championship UX, performance and review polish. */
+(()=>{
+'use strict';
+if(window.__URBION_CHAMPIONSHIP_POLISH__)return;window.__URBION_CHAMPIONSHIP_POLISH__=1;
+const root=document.getElementById('urbion-champ-dashboard');if(!root)return;
+const css=`#urbion-champ-dashboard{backdrop-filter:blur(8px)}#urbion-champ-dashboard .uhd-top{position:relative}#urbion-champ-dashboard .uhd-top:after{content:'CHAMPIONSHIP EDITION';position:absolute;right:18px;top:7px;font-size:7px;letter-spacing:.16em;color:#67e8b7;opacity:.7}#urbion-champ-dashboard .uhd-card{transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}#urbion-champ-dashboard .uhd-card:hover{transform:translateY(-1px);border-color:#396170;box-shadow:0 10px 28px #0005}#urbion-champ-dashboard .uhd-nav button:focus-visible,#urbion-champ-dashboard .uhd-btn:focus-visible,#urbion-champ-dashboard input:focus-visible{outline:2px solid #67e8b7;outline-offset:2px}#urbion-champ-dashboard .uhd-score{letter-spacing:-.04em}#urbion-champ-dashboard .uhd-map-badge:before{content:'● ';color:#67e8b7}#uhx{display:none!important}#urbion-champ-dashboard .uhd-footer span:last-child{color:#67e8b7}@media print{#urbion-champ-dashboard{box-shadow:none;border:0}#urbion-champ-dashboard .uhd-nav,#urbion-champ-dashboard .uhd-actions,#urbion-champ-dashboard .uhd-footer{display:none!important}.uhd-page{display:block!important}.uhd-card{break-inside:avoid}}`;
+const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+const tools=document.createElement('div');tools.id='uhd-quick-tools';tools.innerHTML='<button title="Print dashboard">PRINT / PDF</button><button title="Run championship health">REFRESH HEALTH</button>';
+tools.style.cssText='position:fixed;right:16px;top:16px;z-index:2147482000;display:flex;gap:5px';tools.querySelectorAll('button').forEach(b=>{b.style.cssText='background:#07131b;color:#67e8b7;border:1px solid #2b4a55;border-radius:7px;padding:6px 8px;font:800 8px Inter;cursor:pointer';});document.body.appendChild(tools);
+tools.children[0].onclick=()=>window.print();tools.children[1].onclick=()=>document.getElementById('run-all')?.click();
+})();
