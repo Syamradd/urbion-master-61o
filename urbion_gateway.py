@@ -68,7 +68,7 @@ def lcp_review_packet(payload:dict=Body(...)):
 def championship_gate():
     manifest=json.loads((Path(__file__).resolve().parent/"DEPLOYMENT_MANIFEST.json").read_text(encoding="utf-8"));return build_championship_gate(lcp=build_lcp_intelligence(assessment=assess_core(AssessmentRequest(site_lat=2.285,site_lon=102.196,tod_lat=2.286,tod_lon=102.197))),manifest=manifest)
 
-# MASTER-270: championship execution overlay.  It is injected at the gateway so the
+# MASTER-270: championship execution overlay. It is injected at the gateway so the
 # functional cockpit, judge mode and legacy workspace share one visible QA surface.
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
@@ -85,12 +85,9 @@ document.body.appendChild(el);document.getElementById('uhx-x').onclick=()=>el.re
 function val(id,def){const x=document.getElementById(id);return x&&x.value!==''?x.value:def}
 function payload(){return{site_lat:+val('uc-lat',2.285),site_lon:+val('uc-lon',102.196),tod_lat:+val('uc-todlat',2.286),tod_lon:+val('uc-todlon',102.197),plot_ratio:+val('uc-ratio',4.5),precinct:val('uc-precinct','Terminal Sg. Udang'),development_type:val('uc-devtype','TOD Development / Mixed Use'),development_class:val('uc-devclass','Mixed Use'),state:val('uc-state','Melaka'),district:val('uc-district','Melaka Tengah'),pbt:val('uc-pbt','Majlis Bandaraya Melaka Bersejarah'),lot_no:val('uc-lot','')}}
 async function get(u,o){const r=await fetch(u,o);if(!r.ok)throw Error(String(r.status));return r.json()}
-function row(name,state,detail){return '<div class="r"><span>'+esc(name)+'</span><b class="'+(state==='OK'?'ok':state==='WAIT'?'wait':'bad')+'">'+esc(state)+'</b></div>'}
-async function run(){const p=payload(),s=document.getElementById('uhx-status');s.innerHTML=row('Health','WAIT','')+row('i-Plan / GIS','WAIT','')+row('Environment','WAIT','')+row('Assessment','WAIT','')+row('Decision','WAIT','')+row('Championship Gate','WAIT','');
-const jobs=[['Health',()=>get('/health')],['i-Plan / GIS',()=>get('/iplan/context?site_lat='+p.site_lat+'&site_lon='+p.site_lon+'&state='+encodeURIComponent(p.state))],['Environment',()=>get('/station-intelligence?site_lat='+p.site_lat+'&site_lon='+p.site_lon+'&state='+encodeURIComponent(p.state))],['Assessment',()=>get('/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})],['Decision',()=>get('/decision-center',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})],['Championship Gate',()=>get('/championship-gate')]];
-for(let i=0;i<jobs.length;i++){try{await jobs[i][1]();s.children[i].outerHTML=row(jobs[i][0],'OK','')}catch(e){s.children[i].outerHTML=row(jobs[i][0],'FAIL',e.message)}}}
-document.getElementById('uhx-run').onclick=run;document.getElementById('uhx-j').onclick=()=>location.href='/judge-mode';document.getElementById('uhx-d').onclick=()=>{const p=payload();sessionStorage.setItem('urbion_assessment_inputs',JSON.stringify(p));location.href='/decision-center'};document.getElementById('uhx-l').onclick=async()=>{try{const p=payload();await get('/lcp/intelligence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assessment_inputs:p,live_stations:true,auto_environment:true,scenario_variants:[{id:'LOWER_DENSITY',name:'Lower density',plot_ratio:Math.max(.5,p.plot_ratio-.5)},{id:'HIGHER_DENSITY',name:'Higher density',plot_ratio:p.plot_ratio+.5}]})});alert('LCP intelligence responded successfully. Open Judge Mode or Decision Centre for the visible handoff.')}catch(e){alert('LCP intelligence failed: '+e.message)}};
-setTimeout(run,900);
+function row(name,state){return '<div class="r"><span>'+esc(name)+'</span><b class="'+(state==='OK'?'ok':state==='WAIT'?'wait':'bad')+'">'+esc(state)+'</b></div>'}
+async function run(){const p=payload(),s=document.getElementById('uhx-status');s.innerHTML=row('Health','WAIT')+row('i-Plan / GIS','WAIT')+row('Environment','WAIT')+row('Assessment','WAIT')+row('Decision','WAIT')+row('Championship Gate','WAIT');const jobs=[['Health',()=>get('/health')],['i-Plan / GIS',()=>get('/iplan/context?site_lat='+p.site_lat+'&site_lon='+p.site_lon+'&state='+encodeURIComponent(p.state))],['Environment',()=>get('/station-intelligence?site_lat='+p.site_lat+'&site_lon='+p.site_lon+'&state='+encodeURIComponent(p.state))],['Assessment',()=>get('/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})],['Decision',()=>get('/decision-center',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})],['Championship Gate',()=>get('/championship-gate')]];const results=await Promise.allSettled(jobs.map(x=>x[1]()));results.forEach((r,i)=>{s.children[i].outerHTML=row(jobs[i][0],r.status==='fulfilled'?'OK':'FAIL')})}
+document.getElementById('uhx-run').onclick=run;document.getElementById('uhx-j').onclick=()=>location.href='/judge-mode';document.getElementById('uhx-d').onclick=()=>{const p=payload();sessionStorage.setItem('urbion_assessment_inputs',JSON.stringify(p));location.href='/decision-center'};document.getElementById('uhx-l').onclick=async()=>{try{const p=payload();await get('/lcp/intelligence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assessment_inputs:p,live_stations:true,auto_environment:true,scenario_variants:[{id:'LOWER_DENSITY',name:'Lower density',plot_ratio:Math.max(.5,p.plot_ratio-.5)},{id:'HIGHER_DENSITY',name:'Higher density',plot_ratio:p.plot_ratio+.5}]})});alert('LCP intelligence responded successfully. Open Judge Mode or Decision Centre for the visible handoff.')}catch(e){alert('LCP intelligence failed: '+e.message)}};setTimeout(run,900);
 })();</script>'''
 
 class ChampionshipOverlayMiddleware(BaseHTTPMiddleware):
@@ -110,3 +107,28 @@ class ChampionshipOverlayMiddleware(BaseHTTPMiddleware):
         return Response(content=body, status_code=response.status_code, headers=headers, media_type="text/html")
 
 app.add_middleware(ChampionshipOverlayMiddleware)
+
+# MASTER-271: aggregate championship QA endpoint. It lets the UI/test harness hit
+# the critical execution chain concurrently and returns per-surface truth without
+# turning any advisory result into statutory approval.
+@app.get("/championship-health")
+def championship_health(site_lat:float=2.285,site_lon:float=102.196,tod_lat:float=2.286,tod_lon:float=102.197,state:str="Melaka"):
+    _validate_site_coords(site_lat,site_lon)
+    checks={}
+    try: checks["health"]={"status":"OK","data":{"status":"healthy"}}
+    except Exception as exc: checks["health"]={"status":"FAIL","error":str(exc)}
+    try: checks["iplan"]={"status":"OK","data":query_environment_context(site_lat,site_lon,1000,state)}
+    except Exception as exc: checks["iplan"]={"status":"FAIL","error":str(exc)}
+    try: checks["stations"]={"status":"OK","data":build_live_station_snapshot(site_lat,site_lon,state,5)}
+    except Exception as exc: checks["stations"]={"status":"FAIL","error":str(exc)}
+    assessment_inputs=AssessmentRequest(site_lat=site_lat,site_lon=site_lon,tod_lat=tod_lat,tod_lon=tod_lon,state=state)
+    try: checks["assessment"]={"status":"OK","data":assess_core(assessment_inputs)}
+    except Exception as exc: checks["assessment"]={"status":"FAIL","error":str(exc)}
+    if checks["assessment"]["status"]=="OK":
+        try: checks["decision"]={"status":"OK","data":build_decision_center(assessment=checks["assessment"]["data"])}
+        except Exception as exc: checks["decision"]={"status":"FAIL","error":str(exc)}
+    else: checks["decision"]={"status":"BLOCKED","error":"Assessment did not return a usable result."}
+    try:
+        manifest=json.loads((Path(__file__).resolve().parent/"DEPLOYMENT_MANIFEST.json").read_text(encoding="utf-8"));checks["gate"]={"status":"OK","data":build_championship_gate(lcp=build_lcp_intelligence(assessment=assess_core(AssessmentRequest(site_lat=site_lat,site_lon=site_lon,tod_lat=tod_lat,tod_lon=tod_lon,state=state))),manifest=manifest)}
+    except Exception as exc: checks["gate"]={"status":"FAIL","error":str(exc)}
+    return {"project":"URBION HORIZON","version":"MASTER-271","checks":checks,"decision_authority":"NONE","statutory_verification":"NOT_CLAIMED"}
