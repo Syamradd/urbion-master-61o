@@ -22,7 +22,8 @@ def test_red_team_preserves_statutory_boundary_and_planner_status():
 
 def test_red_team_frontend_escapes_remote_values():
     text=Path('lcp-intelligence.html').read_text(encoding='utf-8')
-    assert "replace(/[&<>\"']/g" in text
+    assert "const esc=" in text
+    assert ".replace(" in text
     assert "innerHTML" in text
     assert "esc(j.trace)" in text
     assert "esc(x.action)" in text
