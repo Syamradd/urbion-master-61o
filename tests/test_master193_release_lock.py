@@ -3,7 +3,7 @@ from pathlib import Path
 
 def test_championship_release_lock_contains_non_negotiable_gates():
     text=Path('MASTER-193-CHAMPIONSHIP-RELEASE-LOCK.md').read_text(encoding='utf-8')
-    for token in ('Site Assessment','Map Studio','Evidence','What-If','Decision Center','Planner Review','LCP Intelligence','KM/OSC','placeholders rejected','review gaps','planner-review outputs','never approval','GREEN'):
+    for token in ('Site Assessment','Map Studio','Evidence','What-If','Decision Center','Planner Review','LCP Intelligence','KM/OSC','placeholders rejected','review gaps','Recommendations remain planner-review outputs','KM/OSC remains workflow readiness support, never approval','GREEN'):
         assert token in text
 
 
