@@ -12,6 +12,8 @@ SITE → SPATIAL → STATION → IMPACT → POLICY/SDG → RECOMMENDATION → WH
 - Decision Center is composed from the same deterministic assessment and does not alter statutory outcomes.
 - Scenario ranking is decision support only.
 - Evidence gaps and statutory boundaries remain disclosed.
+- MASTER-188 is the historical LCP integration checkpoint; MASTER-199 is the current integrated contract.
+- Legacy MASTER-188 regression expectations are migrated to the current outer-version contract.
 
 ## Acceptance
 Regression coverage verifies baseline LCP behaviour, integrated What-If output, invalid scenario input handling and the `NOT_CLAIMED` statutory boundary.
