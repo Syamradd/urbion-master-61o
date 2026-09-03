@@ -46,6 +46,8 @@
       #urbion-command-deck h3{margin:5px 0 4px;font:700 23px/1.05 'Space Grotesk',Inter,sans-serif;letter-spacing:-.03em}
       #urbion-command-deck .deck-sub{font-size:10px;color:#8ea4b5;line-height:1.5}
       #urbion-command-deck .engine-pill{border:1px solid #5ee7c244;background:#5ee7c20d;border-radius:999px;padding:8px 10px;font:800 8px Inter;color:#5ee7c2;white-space:nowrap}
+      #urbion-command-deck .judge-cta{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 11px;border:1px solid #5ee7c277;border-radius:9px;background:#5ee7c20d;color:#5ee7c2;text-decoration:none;font:900 8px Inter;letter-spacing:.08em}
+      #urbion-command-deck .judge-cta:hover{background:#5ee7c21a;border-color:#5ee7c2}
       #urbion-command-deck .deck-tabs{display:flex;gap:7px;padding:11px 14px;border-bottom:1px solid #203343;overflow:auto}
       #urbion-command-deck .deck-tab{border:1px solid #203343;background:#ffffff03;color:#8ea4b5;border-radius:9px;padding:8px 10px;font:800 8px Inter;letter-spacing:.06em;cursor:pointer;white-space:nowrap}
       #urbion-command-deck .deck-tab.active{color:#031017;background:#5ee7c2;border-color:#5ee7c2}
@@ -82,7 +84,7 @@
     styleDeck();
     const deck=document.createElement('section'); deck.id='urbion-command-deck';
     deck.innerHTML=`
-      <div class="deck-head"><div><div class="deck-kicker">URBION HORIZON · PLANNING COMMAND CENTRE</div><h3>One site. Every planning signal.</h3><div class="deck-sub">Spatial context, environment, agency pathways, policy and decision intelligence — surfaced in one planning workspace.</div></div><div class="engine-pill" id="urbion-deck-engine">CONNECTING ENGINE…</div></div>
+      <div class="deck-head"><div><div class="deck-kicker">URBION HORIZON · PLANNING COMMAND CENTRE</div><h3>One site. Every planning signal.</h3><div class="deck-sub">Spatial context, environment, agency pathways, policy and decision intelligence — surfaced in one planning workspace.</div><a class="judge-cta" href="judge-mode.html">🏆 CHAMPIONSHIP JUDGE MODE ↗</a></div><div class="engine-pill" id="urbion-deck-engine">CONNECTING ENGINE…</div></div>
       <div class="deck-tabs">
         <button class="deck-tab active" data-tab="spatial">SPATIAL</button><button class="deck-tab" data-tab="environment">ENVIRONMENT</button><button class="deck-tab" data-tab="agencies">AGENCIES</button><button class="deck-tab" data-tab="policy">POLICY</button><button class="deck-tab" data-tab="scenario">WHAT-IF</button><button class="deck-tab" data-tab="decision">DECISION → LCP</button>
       </div>
