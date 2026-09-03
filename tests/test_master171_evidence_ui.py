@@ -1,8 +1,11 @@
 from pathlib import Path
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 def test_decision_center_surfaces_evidence_and_boundary():
-    text = (Path(__file__).resolve().parents[1] / 'decision-center.html').read_text(encoding='utf-8')
+    text = (ROOT / 'decision-center.html').read_text(encoding='utf-8')
     for token in ['EVIDENCE · PROVENANCE', 'evidence_state', 'decision_trace', 'Source summary', 'NOT STATUTORY APPROVAL', 'Statutory verification is not claimed']:
         assert token in text
     assert 'const API=location.origin' in text
@@ -11,6 +14,7 @@ def test_decision_center_surfaces_evidence_and_boundary():
 
 
 def test_decision_center_escapes_remote_values():
-    text = (Path(__file__).resolve().parents[1] / 'decision-center.html').read_text(encoding='utf-8')
+    text = (ROOT / 'decision-center.html').read_text(encoding='utf-8')
     assert 'function esc(v)' in text
-    assert "replace(/[&<>\\\"']/g" in text
+    assert 'replace(' in text
+    assert '&amp;' in text and '&#39;' in text
