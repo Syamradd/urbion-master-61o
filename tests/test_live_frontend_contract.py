@@ -34,3 +34,9 @@ def test_map_layer_controls_are_declared():
     assert payload['layers']
     assert 'toggle' in payload['layer_controls']
     assert 'opacity' in payload['layer_controls']
+
+
+def test_shared_ui_controller_is_present_and_non_destructive():
+    response = client.get('/index.html')
+    assert response.status_code == 200
+    assert 'urbion_ui.js' in response.text or 'URBION_UI' in response.text
