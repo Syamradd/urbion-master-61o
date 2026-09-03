@@ -26,6 +26,7 @@ def build_decision_center(*, assessment: dict[str, Any], evidence: list[dict[str
             },
             include_domains=True,
         )
+    review_gaps = list(assessment.get("review_gaps", []) or [])
     return {
         "project": "URBION HORIZON",
         "version": "PHASE-E.7",
@@ -41,7 +42,10 @@ def build_decision_center(*, assessment: dict[str, Any], evidence: list[dict[str
         "evidence_state": assessment.get("evidence_state", {}),
         "spatial_intelligence": spatial,
         "decision_trace": assessment.get("decision_trace", []),
+        "review_gaps": review_gaps,
+        "review_required": bool(review_gaps),
         "map": decision_map_payload([feature]),
         "guardrail": "Decision support only; evidence gaps remain disclosed and no statutory approval is inferred.",
+        "decision_boundary": "PLANNER_DECISION_SUPPORT_ONLY",
         "statutory_verification": "NOT_CLAIMED",
     }
