@@ -21,7 +21,7 @@ main{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:42px 0 56px}.kick
 </main>
 <script>
 const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
-function actionLinks(){return '<div class="row-actions"><a class="row-btn" href="/decision-center">OPEN DECISION ↗</a><a class="row-btn" href="/what-if">RUN WHAT-IF ↗</a></div>'}
+function actionLinks(id){const q=encodeURIComponent(id||'');return '<div class="row-actions"><a class="row-btn" href="/decision-center?scenario_id='+q+'">OPEN DECISION ↗</a><a class="row-btn" href="/what-if?scenario_id='+q+'">RUN WHAT-IF ↗</a></div>'}
 async function load(){
   const gate=document.getElementById('gate');
   try{
@@ -39,7 +39,7 @@ async function load(){
     gate.textContent='● ENGINE READY';
     document.getElementById('boundary').textContent=data.decision_boundary||'Decision-support only';
     document.getElementById('disclaimer').textContent=data.disclaimer||'Evidence and statutory verification remain explicitly bounded.';
-    document.getElementById('scoreboard').innerHTML=rows.map(r=>`<article class="row"><div><div class="name">${esc(r.name)}</div><div class="meta">${esc(r.id)} · Evidence: ${esc(r.evidence_state)}</div></div><div><span class="pill">${esc(r.status)}</span><div class="meta">Suitability: ${esc(r.suitability)}</div></div><div><span class="pill ${r.confidence&&r.confidence!=='HIGH'?'warn':''}">${esc(r.confidence||'UNVERIFIED')}</span><div class="meta">Statutory: ${esc(r.statutory_verification)}</div></div><div class="rec">${esc(r.recommendation||'No recommendation returned.')}${actionLinks()}</div></article>`).join('')||'<article class="row">No showcase scenarios returned.</article>';
+    document.getElementById('scoreboard').innerHTML=rows.map(r=>`<article class="row"><div><div class="name">${esc(r.name)}</div><div class="meta">${esc(r.id)} · Evidence: ${esc(r.evidence_state)}</div></div><div><span class="pill">${esc(r.status)}</span><div class="meta">Suitability: ${esc(r.suitability)}</div></div><div><span class="pill ${r.confidence&&r.confidence!=='HIGH'?'warn':''}">${esc(r.confidence||'UNVERIFIED')}</span><div class="meta">Statutory: ${esc(r.statutory_verification)}</div></div><div class="rec">${esc(r.recommendation||'No recommendation returned.')}${actionLinks(r.id)}</div></article>`).join('')||'<article class="row">No showcase scenarios returned.</article>';
   }catch(e){
     gate.textContent='● UNAVAILABLE';gate.style.color='#ffc857';document.getElementById('boundary').textContent='Judge packet could not be loaded.';document.getElementById('scoreboard').innerHTML='<article class="row">Unable to load /judge-mode. Check the deployment health and retry.</article>';
   }
