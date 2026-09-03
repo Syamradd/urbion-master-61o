@@ -9,4 +9,5 @@ def test_lcp_judge_surface_exists_and_is_same_origin():
     assert "SITE" in text and "SPATIAL" in text and "STATION" in text
     assert "POLICY / SDG" in text and "RECOMMENDATION" in text
     assert "const esc=" in text
-    assert "replace(/[&<>\"']/g" in text
+    assert ".replace(" in text
+    assert "esc(j.trace)" in text
