@@ -21,6 +21,7 @@ from urbion_iplan import query_iplan_context
 from urbion_data_sources import source_catalog,map_layer_catalog
 from urbion_elysian import ELYSIAN_LOT_11213,compare_official_context,elysian_source_record
 from urbion_kebenaran_merancang import build_km_readiness
+from urbion_gemini_redteam import gemini_configured,review_with_gemini
 app=FastAPI(title='URBION API',version='PHASE-E.7');app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=False,allow_methods=['*'],allow_headers=['*'])
 class AssessmentRequest(BaseModel):
  site_lat:float=Field(...,ge=-90,le=90);site_lon:float=Field(...,ge=-180,le=180);tod_lat:float=Field(...,ge=-90,le=90);tod_lon:float=Field(...,ge=-180,le=180);plot_ratio:float=Field(default=4.5,gt=0);precinct:str='Terminal Sg. Udang';development_type:str='TOD Development / Mixed Use';development_class:str='Mixed Use';state:str='Melaka';district:str='Melaka Tengah';pbt:str='Majlis Bandaraya Melaka Bersejarah';lot_no:str='';building_height:float|None=Field(default=None,ge=0);perimeter_planting:float|None=Field(default=None,ge=0);landscaped_pedestrian_walkway:float|None=Field(default=None,ge=0);shop_frontage_verified:bool=False;shop_office_verified:bool=False
@@ -87,6 +88,14 @@ def elysian_reconcile(site_lat:float|None=None,site_lon:float|None=None,state:st
   official=query_iplan_context(site_lat,site_lon,state);result['official_query']=official;result['reconciliation']=compare_official_context(official.get('current_land_use') or {})
  else:result['reconciliation']=compare_official_context(None)
  return result
+@app.get('/gemini/status')
+def gemini_status():
+ return {'provider':'Google Gemini','role':'RED_TEAM_ADVISORY','decision_authority':'NONE','configured':gemini_configured(),'model':__import__('os').getenv('GEMINI_MODEL','gemini-2.5-flash'),'secret_source':'SERVER_ENVIRONMENT_ONLY'}
+@app.post('/gemini/red-team')
+def gemini_red_team(r:AssessmentRequest):
+ assessment=assess_core(r)
+ packet={'assessment':assessment,'guardrails':{'decision_authority':'NONE','statutory_verification':'NOT_CLAIMED','purpose':'independent red-team review only'}}
+ return review_with_gemini(packet)
 @app.post('/assess')
 def assess(r:AssessmentRequest):return assess_core(r)
 @app.post('/km/readiness')
