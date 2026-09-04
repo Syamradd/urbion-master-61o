@@ -45,6 +45,18 @@ def _frontend_root():
         '<div class="health"><i></i> ENGINE ONLINE</div>',
         '<div class="health"><i></i> PHASE-E.7 ENGINE ONLINE</div>',
     )
+    # Keep the championship mount contract stable even if the static HTML was edited
+    # without the host mount. This is deliberately idempotent and never duplicates it.
+    if 'id="urbion-championship"' not in source:
+        marker = '<body>'
+        if marker in source:
+            source = source.replace(
+                marker,
+                marker + '<div id="urbion-championship" aria-hidden="true" style="display:none"></div>',
+                1,
+            )
+        else:
+            source = '<div id="urbion-championship" aria-hidden="true" style="display:none"></div>' + source
     return HTMLResponse(
         source,
         media_type="text/html; charset=utf-8",
@@ -88,4 +100,4 @@ for _path in ("/championship.html", "/index.html", "/"):
             break
 
 app.state.frontend_entrypoint = "championship.html"
-app.state.frontend_release = "MASTER-297"
+app.state.frontend_release = "MASTER-298"
