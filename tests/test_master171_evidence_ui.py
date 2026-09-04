@@ -1,12 +1,11 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_decision_center_surfaces_evidence_and_boundary():
     text = (ROOT / 'decision-center.html').read_text(encoding='utf-8')
-    for token in ['EVIDENCE · PROVENANCE', 'evidence_state', 'decision_trace', 'Source summary', 'NOT STATUTORY APPROVAL', 'Statutory verification is not claimed']:
+    for token in ['DECISION INTELLIGENCE · LIVE', 'j.decision', 'j.decision_trace', 'j.spatial_intelligence', 'j.review_gaps', 'j.next_actions', 'PLANNER DECISION SUPPORT ONLY', 'Statutory approval or compliance is not claimed.', 'No decision output was fabricated.']:
         assert token in text
     assert 'const API=location.origin' in text
     assert 'urbion-master-61o.onrender.com' not in text
