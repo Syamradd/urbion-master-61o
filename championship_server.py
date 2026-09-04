@@ -1,36 +1,17 @@
 """Deterministic production entrypoint for the URBION HORIZON championship UI.
 
-A fresh FastAPI application is assembled from the legacy API route table. This prevents
-legacy root handlers and sitecustomize route injection from competing with the
-championship frontend at ``/`` and ``/index.html``.
+The championship frontend is forced ahead of legacy HTML routes at both middleware and
+router-order level, so production root behaviour is deterministic regardless of import
+order or Starlette route registration order.
 """
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse
 
-from server import app as legacy_app
+from server import app
 
 BASE_DIR = Path(__file__).resolve().parent
-
-# Build a clean application shell while preserving the established API route objects.
-app = FastAPI(title="URBION API — Championship", version="PHASE-E.7")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# sitecustomize may inject a root route into every FastAPI instance. Remove all exact
-# frontend surfaces before adding the deterministic championship implementation.
-app.router.routes[:] = [
-    route for route in legacy_app.router.routes
-    if getattr(route, "path", None) not in {"/", "/index.html", "/championship.html"}
-]
-
 ALLOWED_ASSETS = {
     "urbion_ui.js",
     "urbion_championship_ui.js",
@@ -42,6 +23,17 @@ ALLOWED_ASSETS = {
     "urbion_public_spatial_v283.js",
     "urbion_public_spatial_v284.js",
 }
+
+
+def _remove_routes(*paths: str) -> None:
+    targets = set(paths)
+    app.router.routes[:] = [
+        route for route in app.router.routes
+        if getattr(route, "path", None) not in targets
+    ]
+
+
+_remove_routes("/", "/index.html", "/championship.html")
 
 
 def _frontend_root():
@@ -74,41 +66,26 @@ def _frontend_asset(asset: str):
     )
 
 
-@app.get("/", include_in_schema=False)
-def championship_root():
-    return _frontend_root()
+@app.middleware("http")
+async def _championship_frontend_override(request: Request, call_next):
+    if request.url.path in {"/", "/index.html", "/championship.html"}:
+        return _frontend_root()
+    return await call_next(request)
 
 
-@app.get("/index.html", include_in_schema=False)
-def championship_index():
-    return _frontend_root()
+app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 
-
-@app.get("/championship.html", include_in_schema=False)
-def championship_html():
-    return _frontend_root()
-
-
-@app.get("/{asset}.js", include_in_schema=False)
-def championship_asset(asset: str):
-    return _frontend_asset(asset)
-
-
-# Final precedence assertion at import time: exact frontend paths must resolve to the
-# championship endpoint functions, never a legacy server root handler.
-_FRONTEND_ENDPOINTS = {
-    "/": championship_root,
-    "/index.html": championship_index,
-    "/championship.html": championship_html,
-}
-for _path, _endpoint in _FRONTEND_ENDPOINTS.items():
-    _matches = [
-        route for route in app.router.routes
-        if getattr(route, "path", None) == _path
-        and getattr(route, "endpoint", None) is _endpoint
-    ]
-    if not _matches:
-        raise RuntimeError(f"Championship route registration failed for {_path}")
+# Explicitly move the championship exact routes to the front of Starlette's route list.
+# This is a second deterministic guard for test clients/hosts where middleware state may
+# already have been materialized before this wrapper is imported.
+for _path in ("/championship.html", "/index.html", "/"):
+    for _idx, _route in enumerate(app.router.routes):
+        if getattr(_route, "path", None) == _path:
+            app.router.routes.insert(0, app.router.routes.pop(_idx))
+            break
 
 app.state.frontend_entrypoint = "championship.html"
-app.state.frontend_release = "MASTER-296"
+app.state.frontend_release = "MASTER-297"
