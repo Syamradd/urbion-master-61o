@@ -1,13 +1,13 @@
 """Deterministic production entrypoint for the URBION HORIZON championship UI.
 
 This wrapper deliberately removes the legacy / and /index.html handlers from server.app
-and installs the championship frontend as the only production root. It also serves the
+and installs the championship frontend as the production frontend surface. It also serves
 allow-listed frontend assets directly, so the result does not depend on Python's optional
 sitecustomize startup hook.
 """
 from pathlib import Path
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse
 
 from server import app
@@ -27,13 +27,14 @@ ALLOWED_ASSETS = {
 
 
 def _remove_routes(*paths: str) -> None:
+    targets = set(paths)
     app.router.routes[:] = [
         route for route in app.router.routes
-        if getattr(route, "path", None) not in set(paths)
+        if getattr(route, "path", None) not in targets
     ]
 
 
-# server.py still owns all business/API routes, but its legacy HTML root must not win.
+# server.py still owns all business/API routes, but its legacy HTML roots must not win.
 _remove_routes("/", "/index.html")
 
 
@@ -62,6 +63,15 @@ def _frontend_asset(asset: str):
     )
 
 
+# Middleware is intentional: it sits before Starlette's route matching, so a legacy
+# static/catch-all handler can never shadow the championship /index.html compatibility URL.
+@app.middleware("http")
+async def _championship_frontend_override(request: Request, call_next):
+    if request.url.path in {"/index.html", "/championship.html"}:
+        return _frontend_root()
+    return await call_next(request)
+
+
 app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
@@ -69,4 +79,4 @@ app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_sc
 
 # Expose a production identity without changing the existing backend health contract.
 app.state.frontend_entrypoint = "championship.html"
-app.state.frontend_release = "MASTER-288"
+app.state.frontend_release = "MASTER-292"
