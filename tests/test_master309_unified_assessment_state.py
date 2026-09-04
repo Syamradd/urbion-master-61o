@@ -28,6 +28,14 @@ def test_decision_layer_consumes_shared_assessment():
     assert 'window.URBION?.assess' in text
 
 
+def test_intelligence_layer_consumes_shared_assessment():
+    text = read('urbion_championship_intelligence_upgrade.js')
+    assert 'window.URBION?.getAssessmentPayload' in text
+    assert 'window.URBION?.assess' in text
+    assert 'async function assess(extra={})' in text
+    assert 'return window.URBION.assess(extra)' in text
+
+
 def test_championship_wires_shared_state_after_decision_layers():
     text = read('championship_server.py')
     assert 'urbion_championship_input_sync.js' in text
