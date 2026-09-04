@@ -3,39 +3,38 @@
   const $=id=>document.getElementById(id);
   const finite=v=>Number.isFinite(parseFloat(v));
   const snapshot=()=>Object.fromEntries(ids.map(id=>[id,$(id)?.value??'']));
-  let timer;
-  function status(text){
-    const el=$('side-status');
-    if(el) el.textContent=text;
+  const basePayload=()=>({site_lat:+snapshot().lat,site_lon:+snapshot().lon,tod_lat:+snapshot().todlat,tod_lon:+snapshot().todlon,plot_ratio:+snapshot().ratio||4.5,precinct:$('precinct')?.value||'Terminal Sg. Udang',development_type:$('devtype')?.value||'TOD Development / Mixed Use',development_class:$('devclass')?.value||'Mixed Use',state:$('state')?.value||'Melaka',district:$('district')?.value||'Melaka Tengah',pbt:$('pbt')?.value||'Majlis Bandaraya Melaka Bersejarah',lot_no:$('lot')?.value||'',building_height:null,perimeter_planting:null,landscaped_pedestrian_walkway:null,shop_frontage_verified:false,shop_office_verified:false});
+  let timer,version=0,cachedVersion=-1,cached=null,inflight=null;
+  function status(text){const el=$('side-status');if(el)el.textContent=text;}
+  function invalidate(source){version+=1;cached=null;cachedVersion=-1;window.dispatchEvent(new CustomEvent('urbion:assessment-invalidated',{detail:{version,source}}));}
+  async function sharedAssess(extra={}){
+    const payload={...basePayload(),...extra};
+    if(cachedVersion===version&&cached) return cached;
+    if(inflight&&inflight.version===version) return inflight.promise;
+    const promise=fetch('/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>{if(!r.ok)throw Error(`Assessment ${r.status}`);return r.json()}).then(data=>{if(version===inflight?.version){cached=data;cachedVersion=version;window.__urbionAssessment=data;window.dispatchEvent(new CustomEvent('urbion:analysis',{detail:data}));}return data}).finally(()=>{if(inflight?.version===version)inflight=null});
+    inflight={version,promise};
+    return promise;
   }
+  window.URBION=window.URBION||{};
+  window.URBION.getSiteSnapshot=()=>snapshot();
+  window.URBION.getAssessmentPayload=()=>basePayload();
+  window.URBION.invalidateAssessment=source=>invalidate(source||'unknown');
+  window.URBION.assess=sharedAssess;
   function publish(source){
     const s=snapshot();
     const coords=['lat','lon','todlat','todlon'];
     if(!coords.every(id=>finite(s[id]))) return;
-    window.dispatchEvent(new CustomEvent('urbion:site-change',{detail:{
-      latitude:parseFloat(s.lat),longitude:parseFloat(s.lon),
-      tod_latitude:parseFloat(s.todlat),tod_longitude:parseFloat(s.todlon),
-      source,inputs:s
-    }}));
+    invalidate(source);
+    window.dispatchEvent(new CustomEvent('urbion:site-change',{detail:{latitude:parseFloat(s.lat),longitude:parseFloat(s.lon),tod_latitude:parseFloat(s.todlat),tod_longitude:parseFloat(s.todlon),source,inputs:s}}));
     window.dispatchEvent(new CustomEvent('urbion:inputs-change',{detail:{source,inputs:s}}));
     status('Site inputs changed. Run analysis to refresh the decision chain.');
   }
-  function schedule(source){
-    clearTimeout(timer);
-    timer=setTimeout(()=>publish(source),180);
-  }
+  function schedule(source){clearTimeout(timer);timer=setTimeout(()=>publish(source),180);}
   function bind(){
-    ids.forEach(id=>{
-      const el=$(id); if(!el) return;
-      el.addEventListener('input',()=>schedule(`input:${id}`));
-      el.addEventListener('change',()=>schedule(`change:${id}`));
-    });
-    window.addEventListener('urbion:site-change',e=>{
-      if(e.detail?.source?.startsWith('input:')||e.detail?.source?.startsWith('change:')) return;
-      status('Site changed on map. Run analysis to refresh the decision chain.');
-    });
+    ids.forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',()=>schedule(`input:${id}`));el.addEventListener('change',()=>schedule(`change:${id}`));});
+    window.addEventListener('urbion:site-change',e=>{if(e.detail?.source?.startsWith('input:')||e.detail?.source?.startsWith('change:'))return;invalidate(e.detail?.source||'map');status('Site changed on map. Run analysis to refresh the decision chain.');});
     window.addEventListener('urbion:analysis',()=>status('Analysis complete. Decision chain refreshed.'));
     window.dispatchEvent(new CustomEvent('urbion:inputs-ready',{detail:{inputs:snapshot()}}));
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind); else bind();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
