@@ -102,7 +102,7 @@ class ChampionshipOverlayMiddleware(BaseHTTPMiddleware):
             body += chunk
         marker = b"</body>"
         if marker in body and b"MASTER-270" not in body:
-            body = body.replace(marker, _CHAMPIONSHIP_OVERLAY.encode("utf-8") + b'<script src="/urbion_championship_dashboard.js"></script><script src="/urbion_championship_polish.js"></script>' + marker, 1)
+            body = body.replace(marker, _CHAMPIONSHIP_OVERLAY.encode("utf-8") + b'<script src="/urbion_championship_dashboard.js"></script><script src="/urbion_championship_polish.js"></script><script src="/urbion_championship_v277.js"></script>' + marker, 1)
         headers = dict(response.headers)
         headers.pop("content-length", None)
         return Response(content=body, status_code=response.status_code, headers=headers, media_type="text/html")
