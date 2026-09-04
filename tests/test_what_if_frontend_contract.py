@@ -1,9 +1,10 @@
 from pathlib import Path
+import re
 
 
 def test_what_if_uses_same_origin_and_current_release():
     text = (Path(__file__).resolve().parents[1] / 'what-if.html').read_text(encoding='utf-8')
-    assert "const API=location.origin;" in text
+    assert re.search(r"const\s+API\s*=\s*location\.origin\s*;", text)
     assert "fetch(API+'/health')" in text
     assert "fetch(API+'/what-if'" in text
     assert 'PHASE-E.8' in text
