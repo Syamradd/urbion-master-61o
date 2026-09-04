@@ -13,15 +13,23 @@ def test_shared_assessment_state_contract():
     assert 'getAssessmentPayload' in text
     assert 'window.URBION.assess=sharedAssess' in text
     assert 'assessment-invalidated' in text
-    assert "pathname==='/assess'" in text
-    assert "method==='POST'" in text
+    assert "nativeFetch('/assess'" in text
+    assert "method:'POST'" in text
     assert 'nativeFetch' in text
     assert 'cachedVersion' in text
     assert 'inflight' in text
+    assert 'location.origin' not in text
+    assert 'window.fetch=' not in text
 
 
 def test_decision_layer_consumes_shared_assessment():
     text = read('urbion_championship_decision_layer.js')
+    assert 'window.URBION?.getAssessmentPayload' in text
+    assert 'window.URBION?.assess' in text
+
+
+def test_intelligence_layer_consumes_shared_assessment():
+    text = read('urbion_championship_intelligence_upgrade.js')
     assert 'window.URBION?.getAssessmentPayload' in text
     assert 'window.URBION?.assess' in text
 
