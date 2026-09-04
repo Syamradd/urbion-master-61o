@@ -1,0 +1,33 @@
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def read(name):
+    return (ROOT / name).read_text(encoding='utf-8')
+
+
+def test_shared_assessment_state_contract():
+    text = read('urbion_championship_input_sync.js')
+    assert 'window.URBION' in text
+    assert 'getAssessmentPayload' in text
+    assert 'window.URBION.assess=sharedAssess' in text
+    assert 'assessment-invalidated' in text
+    assert "pathname==='/assess'" in text
+    assert "method==='POST'" in text
+    assert 'nativeFetch' in text
+    assert 'cachedVersion' in text
+    assert 'inflight' in text
+
+
+def test_decision_layer_consumes_shared_assessment():
+    text = read('urbion_championship_decision_layer.js')
+    assert 'window.URBION?.getAssessmentPayload' in text
+    assert 'window.URBION?.assess' in text
+
+
+def test_championship_wires_shared_state_after_decision_layers():
+    text = read('championship_server.py')
+    assert 'urbion_championship_input_sync.js' in text
+    assert 'urbion_championship_decision_layer.js' in text
+    assert 'urbion_championship_intelligence_upgrade.js' in text
