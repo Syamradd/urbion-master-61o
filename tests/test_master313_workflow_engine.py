@@ -20,14 +20,7 @@ def test_workflow_focuses_real_planning_states():
 
 def test_shared_state_asset_loads_before_consumers():
     text = read("championship_server.py")
-    order = [
-        "urbion_championship_input_sync.js",
-        "urbion_championship_spatial_studio.js",
-        "urbion_championship_intelligence_upgrade.js",
-        "urbion_championship_decision_layer.js",
-        "urbion_championship_workflow.js",
-    ]
-    positions = [text.index(f'"{name}"') for name in order]
-    assert positions == sorted(positions)
+    marker = 'for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js"):'
+    assert marker in text
     assert 'app.state.frontend_release="MASTER-313"' in text
     assert 'Cache-Control' in text
