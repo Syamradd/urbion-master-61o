@@ -23,7 +23,6 @@ def _frontend_root():
     source=source.replace('<div class="health"><i></i> ENGINE ONLINE</div>','<div class="health"><i></i> PHASE-E.7 ENGINE ONLINE</div>')
     if 'id="urbion-championship"' not in source:
         marker='<body>'; source=source.replace(marker,marker+'<div id="urbion-championship" aria-hidden="true" style="display:none"></div>',1) if marker in source else '<div id="urbion-championship" aria-hidden="true" style="display:none"></div>'+source
-    # Load the shared assessment/state layer first. Consumers depend on window.URBION.assess.
     for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js"):
         script=f'<script src="/{asset}"></script>'
         if script not in source: source=source.replace('</body>',script+'</body>',1)
