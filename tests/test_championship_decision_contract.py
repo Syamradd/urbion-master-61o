@@ -20,7 +20,7 @@ def test_decision_center_exposes_evidence_boundary():
     response = client.post("/decision-center", json=payload)
     assert response.status_code == 200
     body = response.json()
-    assert body["version"] == "PHASE-E.7"
+    assert body["version"] == "PHASE-E.8"
     assert "evidence_state" in body
     assert body["statutory_verification"] == "NOT_CLAIMED"
     assert "decision_trace" in body
@@ -30,7 +30,7 @@ def test_judge_mode_exposes_deterministic_boundary():
     response = client.get("/judge-mode")
     assert response.status_code == 200
     body = response.json()
-    assert body["version"] == "PHASE-E.7"
+    assert body["version"] == "PHASE-E.8"
     assert body["scenario_count"] >= 1
     assert "decision_boundary" in body
     assert "statutory approval" in body["decision_boundary"]
