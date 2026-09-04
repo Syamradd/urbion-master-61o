@@ -27,5 +27,23 @@ def _decision_confidence(final_status:str,pbt:str,lot_no:str,tod_distance_m:floa
  if retrieved_rules:score+=5
  score=int(_clamp(score));return {"score":score,"band":"HIGH" if score>=80 else("MEDIUM" if score>=65 else "LOW"),"note":"Confidence reflects evidence and rule coverage, not approval probability."}
 def source_registry_snapshot()->list[dict[str,Any]]:return [dict(x) for x in SOURCE_REGISTRY]
+def _evidence_aware_score(dimensions:list[tuple[str,float|None,float]])->tuple[float,int]:
+    """Score only dimensions with an actual value; never manufacture missing evidence."""
+    assessed=[(name,float(value),float(weight)) for name,value,weight in dimensions if value is not None]
+    if not assessed:return 0.0,0
+    weight_total=sum(weight for _,_,weight in assessed)
+    score=sum(value*weight for _,value,weight in assessed)/weight_total
+    return round(_clamp(score),1),len(assessed)
 def build_site_analysis(state:str,district:str,pbt:str,lot_no:str,latitude:float,longitude:float,tod_distance_m:float,development_class:str,development_type:str,policy_status:str,final_status:str,retrieved_rules:int=0)->dict[str,Any]:
- planning=100 if final_status=="COMPLY" else(0 if final_status=="NON-COMPLIANCE" else 55);access=100 if tod_distance_m<=400 else(80 if tod_distance_m<=800 else 45);confidence=100 if pbt=="Majlis Bandaraya Melaka Bersejarah" else 55;complete=100 if lot_no else 65;environment=55;score=round(.30*planning+.25*access+.20*confidence+.10*complete+.15*environment,1);band="HIGH POTENTIAL" if score>=80 else("MODERATE POTENTIAL" if score>=65 else "REQUIRES FURTHER STUDY");rec=_recommendation(final_status,score,pbt,development_type);dc=_decision_confidence(final_status,pbt,lot_no,tod_distance_m,retrieved_rules);return {"title":"Preliminary Site Suitability","score":score,"band":band,"disclaimer":"Preliminary decision-support only; not statutory approval.","recommendation":rec,"decision_confidence":dc,"indicators":[{"name":"Planning Fit","score":planning},{"name":"Transit Access","score":access},{"name":"Data Confidence","score":confidence},{"name":"Site Completeness","score":complete},{"name":"Environment Evidence","score":environment}],"spatial_summary":{"state":state,"district":district,"pbt":pbt,"lot_no":lot_no or "Not specified","latitude":latitude,"longitude":longitude,"tod_distance_m":tod_distance_m,"development_class":development_class}}
+    planning=100 if final_status=="COMPLY" else(0 if final_status=="NON-COMPLIANCE" else 55)
+    access=100 if tod_distance_m<=400 else(80 if tod_distance_m<=800 else 45)
+    confidence=100 if pbt=="Majlis Bandaraya Melaka Bersejarah" else 55
+    complete=100 if lot_no else 65
+    # No fabricated environmental score: the current pipeline has no site-specific environmental observation.
+    environment=None
+    score,assessed_count=_evidence_aware_score([("Planning Fit",planning,.30),("Transit Access",access,.25),("Data Confidence",confidence,.20),("Site Completeness",complete,.10),("Environment Evidence",environment,.15)])
+    band="HIGH POTENTIAL" if score>=80 else("MODERATE POTENTIAL" if score>=65 else "REQUIRES FURTHER STUDY")
+    rec=_recommendation(final_status,score,pbt,development_type)
+    dc=_decision_confidence(final_status,pbt,lot_no,tod_distance_m,retrieved_rules)
+    indicators=[{"name":"Planning Fit","score":planning,"status":"CALCULATED"},{"name":"Transit Access","score":access,"status":"CALCULATED","method":"straight-line TOD distance threshold"},{"name":"Data Confidence","score":confidence,"status":"SOURCE_CONTEXT"},{"name":"Site Completeness","score":complete,"status":"USER_PROVIDED"},{"name":"Environment Evidence","score":None,"status":"UNVERIFIED","note":"No site-specific environmental evidence supplied; excluded from suitability score."}]
+    return {"title":"Preliminary Site Suitability","score":score,"score_coverage":{"assessed_dimensions":assessed_count,"total_dimensions":len(indicators),"excluded_unverified":["Environment Evidence"]},"band":band,"disclaimer":"Preliminary decision-support only; not statutory approval.","recommendation":rec,"decision_confidence":dc,"indicators":indicators,"spatial_summary":{"state":state,"district":district,"pbt":pbt,"lot_no":lot_no or "Not specified","latitude":latitude,"longitude":longitude,"tod_distance_m":tod_distance_m,"tod_distance_method":"Haversine straight-line geodesic; not pedestrian/network distance","development_class":development_class}}
