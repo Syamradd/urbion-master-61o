@@ -6,7 +6,7 @@ def test_what_if_uses_same_origin_and_current_release():
     assert "const API=location.origin;" in text
     assert "fetch(API+'/health')" in text
     assert "fetch(API+'/what-if'" in text
-    assert 'PHASE-E.7' in text
+    assert 'PHASE-E.8' in text
     assert 'urbion-master-61o-1.onrender.com' not in text
     assert 'urbion-master-61o.onrender.com' not in text
 
