@@ -23,12 +23,6 @@
   window.URBION.invalidateAssessment=source=>invalidate(source||'unknown');
   window.URBION.assess=sharedAssess;
   window.URBION.getAssessmentStats=()=>({version,assessCount,cached:Boolean(cached)});
-  window.fetch=async function(input,init){
-    const url=typeof input==='string'?input:(input?.url||'');
-    const method=String(init?.method||(typeof input!=='string'&&input?.method)||'GET').toUpperCase();
-    if(method==='POST'&&new URL(url,location.origin).pathname==='/assess') return new Response(JSON.stringify(await sharedAssess()),{status:200,headers:{'Content-Type':'application/json'}});
-    return nativeFetch(input,init);
-  };
   function publish(source){
     const s=snapshot();
     const coords=['lat','lon','todlat','todlon'];
