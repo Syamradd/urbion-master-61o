@@ -1,7 +1,8 @@
 """Deterministic production entrypoint for the URBION HORIZON championship UI.
 
-The championship frontend is forced ahead of legacy HTML routes at middleware level,
-so production root behaviour is deterministic regardless of route registration order.
+The championship frontend is forced ahead of legacy HTML routes at both middleware and
+router-order level, so production root behaviour is deterministic regardless of import
+order or Starlette route registration order.
 """
 from pathlib import Path
 
@@ -32,7 +33,6 @@ def _remove_routes(*paths: str) -> None:
     ]
 
 
-# Remove known legacy exact-path handlers; middleware below is the final guard.
 _remove_routes("/", "/index.html", "/championship.html")
 
 
@@ -41,10 +41,15 @@ def _frontend_root():
     if not target.is_file():
         raise HTTPException(status_code=500, detail="Championship frontend is missing")
     source = target.read_text(encoding="utf-8")
-    # Keep the existing visual badge while making the release/engine identity explicit
-    # for automated and human release checks.
-    source = source.replace("<div class=\"health\"><i></i> ENGINE ONLINE</div>", "<div class=\"health\"><i></i> PHASE-E.7 ENGINE ONLINE</div>")
-    return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+    source = source.replace(
+        '<div class="health"><i></i> ENGINE ONLINE</div>',
+        '<div class="health"><i></i> PHASE-E.7 ENGINE ONLINE</div>',
+    )
+    return HTMLResponse(
+        source,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 def _frontend_asset(asset: str):
@@ -61,8 +66,6 @@ def _frontend_asset(asset: str):
     )
 
 
-# Middleware runs before Starlette route matching. This prevents any legacy or
-# catch-all route from ever winning for the production frontend surfaces.
 @app.middleware("http")
 async def _championship_frontend_override(request: Request, call_next):
     if request.url.path in {"/", "/index.html", "/championship.html"}:
@@ -75,5 +78,14 @@ app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_sch
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 
+# Explicitly move the championship exact routes to the front of Starlette's route list.
+# This is a second deterministic guard for test clients/hosts where middleware state may
+# already have been materialized before this wrapper is imported.
+for _path in ("/championship.html", "/index.html", "/"):
+    for _idx, _route in enumerate(app.router.routes):
+        if getattr(_route, "path", None) == _path:
+            app.router.routes.insert(0, app.router.routes.pop(_idx))
+            break
+
 app.state.frontend_entrypoint = "championship.html"
-app.state.frontend_release = "MASTER-294"
+app.state.frontend_release = "MASTER-295"
