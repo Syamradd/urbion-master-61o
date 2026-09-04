@@ -12,7 +12,7 @@ def test_judge_mode_is_deterministic_and_bounded():
         }}
     ])
     assert result["project"] == "URBION HORIZON"
-    assert result["version"] == "PHASE-E.7"
+    assert result["version"] == "PHASE-E.8"
     assert result["scenario_count"] == 1
     assert result["scoreboard"][0]["status"] == "COMPLY"
     assert result["scoreboard"][0]["evidence_state"] == "CALCULATED"
