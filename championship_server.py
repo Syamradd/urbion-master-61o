@@ -8,6 +8,14 @@ ALLOWED_ASSETS = {"urbion_ui.js","urbion_championship_ui.js","urbion_championshi
 def _remove_routes(*paths: str)->None:
     targets=set(paths); app.router.routes[:]=[r for r in app.router.routes if getattr(r,"path",None) not in targets]
 _remove_routes("/","/index.html","/championship.html")
+
+def _design_system(source: str) -> str:
+    css='''<style id="urbion-premium-system">:root{--urbion-accent:#35e2b0;--urbion-cyan:#18cce5;--urbion-navy:#07131f;--urbion-ink:#eaf5f7;--urbion-muted:#8ea7b5}body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),radial-gradient(circle at 16% 85%,rgba(53,226,176,.07),transparent 30%),#07131f}body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(rgba(53,226,176,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(53,226,176,.045) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 88%);z-index:0}#urbion-theme-toggle{position:fixed;right:18px;bottom:18px;z-index:9999;border:1px solid rgba(53,226,176,.35);border-radius:999px;padding:10px 13px;background:rgba(7,19,31,.88);backdrop-filter:blur(14px);color:#eaf5f7;font:800 10px Inter;letter-spacing:.04em;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.28)}body.urbion-light{background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),#f4f8fa;color:#102330}body.urbion-light:before{opacity:.16;background-image:linear-gradient(rgba(11,74,91,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(11,74,91,.07) 1px,transparent 1px)}body.urbion-light #urbion-theme-toggle{background:rgba(255,255,255,.92);color:#102330;border-color:rgba(8,99,112,.24)}body.urbion-light #spatial-studio,body.urbion-light #intel-upgrade{background:linear-gradient(135deg,#ffffff,#eef6f8);color:#102330;border-color:#d5e2e7}body.urbion-light #spatial-studio .ss-panel,body.urbion-light #intel-upgrade .iu-card{background:rgba(255,255,255,.78);color:#102330}body.urbion-light #spatial-studio .ss-metrics div,body.urbion-light #intel-upgrade .iu-row{background:#f6fafb;color:#18303d;border-color:#d9e6ea}body.urbion-light #intel-upgrade .iu-reason,body.urbion-light #spatial-studio .ss-note{color:#4e6672}@media(max-width:600px){#urbion-theme-toggle{right:12px;bottom:12px;padding:9px 11px}}</style>'''
+    if 'id="urbion-premium-system"' not in source: source=source.replace('</head>',css+'</head>',1)
+    toggle='''<button id="urbion-theme-toggle" type="button" aria-label="Toggle URBION theme">◐ THEME · DARK</button><script>(function(){function apply(){var light=document.body.classList.contains('urbion-light'),b=document.getElementById('urbion-theme-toggle');if(b)b.textContent=light?'◐ THEME · LIGHT':'◐ THEME · DARK';localStorage.setItem('urbion-theme',light?'light':'dark')}function boot(){var saved=localStorage.getItem('urbion-theme');if(saved==='light')document.body.classList.add('urbion-light');var b=document.getElementById('urbion-theme-toggle');if(b)b.onclick=function(){document.body.classList.toggle('urbion-light');apply()};apply()}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot()})();</script>'''
+    if 'id="urbion-theme-toggle"' not in source: source=source.replace('</body>',toggle+'</body>',1)
+    return source
+
 def _frontend_root():
     target=BASE_DIR/"championship.html"
     if not target.is_file(): raise HTTPException(status_code=500,detail="Championship frontend is missing")
@@ -18,6 +26,7 @@ def _frontend_root():
     for asset in ("urbion_championship_spatial_studio.js","urbion_championship_decision_layer.js","urbion_championship_intelligence_upgrade.js"):
         script=f'<script src="/{asset}"></script>'
         if script not in source: source=source.replace('</body>',script+'</body>',1)
+    source=_design_system(source)
     return HTMLResponse(source,media_type="text/html; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
 def _frontend_asset(asset:str):
     filename=f"{asset}.js"
@@ -37,4 +46,4 @@ for _path in ("/championship.html","/index.html","/"):
     for _idx,_route in enumerate(app.router.routes):
         if getattr(_route,"path",None)==_path: app.router.routes.insert(0,app.router.routes.pop(_idx)); break
 app.state.frontend_entrypoint="championship.html"
-app.state.frontend_release="MASTER-302"
+app.state.frontend_release="MASTER-305"
