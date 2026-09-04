@@ -1,8 +1,9 @@
-"""MASTER-285: expose repository-owned JS assets to the FastAPI app.
+"""MASTER-286: expose the championship frontend at the production root.
 
 Python loads sitecustomize during interpreter startup. We patch FastAPI's constructor
-so the existing app gains a narrow, allow-listed JavaScript asset route without
-changing application business logic or endpoint contracts.
+so the existing app gains a narrow, allow-listed JavaScript asset route and a dedicated
+championship HTML entrypoint without changing application business logic or endpoint
+contracts.
 """
 from pathlib import Path
 from fastapi.responses import FileResponse
@@ -29,7 +30,13 @@ try:
             if target.parent != _BASE or not target.is_file():
                 raise HTTPException(status_code=404, detail='Frontend asset not found')
             return FileResponse(target, media_type='application/javascript', headers={'Cache-Control':'no-store'})
+        def _championship_root():
+            target = (_BASE / 'championship.html').resolve()
+            if target.parent != _BASE or not target.is_file():
+                raise HTTPException(status_code=404, detail='Championship frontend not found')
+            return FileResponse(target, media_type='text/html', headers={'Cache-Control':'no-store'})
         self.add_api_route('/{asset}.js', _asset, methods=['GET'], include_in_schema=False)
+        self.add_api_route('/', _championship_root, methods=['GET'], include_in_schema=False)
     FastAPI.__init__ = _init_with_assets
 except Exception:
     pass
