@@ -1,9 +1,11 @@
-from fastapi import FastAPI,HTTPException
+from fastapi import FastAPI,HTTPException,Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse,HTMLResponse
 from pydantic import BaseModel,Field,field_validator
 import math,sys,json
 from pathlib import Path
+from urllib.parse import quote
+from urllib.request import Request,urlopen
 BASE_DIR=Path(__file__).resolve().parent;sys.path.insert(0,str(BASE_DIR))
 from urbion_spatial import urbion_create_spatial_context
 from urbion_retrieval import urbion_retrieve_rules
@@ -123,6 +125,49 @@ def judge_mode():
 def championship_gate():
  manifest=json.loads((BASE_DIR/'DEPLOYMENT_MANIFEST.json').read_text(encoding='utf-8'))
  return build_championship_gate(lcp=build_lcp_intelligence(assessment=assess_core(AssessmentRequest(site_lat=2.285,site_lon=102.196,tod_lat=2.286,tod_lon=102.197))),manifest=manifest)
+
+def _public_json(url:str,timeout:float=8.0):
+ req=Request(url,headers={'User-Agent':'URBION-HORIZON/MASTER-281 public-source bridge'})
+ with urlopen(req,timeout=timeout) as r:return json.loads(r.read().decode('utf-8',errors='replace'))
+PUBLIC_GIS={'iPLAN Current Land Use':'https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTsemasa_04/MapServer','iPLAN Zoning':'https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTzoning_04/MapServer','iPLAN Cadastral':'https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/LOT_04/MapServer','iPLAN 5m Contour':'https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/KONTUR5M_04/MapServer','JMG Major Fault':'https://mygems.jmg.gov.my/server/rest/services/GeologiAsas/Major_Fault/MapServer','JMG Lithology':'https://mygems.jmg.gov.my/server/rest/services/Demarcation/Litology_by_Negeri/MapServer','JMG Geophysics':'https://mygems.jmg.gov.my/server/rest/services/GeoFizik/Geofizik_Awam/MapServer','JMG Groundwater':'https://mygems.jmg.gov.my/server/rest/services/Air_Bawah_Tanah/Air_Bawah_Tanah_Awam/MapServer','JMG Minerals':'https://mygems.jmg.gov.my/server/rest/services/SumberMineral/Sumber_Mineral_Awam/MapServer'}
+@app.get('/public-sources/map-services')
+def public_map_services():
+ result={}
+ for name,url in PUBLIC_GIS.items():
+  try:
+   meta=_public_json(url+'?f=pjson',5);result[name]={'status':'RESPONDED','url':url,'name':meta.get('mapName') or meta.get('name') or name,'spatialReference':meta.get('spatialReference')}
+  except Exception as exc:result[name]={'status':'UNREACHABLE','url':url,'error':str(exc)}
+ return {'services':result,'statutory_verification':'NOT_CLAIMED'}
+@app.get('/public-sources/mygems')
+def public_mygems(lat:float=2.285,lon:float=102.196):
+ layers={}
+ for name in ['JMG Major Fault','JMG Lithology','JMG Geophysics','JMG Groundwater','JMG Minerals']:
+  url=PUBLIC_GIS[name]
+  try:
+   meta=_public_json(url+'?f=pjson',5);layers[name]={'status':'RESPONDED','service':meta.get('mapName') or meta.get('name'), 'url':url,'site':{'lat':lat,'lon':lon}}
+  except Exception as exc:layers[name]={'status':'UNREACHABLE','url':url,'error':str(exc)}
+ return {'source':'JMG MyGEMS public ArcGIS services','site':{'lat':lat,'lon':lon},'layers':layers,'decision_boundary':'OBSERVATION_CONTEXT','statutory_verification':'NOT_CLAIMED'}
+@app.get('/public-sources/infobanjir')
+def public_infobanjir(state:str='Melaka'):
+ url='https://publicinfobanjir.water.gov.my/aras-air/?lang=en&state='+quote(state)
+ try:
+  with urlopen(Request(url,headers={'User-Agent':'URBION-HORIZON/MASTER-281'}),timeout=8) as r:body=r.read().decode('utf-8',errors='replace')
+  return {'source':'JPS Public Infobanjir','state':state,'status':'RESPONDED','bytes':len(body),'url':url,'note':'Authoritative public portal reached; live station values remain source-owned.'}
+ except Exception as exc:return {'source':'JPS Public Infobanjir','state':state,'status':'UNREACHABLE','url':url,'error':str(exc)}
+@app.get('/public-sources/mygdi')
+def public_mygdi():return {'source':'MyGeoportal / MyGDI','status':'REFERENCE','url':'https://www.mygeoportal.gov.my/','note':'National geospatial sharing portal; direct dataset availability is service-dependent.'}
+@app.post('/public-sources/site-evidence')
+def public_site_evidence(payload:dict=Body(default_factory=dict)):
+ lat=payload.get('site_lat',2.285);lon=payload.get('site_lon',102.196);state=payload.get('state','Melaka');sources={}
+ try:sources['iPLAN']={'status':'RESPONDED','context':query_iplan_context(float(lat),float(lon),state)}
+ except Exception as exc:sources['iPLAN']={'status':'FAILED','error':str(exc)}
+ try:sources['MyGEMS']=public_mygems(float(lat),float(lon))
+ except Exception as exc:sources['MyGEMS']={'status':'FAILED','error':str(exc)}
+ try:sources['JPS']={'status':'RESPONDED','environment':query_iplan_context(float(lat),float(lon),state).get('environment'), 'infobanjir':public_infobanjir(state)}
+ except Exception as exc:sources['JPS']={'status':'FAILED','error':str(exc)}
+ try:sources['Assessment']=assess_core(AssessmentRequest(site_lat=float(lat),site_lon=float(lon),tod_lat=float(lat),tod_lon=float(lon)))
+ except Exception as exc:sources['Assessment']={'status':'FAILED','error':str(exc)}
+ return {'site':{'lat':float(lat),'lon':float(lon),'state':state},'sources':sources,'evidence_state':'SOURCE_CONTEXT','statutory_verification':'NOT_CLAIMED'}
 import urbion_gateway
 @app.get('/{page}.html',include_in_schema=False)
 def html_workspace(page:str):
