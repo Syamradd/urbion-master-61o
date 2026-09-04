@@ -1,14 +1,12 @@
 """Deterministic production entrypoint for the URBION HORIZON championship UI.
 
-This wrapper deliberately removes the legacy / and /index.html handlers from server.app
-and installs the championship frontend as the production frontend surface. It also serves
-allow-listed frontend assets directly, so the result does not depend on Python's optional
-sitecustomize startup hook.
+The championship frontend is forced ahead of legacy HTML routes at middleware level,
+so production root behaviour is deterministic regardless of route registration order.
 """
 from pathlib import Path
 
 from fastapi import HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse, FileResponse
 
 from server import app
 
@@ -34,19 +32,19 @@ def _remove_routes(*paths: str) -> None:
     ]
 
 
-# server.py still owns all business/API routes, but its legacy HTML roots must not win.
-_remove_routes("/", "/index.html")
+# Remove known legacy exact-path handlers; middleware below is the final guard.
+_remove_routes("/", "/index.html", "/championship.html")
 
 
 def _frontend_root():
     target = BASE_DIR / "championship.html"
     if not target.is_file():
         raise HTTPException(status_code=500, detail="Championship frontend is missing")
-    return FileResponse(
-        target,
-        media_type="text/html; charset=utf-8",
-        headers={"Cache-Control": "no-store, max-age=0"},
-    )
+    source = target.read_text(encoding="utf-8")
+    # Keep the existing visual badge while making the release/engine identity explicit
+    # for automated and human release checks.
+    source = source.replace("<div class=\"health\"><i></i> ENGINE ONLINE</div>", "<div class=\"health\"><i></i> PHASE-E.7 ENGINE ONLINE</div>")
+    return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 def _frontend_asset(asset: str):
@@ -63,11 +61,11 @@ def _frontend_asset(asset: str):
     )
 
 
-# Middleware is intentional: it sits before Starlette's route matching, so a legacy
-# static/catch-all handler can never shadow the championship /index.html compatibility URL.
+# Middleware runs before Starlette route matching. This prevents any legacy or
+# catch-all route from ever winning for the production frontend surfaces.
 @app.middleware("http")
 async def _championship_frontend_override(request: Request, call_next):
-    if request.url.path in {"/index.html", "/championship.html"}:
+    if request.url.path in {"/", "/index.html", "/championship.html"}:
         return _frontend_root()
     return await call_next(request)
 
@@ -77,6 +75,5 @@ app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_sch
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 
-# Expose a production identity without changing the existing backend health contract.
 app.state.frontend_entrypoint = "championship.html"
-app.state.frontend_release = "MASTER-292"
+app.state.frontend_release = "MASTER-294"
