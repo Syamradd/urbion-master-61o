@@ -23,7 +23,7 @@ def build_judge_mode(*, scenarios: list[dict[str, Any]]) -> dict[str, Any]:
         counts[row["status"]] = counts.get(row["status"], 0) + 1
     return {
         "project": "URBION HORIZON",
-        "version": "PHASE-E.7",
+        "version": "PHASE-E.8",
         "headline": "See the site. Read the policy. Make the decision.",
         "scoreboard": rows,
         "status_counts": counts,
