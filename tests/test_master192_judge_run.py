@@ -10,7 +10,7 @@ def test_judge_run_has_complete_core_path():
     judge=client.get('/judge-mode')
     assert judge.status_code==200
     body=judge.json()
-    assert body['version']=='PHASE-E.7'
+    assert body['version']=='PHASE-E.8'
     assert body['scenario_count'] >= 1
     assert body['decision_boundary']
     assert body['statutory_verification']=='NOT_CLAIMED'
