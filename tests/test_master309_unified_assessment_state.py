@@ -17,7 +17,12 @@ def test_shared_assessment_state_contract():
     assert "method:'POST'" in text
     assert 'nativeFetch' in text
     assert 'cachedVersion' in text
-    assert 'inflight' in text
+    assert 'cachedKey' in text
+    assert 'payloadKey=payload=>JSON.stringify(payload)' in text
+    assert 'cachedVersion===version&&cachedKey===key' in text
+    assert 'inflight.version===version&&inflight.key===key' in text
+    assert 'requestVersion=version' in text
+    assert 'requestKey=key' in text
     assert 'location.origin' not in text
     assert 'window.fetch=' not in text
 
