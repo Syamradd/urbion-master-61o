@@ -16,7 +16,7 @@ def test_decision_center_endpoint_returns_championship_payload():
     response = client.post("/decision-center", json=payload)
     assert response.status_code == 200
     body = response.json()
-    assert body["version"] == "PHASE-E.7"
+    assert body["version"] == "PHASE-E.8"
     assert body["decision"]["status"] == "COMPLY"
     assert body["map"]["type"] == "FeatureCollection"
     assert body["statutory_verification"] == "NOT_CLAIMED"
