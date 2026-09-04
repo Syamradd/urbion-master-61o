@@ -6,13 +6,16 @@ from server import app
 client = TestClient(app)
 
 
-def test_root_serves_live_frontend_contract():
+def test_root_serves_championship_frontend_contract():
     response = client.get('/')
     assert response.status_code == 200
+    assert 'URBION HORIZON — Championship Workstation' in response.text
+    assert 'CHAMPIONSHIP PLANNING WORKSTATION' in response.text
     assert 'PHASE-E.7 ENGINE ONLINE' in response.text
-    assert 'PHASE-E.7 LIVE DECISION LAYER' in response.text
-    assert "const API=location.origin;" in response.text
-    assert 'iplan:gunatanah_komited_04' in response.text
+    assert 'id="urbion-championship"' in response.text
+    assert 'urbion_championship_ui.js' in response.text
+    assert 'urbion_championship_upgrade.js' in response.text
+    assert "window.__URBION_FRONTEND_BOOT__" in response.text
 
 
 def test_health_exposes_frontend_identity():
