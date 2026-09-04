@@ -30,13 +30,14 @@ def source_catalog() -> list[dict]:
 
 def map_layer_catalog(state: str = "Melaka") -> list[dict]:
     code = IPLANS.get(state)
+    # Keep only services with a browser-renderable map contract in the visual catalogue.
+    # Query-only services remain available in the source registry but are not advertised
+    # as interactive layers until a stable browser query renderer is implemented.
     layers = [
         {"id":"osm","name":"OpenStreetMap","name_ms":"OpenStreetMap","group":"BASEMAP","type":"TILE","url":"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png","evidence":"BASEMAP"},
-        {"id":"iplan-current","name":"i-Plan · Current Land Use","name_ms":"i-Plan · Guna Tanah Semasa","group":"PLANNING","type":"ARCGIS_QUERY","service":f"GTsemasa_{code}" if code else None,"source":"iplan","evidence":"SOURCE_CONTEXT"},
-        {"id":"iplan-zoning","name":"i-Plan · Zoning","name_ms":"i-Plan · Guna Tanah Zoning","group":"PLANNING","type":"ARCGIS_QUERY","service":f"GTzoning_{code}" if code else None,"source":"iplan","evidence":"SOURCE_CONTEXT"},
+        {"id":"iplan-current","name":"i-Plan · Current Land Use","name_ms":"i-Plan · Guna Tanah Semasa","group":"PLANNING","type":"GEOSERVER_WMS","url":"https://iplan.planmalaysia.gov.my/geoserver/iplan/wms","layers":f"iplan:gunatanah_semasa_{code}" if code else None,"source":"iplan","evidence":"SOURCE_CONTEXT","access_note":"Official i-Plan GeoServer WMS. Visualisation is live source context; currency and statutory applicability must still be verified."},
+        {"id":"iplan-zoning","name":"i-Plan · Zoning","name_ms":"i-Plan · Guna Tanah Zoning","group":"PLANNING","type":"GEOSERVER_WMS","url":"https://iplan.planmalaysia.gov.my/geoserver/iplan/wms","layers":f"iplan:gunatanah_zoning_{code}" if code else None,"source":"iplan","evidence":"SOURCE_CONTEXT","access_note":"Official i-Plan GeoServer WMS. Visualisation is live source context; currency and statutory applicability must still be verified."},
         {"id":"iplan-committed","name":"i-Plan · Committed Land Use","name_ms":"i-Plan · Guna Tanah Komited","group":"PLANNING","type":"GEOSERVER_WMS","url":"https://iplan.planmalaysia.gov.my/geoserver/iplan/wms","layers":f"iplan:gunatanah_komited_{code}" if code else None,"source":"iplan","evidence":"SOURCE_CONTEXT","access_note":"Official i-Plan GeoServer WMS layer. Visualisation is live source context; statutory currency/applicability must still be verified against authoritative plans."},
-        {"id":"iplan-lot","name":"i-Plan · Cadastral Lot","name_ms":"i-Plan · Lot Kadaster","group":"CADASTRAL","type":"ARCGIS_QUERY","service":f"LOT_{code}" if code else None,"source":"iplan","evidence":"SOURCE_CONTEXT"},
-        {"id":"iplan-contour","name":"i-Plan · 5m Contours","name_ms":"i-Plan · Kontur 5m","group":"TERRAIN","type":"ARCGIS_QUERY","service":f"KONTUR5M_{code}" if code else None,"source":"iplan","evidence":"SOURCE_CONTEXT"},
         {"id":"iplan-flood","name":"i-Plan · Flood","name_ms":"i-Plan · Banjir","group":"HAZARD","type":"GEOSERVER_WMS","url":"https://iplan.planmalaysia.gov.my/geoserver/iplan/wms","layers":"iplan:banjir","source":"iplan","evidence":"SOURCE_CONTEXT"},
         {"id":"iplan-disaster-risk","name":"i-Plan · Disaster Risk","name_ms":"i-Plan · Risiko Bencana","group":"HAZARD","type":"GEOSERVER_WMS","url":"https://iplan.planmalaysia.gov.my/geoserver/iplan/wms","layers":"iplan:risiko_bencana","source":"iplan","evidence":"SOURCE_CONTEXT"},
         {"id":"iplan-ksas","name":"i-Plan · KSAS","name_ms":"i-Plan · Kawasan Sensitif Alam Sekitar","group":"ENVIRONMENT","type":"GEOSERVER_WMS","url":"https://iplan.planmalaysia.gov.my/geoserver/iplan/wms","layers":"iplan:ksas","source":"iplan","evidence":"SOURCE_CONTEXT"},
