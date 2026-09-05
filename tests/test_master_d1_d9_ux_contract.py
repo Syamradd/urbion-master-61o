@@ -49,8 +49,8 @@ def test_decision_surface_preserves_explainability_and_boundary():
 
 
 def test_judge_mode_stays_separate():
-    server = read('championship_server.py')
+    server = read('server.py')
     judge = read('judge-mode.html')
-    assert 'judge-mode' in server
+    assert "@app.get('/judge-mode')" in server
     assert 'SCORE DRIVERS' in judge
     assert 'Assessment dimensions' in judge
