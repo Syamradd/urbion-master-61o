@@ -36,10 +36,9 @@ def test_release_manifest_and_production_surface_are_aligned():
     assert manifest['statutory_verification'] == 'NOT_CLAIMED'
 
     client = TestClient(app)
-    for path in REQUIRED_ROUTES:
-        response = client.get(path) if path == '/health' else None
-        if response is not None:
-            assert response.status_code == 200
+    assert client.get('/health').status_code == 200
+    route_paths = {getattr(route, 'path', None) for route in app.routes}
+    assert set(REQUIRED_ROUTES).issubset(route_paths)
     root = client.get('/')
     assert root.status_code == 200
     assert 'urbion_championship_workstation_v2.js' in root.text
