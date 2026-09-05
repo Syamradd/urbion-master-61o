@@ -7,6 +7,7 @@ from urbion_scenario_ranking import rank_scenarios
 from urbion_decision_center import build_decision_center
 from urbion_agent_orchestrator import run_agents
 from urbion_copilot import build_copilot_packet
+from urbion_validation import validation_cases, run_validation_case
 
 router = APIRouter(tags=["planning-agents"])
 
@@ -36,5 +37,21 @@ def run_copilot_workflow(payload: dict = Body(default_factory=dict)):
         return build_copilot_packet(inputs, variants=payload.get("variants"), radii=payload.get("radii") or (400,800), constraints=payload.get("constraints"))
     except Exception as exc:
         raise HTTPException(status_code=422, detail={"code":"COPILOT_INPUT_ERROR","message":str(exc)}) from exc
+
+@router.get("/validation/cases")
+def list_validation_cases():
+    """Return the three canonical report validation cases without executing them."""
+    return {"project":"URBION HORIZON","cases":validation_cases()}
+
+@router.post("/validation/run/{case_id}")
+def execute_validation_case(case_id: str):
+    """Execute one report validation case through the same production engines."""
+    try:
+        result = run_validation_case(case_id, assess_fn=lambda inputs: assess_core(AssessmentRequest(**inputs)), copilot_fn=build_copilot_packet)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail={"code":"VALIDATION_CASE_ERROR","message":str(exc)}) from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail={"code":"VALIDATION_CASE_NOT_FOUND","case_id":case_id})
+    return result
 
 app.include_router(router)
