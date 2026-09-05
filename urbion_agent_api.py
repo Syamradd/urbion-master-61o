@@ -1,4 +1,4 @@
-"""Production API surface for URBION's bounded planning-agent synthesis."""
+"""Production API surfaces for URBION's bounded planning-agent synthesis and copilot."""
 from fastapi import APIRouter, Body, HTTPException
 from server import app, AssessmentRequest, assess_core
 from urbion_spatial_intelligence import build_spatial_intelligence
@@ -6,6 +6,7 @@ from urbion_what_if import build_scenario_plan, compare_assessments
 from urbion_scenario_ranking import rank_scenarios
 from urbion_decision_center import build_decision_center
 from urbion_agent_orchestrator import run_agents
+from urbion_copilot import build_copilot_packet
 
 router = APIRouter(tags=["planning-agents"])
 
@@ -25,5 +26,15 @@ def _run(payload: dict):
 
 @router.post("/agents/run")
 def run_agent_workflow(payload: dict = Body(default_factory=dict)): return _run(payload)
+
+@router.post("/copilot/run")
+def run_copilot_workflow(payload: dict = Body(default_factory=dict)):
+    inputs = payload.get("assessment") or payload.get("assessment_inputs") or payload
+    if not isinstance(inputs, dict) or inputs.get("site_lat") is None or inputs.get("site_lon") is None:
+        raise HTTPException(status_code=422, detail={"code":"SITE_INPUT_REQUIRED"})
+    try:
+        return build_copilot_packet(inputs, variants=payload.get("variants"), radii=payload.get("radii") or (400,800), constraints=payload.get("constraints"))
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail={"code":"COPILOT_INPUT_ERROR","message":str(exc)}) from exc
 
 app.include_router(router)
