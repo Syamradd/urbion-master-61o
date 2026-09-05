@@ -33,3 +33,6 @@ def test_invalid_site_coordinates_are_rejected_by_public_spatial_surface():
     bad['site_lat'] = 999
     response = client.post('/spatial/intelligence', json=bad)
     assert response.status_code in (400, 422)
+
+
+# Final-release retarget trigger: rerun this isolated audit against current main.
