@@ -21,8 +21,8 @@ def test_workstation_completes_decision_chain():
     response = client.post('/workstation/analysis', json={
         'assessment_inputs': _payload(),
         'variants': [
-            {'id':'LOWER_DENSITY','name':'Lower density','plot_ratio':3.5},
-            {'id':'HIGHER_DENSITY','name':'Higher density','plot_ratio':5.0},
+            {'id':'LOWER_DENSITY','name':'Lower density','overrides':{'plot_ratio':3.5}},
+            {'id':'HIGHER_DENSITY','name':'Higher density','overrides':{'plot_ratio':5.0}},
         ],
         'constraints': {'flood': False, 'ksas': False},
     })
@@ -34,6 +34,8 @@ def test_workstation_completes_decision_chain():
     assert len(body['what_if']['scenarios']) == 2
     assert body['decision_authority'] == 'NONE'
     assert body['statutory_verification'] == 'NOT_CLAIMED'
+    changes = body['what_if']['scenarios'][0]['input_changes']
+    assert any(x['field'] == 'plot_ratio' and x['before'] == 4.5 and x['after'] == 3.5 for x in changes)
 
 
 def test_workstation_requires_assessment_input():
@@ -41,3 +43,10 @@ def test_workstation_requires_assessment_input():
     response = client.post('/workstation/analysis', json={'variants': []})
     assert response.status_code == 422
     assert response.json()['detail']['code'] == 'ASSESSMENT_INPUT_REQUIRED'
+
+
+def test_workstation_rejects_non_object_variants():
+    client = TestClient(app)
+    response = client.post('/workstation/analysis', json={'assessment_inputs': _payload(), 'variants': 'bad'})
+    assert response.status_code == 422
+    assert response.json()['detail']['code'] == 'INVALID_SCENARIO_VARIANTS'
