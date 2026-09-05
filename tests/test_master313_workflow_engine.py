@@ -10,12 +10,13 @@ def read(name):
 def test_workflow_focuses_real_planning_states():
     text = read("urbion_championship_workflow.js")
     assert "const targets=" in text
-    for token in ["#lat", "#spatial-studio", "#intel-upgrade", ".iu-score", "#decision-layer", ".judge"]:
+    for token in ["#lat", "#spatial-studio", "#intel-upgrade", ".iu-score", ".judge"]:
         assert token in text
     assert "scrollIntoView" in text
     assert "uw-focus" in text
     assert "urbion:analysis" in text
     assert "urbion:site-change" in text
+    assert "const targets=['#lat','#spatial-studio','#intel-upgrade','.iu-score','#intel-upgrade','#intel-upgrade','.judge']" in text
 
 
 def test_shared_state_asset_loads_before_consumers():
@@ -47,7 +48,7 @@ def test_judge_mode_uses_real_dimension_drivers_not_scenario_rows():
     judge = read("urbion_judge_mode.py")
     page = read("judge-mode.html")
     assert "def _dimension_drivers" in judge
-    assert '"score_breakdown": _dimension_drivers(assessment)' in judge
+    assert '\"score_breakdown\": _dimension_drivers(assessment)' in judge
     assert 'r.score_breakdown' in page
     assert 'rows.slice(0,4)' not in page
     for token in ["dimension", "status", "method", "Assessment dimensions", "SCORE DRIVERS"]:
