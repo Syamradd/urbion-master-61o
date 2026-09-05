@@ -20,7 +20,7 @@ def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constrai
     site = assessment["site"]
     spatial = build_spatial_intelligence(
         site["latitude"], site["longitude"], raw.get("tod_lat"), raw.get("tod_lon"),
-        tuple(radii or (400, 800)), constraints,
+        tuple(radii or (400, 800)), constraints, environmental_context,
     )
     if environmental_context:
         spatial["environment"] = environmental_context
