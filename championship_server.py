@@ -20,7 +20,7 @@ def _frontend_root():
     target=BASE_DIR/"championship.html"
     if not target.is_file(): raise HTTPException(status_code=500,detail="Championship frontend is missing")
     source=target.read_text(encoding="utf-8")
-    source=source.replace('<div class="health"><i></i> ENGINE ONLINE</div>','<div class="health"><i></i> PHASE-E.7 ENGINE ONLINE</div>')
+    source=source.replace('<div class="health"><i></i> ENGINE ONLINE</div>','<div class="health"><i></i> PHASE-E.8 ENGINE ONLINE</div>')
     if 'id="urbion-championship"' not in source:
         marker='<body>'; source=source.replace(marker,marker+'<div id="urbion-championship" aria-hidden="true" style="display:none"></div>',1) if marker in source else '<div id="urbion-championship" aria-hidden="true" style="display:none"></div>'+source
     for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_spatial_workstation_upgrade.js","urbion_spatial_implication_bridge.js"):
