@@ -1,11 +1,25 @@
 (function(){
   function mount(){
-    var panel=document.getElementById('decisionPanel'); if(!panel||document.getElementById('decision-chain')) return;
-    var style=document.createElement('style'); style.id='decision-chain-style'; style.textContent='#decision-chain{border:1px solid #29445f;border-radius:12px;padding:11px;background:linear-gradient(135deg,rgba(53,226,176,.08),rgba(24,204,229,.04));margin:10px 0 12px}.dc-kicker{font-size:8px;letter-spacing:.12em;color:#8ea4b5;font-weight:800;margin-bottom:8px}.dc-flow{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}.dc-node{min-width:0;padding:7px 5px;border:1px solid #29445f;border-radius:8px;background:#0b1621;text-align:center}.dc-node b{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dc-node span{display:block;font-size:7px;color:#8ea4b5;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dc-node.current{border-color:#5ee7c2;box-shadow:inset 0 0 0 1px #5ee7c222}.dc-node.warn{border-color:#ffc85766}.dc-arrow{display:flex;align-items:center;justify-content:center;color:#5ee7c2;font-size:10px}@media(max-width:700px){.dc-flow{grid-template-columns:repeat(3,1fr)}.dc-arrow{display:none}}'; document.head.appendChild(style);
-    var names=['EVIDENCE','SCORE','WHY','DECISION','REVIEW','ACTION']; var box=document.createElement('section'); box.id='decision-chain'; box.innerHTML='<div class="dc-kicker">DECISION PATHWAY · EVIDENCE TO ACTION</div><div class="dc-flow">'+names.map(function(x,i){return (i?'<div class="dc-arrow">→</div>':'')+'<div class="dc-node" data-dc="'+x+'"><b>'+x+'</b><span>Awaiting</span></div>'}).join('')+'</div>';
-    panel.insertBefore(box,panel.querySelector('.decision')||panel.firstChild);
+    var panel=document.getElementById('decisionPanel'); if(!panel) return;
+    var box=document.getElementById('chain')||document.getElementById('decision-chain');
+    if(!box) return;
+    if(box.id==='chain'){
+      box.classList.add('urbion-live-chain');
+      var style=document.createElement('style'); style.id='decision-chain-style';
+      if(!document.getElementById(style.id)){
+        style.textContent='.urbion-live-chain .node{transition:border-color .15s ease,box-shadow .15s ease}.urbion-live-chain .node.live{border-color:#5ee7c2aa;box-shadow:inset 0 0 0 1px #5ee7c222}.urbion-live-chain .node.warn{border-color:#ffc85788}.urbion-live-chain span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}';
+        document.head.appendChild(style);
+      }
+    }
     function val(id){var e=document.getElementById(id);return e?e.textContent.trim():''}
-    function refresh(){var score=val('score').replace('/ 100','').trim(),why=val('justification'),decision=val('decisionStatus');var gaps=document.querySelectorAll('#gaps .gap').length,actions=document.querySelectorAll('#actions .action').length;var map={EVIDENCE:val('context')?'Evidence linked':'Qualified',SCORE:score&&score!=='—'?score+'/100':'Not scored',WHY:why?why.slice(0,34):'Not returned',DECISION:decision||'Review',REVIEW:gaps?gaps+' gap(s)':'Review checklist',ACTION:actions?actions+' action(s)':'Confirm next step'};box.querySelectorAll('[data-dc]').forEach(function(n){var k=n.getAttribute('data-dc');n.classList.toggle('current',k==='DECISION'&&decision&&decision!=='EVIDENCE UNAVAILABLE');n.classList.toggle('warn',k==='REVIEW'&&gaps>0);n.querySelector('span').textContent=map[k]||'Awaiting'})}
+    function refresh(){
+      var score=val('score').replace('/ 100','').trim(),why=val('justification'),decision=val('decisionStatus');
+      var gaps=document.querySelectorAll('#gaps .gap').length,actions=document.querySelectorAll('#actions .action').length;
+      var isNew=box.id==='decision-chain';
+      var map={EVIDENCE:val('context')?'Evidence linked':'Qualified',SCORE:score&&score!=='—'?score+'/100':'Not scored',WHY:why?why.slice(0,34):'Not returned',DECISION:decision||'Review',REVIEW:gaps?gaps+' gap(s)':'Review checklist',ACTION:actions?actions+' action(s)':'Confirm next step'};
+      if(isNew){box.querySelectorAll('[data-dc]').forEach(function(n){var k=n.getAttribute('data-dc');n.classList.toggle('current',k==='DECISION'&&decision&&decision!=='EVIDENCE UNAVAILABLE');n.classList.toggle('warn',k==='REVIEW'&&gaps>0);n.querySelector('span').textContent=map[k]||'Awaiting'});}
+      else {var keys=['evidence','score','why','decision','review','action'];box.querySelectorAll('.node[data-k]').forEach(function(n){var k=n.getAttribute('data-k');n.classList.toggle('live',!!map[k]);n.classList.toggle('warn',k==='review'&&gaps>0);var span=n.querySelector('span');if(span)span.textContent=map[{evidence:'EVIDENCE',score:'SCORE',why:'WHY',decision:'DECISION',review:'REVIEW',action:'ACTION'}[k]]||'Awaiting'});}
+    }
     refresh(); new MutationObserver(refresh).observe(panel,{subtree:true,childList:true,characterData:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
