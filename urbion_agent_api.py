@@ -9,6 +9,7 @@ from urbion_agent_orchestrator import run_agents
 from urbion_copilot import build_copilot_packet
 from urbion_validation import validation_cases, run_validation_case
 from urbion_planner_handoff import build_planner_handoff_from_copilot
+from urbion_judge_demo import build_judge_demo
 
 router = APIRouter(tags=["planning-agents"])
 
@@ -57,6 +58,17 @@ def run_planner_handoff(payload: dict = Body(default_factory=dict)):
         )
     except Exception as exc:
         raise HTTPException(status_code=422, detail={"code":"PLANNER_HANDOFF_ERROR","message":str(exc)}) from exc
+
+@router.post("/judge/demo")
+def run_judge_demo(payload: dict = Body(default_factory=dict)):
+    """Run one production copilot path and return a judge-ready evidence snapshot."""
+    inputs = payload.get("assessment") or payload.get("assessment_inputs") or payload
+    if not isinstance(inputs, dict) or inputs.get("site_lat") is None or inputs.get("site_lon") is None:
+        raise HTTPException(status_code=422, detail={"code":"SITE_INPUT_REQUIRED"})
+    try:
+        return build_judge_demo(inputs, build_copilot_packet)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail={"code":"JUDGE_DEMO_ERROR","message":str(exc)}) from exc
 
 @router.get("/validation/cases")
 def list_validation_cases():
