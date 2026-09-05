@@ -1,0 +1,1 @@
+Render preflight repair: same-origin allowlisted championship asset serving and production route integrity.
