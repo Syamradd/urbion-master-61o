@@ -11,7 +11,7 @@ def test_root_serves_championship_frontend_contract():
     assert response.status_code == 200
     assert 'URBION HORIZON — Championship Workstation' in response.text
     assert 'CHAMPIONSHIP PLANNING WORKSTATION' in response.text
-    assert 'PHASE-E.7 ENGINE ONLINE' in response.text
+    assert 'PHASE-E.8 ENGINE ONLINE' in response.text
     assert 'id="urbion-championship"' in response.text
     assert 'urbion_championship_ui.js' in response.text
     assert 'urbion_championship_upgrade.js' in response.text
@@ -21,7 +21,7 @@ def test_root_serves_championship_frontend_contract():
 def test_health_exposes_frontend_identity():
     payload = client.get('/health').json()
     assert payload['status'] == 'healthy'
-    assert payload['engine'] == 'URBION PHASE-E.7'
+    assert payload['engine'] == 'URBION PHASE-E.8'
     assert payload['frontend'] == 'SERVING_INDEX_HTML'
 
 
