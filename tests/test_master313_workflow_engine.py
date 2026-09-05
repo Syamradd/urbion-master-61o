@@ -30,3 +30,14 @@ def test_decision_pathway_asset_is_allowlisted_and_loaded():
     text = read("championship_server.py")
     assert '"urbion_championship_decision_chain.js"' in text
     assert 'urbion_championship_decision_chain.js' in text
+
+
+def test_judge_mode_uses_real_dimension_drivers_not_scenario_rows():
+    judge = read("urbion_judge_mode.py")
+    page = read("judge-mode.html")
+    assert "def _dimension_drivers" in judge
+    assert '"score_breakdown": _dimension_drivers(assessment)' in judge
+    assert 'r.score_breakdown' in page
+    assert 'rows.slice(0,4)' not in page
+    for token in ["dimension", "status", "method", "Assessment dimensions", "SCORE DRIVERS"]:
+        assert token in page
