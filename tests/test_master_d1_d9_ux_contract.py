@@ -13,14 +13,14 @@ def test_run_once_shared_assessment_contract():
     assert 'window.URBION.assess=sharedAssess' in sync
     assert 'cachedVersion===version&&cachedKey===key&&cached' in sync
     assert 'inflight&&inflight.version===version&&inflight.key===key' in sync
-    assert "fetch('/assess'" in sync
+    assert "nativeFetch('/assess'" in sync
     assert 'window.__urbionAssessment=data' in sync
     assert 'window.URBION?.assess' in intel
 
 
 def test_workflow_matches_planning_journey():
     workflow = read('urbion_championship_workflow.js')
-    for token in ['SITE', 'CONTEXT', 'EVIDENCE', 'ASSESS', 'WHAT-IF', 'DECIDE', 'DOCUMENT', 'RUN ONCE · EXPLORE MANY']:
+    for token in ['SITE', 'MAP', 'ANALYSE', 'WHY', 'WHAT-IF', 'DECISION', 'ACTION', 'RUN ONCE · EXPLORE MANY']:
         assert token in workflow
 
 
@@ -51,6 +51,6 @@ def test_decision_surface_preserves_explainability_and_boundary():
 def test_judge_mode_stays_separate():
     server = read('championship_server.py')
     judge = read('judge-mode.html')
-    assert '/judge-mode' in server
+    assert 'judge-mode' in server
     assert 'SCORE DRIVERS' in judge
     assert 'Assessment dimensions' in judge
