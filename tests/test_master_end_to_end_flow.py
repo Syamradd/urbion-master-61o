@@ -21,7 +21,7 @@ def test_championship_flow_is_connected_end_to_end():
     assessment = client.post('/assess', json=inputs)
     assert assessment.status_code == 200
     assessment_body = assessment.json()
-    assert assessment_body['project'] == 'URBION HORIZON'
+    assert assessment_body['project'] == 'URBION'
 
     spatial = client.post('/spatial/intelligence', json=inputs)
     assert spatial.status_code == 200
@@ -60,6 +60,9 @@ def test_workstation_exposes_complete_decision_chain():
     assert response.status_code == 200
     body = response.json()
     assert body['project'] == 'URBION HORIZON'
-    assert body['workflow'] == ['ASSESSMENT', 'SPATIAL', 'WHAT_IF', 'DECISION', 'LCP', 'KM', 'AGENTS']
+    workflow = body['workflow']
+    assert workflow['name'] == 'Planner Decision Workstation'
+    assert [step['id'] for step in workflow['steps']] == ['ASSESSMENT', 'SPATIAL', 'WHAT_IF', 'DECISION', 'LCP', 'KM', 'AGENTS']
+    assert workflow['completed'] == workflow['total'] == 7
     assert isinstance(body['agents'], list)
     assert len(body['agents']) == 7
