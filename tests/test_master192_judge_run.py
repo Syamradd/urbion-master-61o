@@ -6,7 +6,7 @@ from server import app
 def test_judge_run_has_complete_core_path():
     client=TestClient(app)
     health=client.get('/health').json()
-    assert health['engine']=='URBION PHASE-E.7'
+    assert health['engine']=='URBION PHASE-E.8'
     judge=client.get('/judge-mode')
     assert judge.status_code==200
     body=judge.json()
