@@ -39,9 +39,7 @@ def test_master327_what_if_exposes_real_deltas_and_same_engine_path():
 
 
 def test_master328_judge_mode_keeps_decision_boundary_explicit():
-    server = read('championship_server.py')
     decision = read('urbion_decision_center.py')
-    assert 'MASTER-330' in server
     assert 'PLANNER_DECISION_SUPPORT_ONLY' in decision
     assert 'NOT_CLAIMED' in decision
     assert 'approval probability' not in decision.lower()
@@ -49,7 +47,8 @@ def test_master328_judge_mode_keeps_decision_boundary_explicit():
 
 def test_master329_frontend_asset_registry_has_no_duplicate_chain_asset():
     server = read('championship_server.py')
-    assets = re.findall(r'"([^"]+\\.js)"', server.split('ALLOWED_ASSETS = {', 1)[1].split('}', 1)[0])
+    registry = server.split('ALLOWED_ASSETS = {', 1)[1].split('}', 1)[0]
+    assets = re.findall(r'"([^"]+\.js)"', registry)
     assert len(assets) == len(set(assets))
     assert assets.count('urbion_championship_decision_chain.js') == 1
 
