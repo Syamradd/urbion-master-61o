@@ -4,7 +4,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from server import app
 BASE_DIR = Path(__file__).resolve().parent
-ALLOWED_ASSETS = {"urbion_ui.js","urbion_championship_ui.js","urbion_championship_upgrade.js","urbion_championship_dashboard.js","urbion_championship_polish.js","urbion_championship_v279.js","urbion_public_source_ui.js","urbion_public_spatial_v283.js","urbion_public_spatial_v284.js","urbion_championship_spatial_studio.js","urbion_championship_decision_layer.js","urbion_championship_intelligence_upgrade.js","urbion_championship_input_sync.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_what_if_upgrade.js"}
+ALLOWED_ASSETS = {"urbion_ui.js","urbion_championship_ui.js","urbion_championship_upgrade.js","urbion_championship_dashboard.js","urbion_championship_polish.js","urbion_championship_v279.js","urbion_public_source_ui.js","urbion_public_spatial_v283.js","urbion_public_spatial_v284.js","urbion_championship_spatial_studio.js","urbion_championship_decision_layer.js","urbion_championship_intelligence_upgrade.js","urbion_championship_input_sync.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_what_if_upgrade.js","urbion_spatial_workstation_upgrade.js"}
 def _remove_routes(*paths: str)->None:
     targets=set(paths); app.router.routes[:]=[r for r in app.router.routes if getattr(r,"path",None) not in targets]
 _remove_routes("/","/index.html","/championship.html")
@@ -23,10 +23,17 @@ def _frontend_root():
     source=source.replace('<div class="health"><i></i> ENGINE ONLINE</div>','<div class="health"><i></i> PHASE-E.7 ENGINE ONLINE</div>')
     if 'id="urbion-championship"' not in source:
         marker='<body>'; source=source.replace(marker,marker+'<div id="urbion-championship" aria-hidden="true" style="display:none"></div>',1) if marker in source else '<div id="urbion-championship" aria-hidden="true" style="display:none"></div>'+source
-    for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js"):
+    for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_spatial_workstation_upgrade.js"):
         script=f'<script src="/{asset}"></script>'
         if script not in source: source=source.replace('</body>',script+'</body>',1)
     source=_design_system(source)
+    return HTMLResponse(source,media_type="text/html; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
+def _what_if_page():
+    target=BASE_DIR/"what-if.html"
+    if not target.is_file(): raise HTTPException(status_code=404,detail="What-If frontend is missing")
+    source=target.read_text(encoding="utf-8")
+    script='<script src="/urbion_what_if_upgrade.js"></script>'
+    if script not in source: source=source.replace('</body>',script+'</body>',1)
     return HTMLResponse(source,media_type="text/html; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
 def _frontend_asset(asset:str):
     filename=f"{asset}.js"
@@ -37,6 +44,7 @@ def _frontend_asset(asset:str):
 @app.middleware("http")
 async def _championship_frontend_override(request:Request,call_next):
     if request.url.path in {"/","/index.html","/championship.html"}: return _frontend_root()
+    if request.url.path in {"/what-if.html"}: return _what_if_page()
     return await call_next(request)
 app.add_api_route("/",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/index.html",_frontend_root,methods=["GET"],include_in_schema=False)
