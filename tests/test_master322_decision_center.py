@@ -25,7 +25,7 @@ def test_decision_center_exposes_evidence_to_action_chain():
         "score_breakdown",
         "review_gaps",
         "next_actions",
-        "Decision support only",
+        "PLANNER DECISION SUPPORT ONLY",
         "Statutory approval or compliance is not claimed",
         "cache:'no-store'",
     ):
