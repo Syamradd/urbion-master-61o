@@ -20,8 +20,18 @@ def test_workflow_focuses_real_planning_states():
 
 def test_shared_state_asset_loads_before_consumers():
     text = read("championship_server.py")
-    marker = 'for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js"):'
-    assert marker in text
+    assets = [
+        "urbion_championship_input_sync.js",
+        "urbion_championship_spatial_studio.js",
+        "urbion_championship_intelligence_upgrade.js",
+        "urbion_championship_decision_layer.js",
+        "urbion_championship_workflow.js",
+        "urbion_championship_decision_chain.js",
+        "urbion_spatial_workstation_upgrade.js",
+    ]
+    for asset in assets:
+        assert asset in text
+    assert text.index("urbion_championship_spatial_studio.js") < text.index("urbion_spatial_workstation_upgrade.js")
     assert 'app.state.frontend_release="MASTER-321"' in text
     assert 'Cache-Control' in text
 
