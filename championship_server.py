@@ -33,5 +33,32 @@ def _frontend_root():
         if script not in source: source=source.replace('</body>',script+'</body>',1)
     source=_design_system(source)
     return HTMLResponse(source,media_type="text/html; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
-
 def _what_if_page():
+    target=BASE_DIR/"what-if.html"
+    if not target.is_file(): raise HTTPException(status_code=404,detail="What-If frontend is missing")
+    source=target.read_text(encoding="utf-8")
+    script='<script src="/urbion_what_if_upgrade.js"></script>'
+    if script not in source: source=source.replace('</body>',script+'</body>',1)
+    return HTMLResponse(source,media_type="text/html; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
+def _frontend_asset(asset:str):
+    if asset not in ALLOWED_ASSETS: raise HTTPException(status_code=404,detail="Unknown frontend asset")
+    target=BASE_DIR/asset
+    if not target.is_file(): raise HTTPException(status_code=404,detail="Frontend asset not found")
+    return FileResponse(target,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
+@app.middleware("http")
+async def _championship_frontend_override(request:Request,call_next):
+    if request.url.path in {"/","/index.html","/championship.html"}: return _frontend_root()
+    if request.url.path in {"/what-if.html"}: return _what_if_page()
+    return await call_next(request)
+app.add_api_route("/",_frontend_root,methods=["GET"],include_in_schema=False)
+app.add_api_route("/index.html",_frontend_root,methods=["GET"],include_in_schema=False)
+app.add_api_route("/championship.html",_frontend_root,methods=["GET"],include_in_schema=False)
+# Keep the newest workstation asset explicit: server.py contains legacy wildcard routes,
+# so an exact production route prevents route-order regressions from turning the asset into 404.
+app.add_api_route("/urbion_championship_workstation_v2.js",lambda: _frontend_asset("urbion_championship_workstation_v2.js"),methods=["GET"],include_in_schema=False)
+app.add_api_route("/{asset}.js",_frontend_asset,methods=["GET"],include_in_schema=False)
+for _path in ("/urbion_championship_workstation_v2.js","/championship.html","/index.html","/"):
+    for _idx,_route in enumerate(app.router.routes):
+        if getattr(_route,"path",None)==_path: app.router.routes.insert(0,app.router.routes.pop(_idx)); break
+app.state.frontend_entrypoint="championship.html"
+app.state.frontend_release="MASTER-330"
