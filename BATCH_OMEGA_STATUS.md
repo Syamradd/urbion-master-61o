@@ -1,0 +1,1 @@
+Batch Omega hardening scope is isolated from main until CI passes.
