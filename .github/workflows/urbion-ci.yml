@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [main]
 
+# Release-contract trigger: every main push must execute the complete regression matrix.
+# Runtime remains Render-equivalent: championship_server:app.
 jobs:
   regression:
     name: regression-${{ matrix.lane }}
