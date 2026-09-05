@@ -55,11 +55,34 @@ def _score(assessment: dict[str, Any]) -> float:
         return 0.0
 
 
+def _status_rank(status: Any) -> int:
+    """Return an ordering for planning-support outcomes without implying approval."""
+    value = str(status or "REQUIRES REVIEW").strip().upper()
+    ranks = {
+        "NOT SUITABLE": 0,
+        "REQUIRES REVIEW": 1,
+        "POTENTIALLY SUITABLE": 2,
+        "COMPLY": 3,
+    }
+    return ranks.get(value, 1)
+
+
+def _decision_delta(base_status: Any, scenario_status: Any, score_delta: float) -> str:
+    """Describe directional scenario change, not statutory approval/compliance probability."""
+    base_rank = _status_rank(base_status)
+    scenario_rank = _status_rank(scenario_status)
+    if scenario_rank > base_rank or (scenario_rank == base_rank and score_delta > 0.5):
+        return "IMPROVED"
+    if scenario_rank < base_rank or (scenario_rank == base_rank and score_delta < -0.5):
+        return "DECLINED"
+    if scenario_rank != base_rank or str(scenario_status) != str(base_status):
+        return "CHANGED"
+    return "UNCHANGED"
+
+
 def compare_assessments(baseline: dict[str, Any], scenarios: list[dict[str, Any]]) -> dict[str, Any]:
     base = baseline or {}
     base_status = base.get("final_status", "REQUIRES REVIEW")
-    base_sa = base.get("site_analysis", {}) or {}
-    base_pv = base.get("planning_value", {}) or {}
     base_score = _score(base)
     base_indicators = _indicator_map(base)
     results = []
@@ -85,6 +108,7 @@ def compare_assessments(baseline: dict[str, Any], scenarios: list[dict[str, Any]
         baseline_inputs = item.get("baseline_inputs", {}) or {}
         blockers = list(pv.get("blockers", []))
         gaps = list(pv.get("evidence_gaps", []))
+        score_delta = round(score - base_score, 2)
         recommendation = (
             (sa.get("recommendation") or {}).get("headline")
             or pv.get("headline")
@@ -104,12 +128,8 @@ def compare_assessments(baseline: dict[str, Any], scenarios: list[dict[str, Any]
                 "status": status,
                 "status_changed": status != base_status,
                 "score": score,
-                "score_delta": round(score - base_score, 2),
-                "decision_delta": (
-                    "IMPROVED"
-                    if status == "COMPLY" and base_status != "COMPLY"
-                    else ("CHANGED" if status != base_status else "UNCHANGED")
-                ),
+                "score_delta": score_delta,
+                "decision_delta": _decision_delta(base_status, status, score_delta),
                 "band": sa.get("suitability_band") or sa.get("band") or pv.get("band"),
                 "recommendation": recommendation,
                 "reason": reason,
@@ -122,7 +142,7 @@ def compare_assessments(baseline: dict[str, Any], scenarios: list[dict[str, Any]
 
     ranked = sorted(
         results,
-        key=lambda x: (x["status"] == "COMPLY", not x["blockers"], x["score"]),
+        key=lambda x: (_status_rank(x["status"]), not x["blockers"], x["score"]),
         reverse=True,
     )
     for rank, item in enumerate(ranked, 1):
