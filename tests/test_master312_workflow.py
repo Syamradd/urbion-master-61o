@@ -18,7 +18,7 @@ def test_workflow_navigator_contract():
 def test_workflow_is_served_by_championship_entrypoint():
     text = read('championship_server.py')
     assert 'urbion_championship_workflow.js' in text
-    assert 'MASTER-323' in text
+    assert 'MASTER-330' in text
     assert 'no-store' in text
     assert 'urbion_championship_decision_chain.js' in text
 
