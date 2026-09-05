@@ -22,7 +22,7 @@ def test_shared_state_asset_loads_before_consumers():
     text = read("championship_server.py")
     marker = 'for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js"):'
     assert marker in text
-    assert 'app.state.frontend_release="MASTER-317"' in text
+    assert 'app.state.frontend_release="MASTER-318"' in text
     assert 'Cache-Control' in text
 
 
