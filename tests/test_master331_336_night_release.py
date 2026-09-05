@@ -1,7 +1,7 @@
 from pathlib import Path
 from fastapi.testclient import TestClient
 
-from server import app
+from championship_server import app
 
 
 def test_night_release_engine_identity_and_core_chain():
