@@ -1,0 +1,1 @@
+Render repair branch: frontend asset routing and preflight integrity.
