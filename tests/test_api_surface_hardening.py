@@ -1,8 +1,12 @@
 from championship_server import app
 
 
+def _paths():
+    return set(app.openapi().get("paths", {}))
+
+
 def test_championship_api_exposes_core_planner_surfaces():
-    paths = {route.path for route in app.routes}
+    paths = _paths()
     required = {
         "/health", "/assess", "/spatial/intelligence",
         "/workstation/analysis", "/intelligence/decision",
@@ -12,5 +16,5 @@ def test_championship_api_exposes_core_planner_surfaces():
 
 
 def test_championship_api_does_not_expose_statutory_decision_authority_route():
-    paths = {route.path for route in app.routes}
+    paths = _paths()
     assert "/statutory/approve" not in paths
