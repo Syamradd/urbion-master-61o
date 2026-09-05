@@ -11,7 +11,7 @@ def test_spatial_workstation_upgrade_is_served():
     server = read('championship_server.py')
     upgrade = read('urbion_spatial_workstation_upgrade.js')
     assert 'urbion_spatial_workstation_upgrade.js' in server
-    for token in ['MAP FOCUS', 'PLANNING', 'RISK', 'ENVIRONMENT', 'COPY COORDINATES', 'active visual layers', 'OFF']:
+    for token in ['MAP FOCUS', 'PLANNING', 'RISK', 'ENVIRONMENT', 'COPY COORDINATES', 'active visual layers', 'OFF', 'EVIDENCE SNAPSHOT']:
         assert token in upgrade
 
 
@@ -35,3 +35,11 @@ def test_spatial_upgrade_reacts_to_property_based_checkbox_changes():
     assert "addEventListener('change'" in upgrade
     assert "matches('input[data-i]')" in upgrade
     assert "MutationObserver(updateCount)" in upgrade
+
+
+def test_spatial_evidence_snapshot_uses_live_assessment_state():
+    upgrade = read('urbion_spatial_workstation_upgrade.js')
+    assert 'renderEvidence(window.__urbionAssessment)' in upgrade
+    assert 'retrieved_rules' in upgrade
+    assert 'evidence_state' in upgrade
+    assert "window.addEventListener('urbion:analysis'" in upgrade
