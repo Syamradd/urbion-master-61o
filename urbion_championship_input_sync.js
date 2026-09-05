@@ -8,6 +8,7 @@
   const nativeFetch=window.fetch.bind(window);
   let timer,version=0,cachedVersion=-1,cachedKey='',cached=null,inflight=null,assessCount=0;
   function status(text){const el=$('side-status');if(el)el.textContent=text;}
+  function persistInputs(){try{localStorage.setItem('urbion:assessment-inputs',JSON.stringify(basePayload()))}catch(e){}}
   function invalidate(source){version+=1;cached=null;cachedVersion=-1;cachedKey='';window.dispatchEvent(new CustomEvent('urbion:assessment-invalidated',{detail:{version,source}}));}
   async function sharedAssess(extra={}){
     const payload={...basePayload(),...extra};
@@ -17,7 +18,7 @@
     assessCount+=1;
     const requestVersion=version;
     const requestKey=key;
-    const promise=nativeFetch('/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>{if(!r.ok)throw Error(`Assessment ${r.status}`);return r.json()}).then(data=>{if(version===requestVersion&&inflight?.version===requestVersion&&inflight?.key===requestKey){cached=data;cachedVersion=requestVersion;cachedKey=requestKey;window.__urbionAssessment=data;window.dispatchEvent(new CustomEvent('urbion:analysis',{detail:data}));}return data}).finally(()=>{if(inflight?.version===requestVersion&&inflight?.key===requestKey)inflight=null});
+    const promise=nativeFetch('/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>{if(!r.ok)throw Error(`Assessment ${r.status}`);return r.json()}).then(data=>{if(version===requestVersion&&inflight?.version===requestVersion&&inflight?.key===requestKey){cached=data;cachedVersion=requestVersion;cachedKey=requestKey;window.__urbionAssessment=data;try{localStorage.setItem('urbion:assessment',JSON.stringify(data));localStorage.setItem('urbion:assessment-inputs',JSON.stringify(payload))}catch(e){}window.dispatchEvent(new CustomEvent('urbion:analysis',{detail:data}));}return data}).finally(()=>{if(inflight?.version===requestVersion&&inflight?.key===requestKey)inflight=null});
     inflight={version:requestVersion,key:requestKey,promise};
     return promise;
   }
@@ -31,6 +32,7 @@
     const s=snapshot();
     const coords=['lat','lon','todlat','todlon'];
     if(!coords.every(id=>finite(s[id]))) return;
+    persistInputs();
     invalidate(source);
     window.dispatchEvent(new CustomEvent('urbion:site-change',{detail:{latitude:parseFloat(s.lat),longitude:parseFloat(s.lon),tod_latitude:parseFloat(s.todlat),tod_longitude:parseFloat(s.todlon),source,inputs:s}}));
     window.dispatchEvent(new CustomEvent('urbion:inputs-change',{detail:{source,inputs:s}}));
@@ -39,7 +41,7 @@
   function schedule(source){clearTimeout(timer);timer=setTimeout(()=>publish(source),180);}
   function bind(){
     ids.forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',()=>schedule(`input:${id}`));el.addEventListener('change',()=>schedule(`change:${id}`));});
-    window.addEventListener('urbion:site-change',e=>{if(e.detail?.source?.startsWith('input:')||e.detail?.source?.startsWith('change:'))return;invalidate(e.detail?.source||'map');status('Site changed on map. Run analysis to refresh the decision chain.');});
+    window.addEventListener('urbion:site-change',e=>{if(e.detail?.source?.startsWith('input:')||e.detail?.source?.startsWith('change:'))return;persistInputs();invalidate(e.detail?.source||'map');status('Site changed on map. Run analysis to refresh the decision chain.');});
     window.addEventListener('urbion:analysis',()=>status('Analysis complete. Decision chain refreshed.'));
     window.dispatchEvent(new CustomEvent('urbion:inputs-ready',{detail:{inputs:snapshot()}}));
   }
