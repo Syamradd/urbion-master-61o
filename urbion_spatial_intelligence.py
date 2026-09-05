@@ -52,12 +52,12 @@ def circle_geojson(lat, lon, radius_m, segments=72):
 
 
 def catchment_features(lat, lon, radii=(400,800)):
-    lat, lon = _coords(lat); radii=tuple(sorted({int(r) for r in radii if int(r)>0})) or (400,800)
+    lat, lon = _coords(lat, lon); radii=tuple(sorted({int(r) for r in radii if int(r)>0})) or (400,800)
     return {"type":"FeatureCollection","features":[circle_geojson(lat,lon,r) for r in radii],"site":{"latitude":lat,"longitude":lon},"evidence":"CALCULATED","disclaimer":"Catchments are geometric decision-support buffers, not authoritative statutory boundaries."}
 
 
 def nearest_feature(lat, lon, features):
-    lat, lon = _coords(lat); ranked=[]
+    lat, lon = _coords(lat, lon); ranked=[]
     for index, feature in enumerate(features or []):
         if not isinstance(feature,dict): continue
         f_lat=feature.get("latitude",feature.get("lat")); f_lon=feature.get("longitude",feature.get("lon"))
