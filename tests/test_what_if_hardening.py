@@ -1,3 +1,4 @@
+from server import AssessmentRequest, assess_core
 from urbion_what_if import execute_what_if
 
 
@@ -9,18 +10,23 @@ def _inputs():
     }
 
 
+def _assess(raw):
+    return assess_core(AssessmentRequest(**raw))
+
+
 def test_what_if_preserves_raw_baseline_inputs_and_returns_comparison():
     baseline = _inputs()
     before = dict(baseline)
     result = execute_what_if(
         baseline,
         [{"name": "Higher density", "overrides": {"density": 180}}],
+        _assess,
     )
     assert baseline == before
-    assert result["baseline_inputs"] == before
+    assert result["baseline"]["site"]
     assert result["scenarios"]
-    assert result["scenarios"][0]["inputs"]["density"] == 180
-    assert result["scenarios"][0]["inputs"] != baseline
+    assert result["scenarios"][0]["input_changes"]
+    assert result["scenarios"][0]["score"] is not None
 
 
 def test_what_if_accepts_multiple_variants_deterministically():
@@ -28,7 +34,7 @@ def test_what_if_accepts_multiple_variants_deterministically():
         {"name": "Base-plus", "overrides": {"density": 130}},
         {"name": "Lower", "overrides": {"density": 90}},
     ]
-    a = execute_what_if(_inputs(), variants)
-    b = execute_what_if(_inputs(), variants)
+    a = execute_what_if(_inputs(), variants, _assess)
+    b = execute_what_if(_inputs(), variants, _assess)
     assert a == b
     assert len(a["scenarios"]) == 2
