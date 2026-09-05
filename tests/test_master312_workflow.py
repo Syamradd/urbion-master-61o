@@ -18,6 +18,12 @@ def test_workflow_navigator_contract():
 def test_workflow_is_served_by_championship_entrypoint():
     text = read('championship_server.py')
     assert 'urbion_championship_workflow.js' in text
-    assert 'MASTER-318' in text
+    assert 'MASTER-320' in text
     assert 'no-store' in text
     assert 'urbion_championship_decision_chain.js' in text
+
+
+def test_spatial_studio_evidence_contract():
+    text = read('urbion_championship_spatial_studio.js')
+    for token in ['MASTER-320','SITE RELATIONSHIP','LIVE SOURCE CONTEXT','EVIDENCE / PROVENANCE','🟢 VERIFIED','🔵 SOURCE CONTEXT','🟣 CALCULATED','🟡 USER PROVIDED','🔴 EVIDENCE GAP','Haversine','not walking-network','source_status','renderProvenance','GEOSERVER_WMS','ARCGIS_MAP']:
+        assert token in text
