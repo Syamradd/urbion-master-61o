@@ -1,6 +1,10 @@
 """Evidence-bounded impact intelligence for planning review."""
 
 DOMAINS = ("social", "environment", "mobility", "economic")
+ENVIRONMENTAL_KEYS = (
+    "flood", "slope", "geohazard", "seismic", "coastal_erosion", "fault",
+    "ksas", "ecology", "protected_area", "river", "catchment",
+)
 
 
 def _add_signal(signals, domain, signal, evidence_state, value=None, status="REVIEW_REQUIRED", source=None):
@@ -28,7 +32,7 @@ def _environment_layer_summary(environmental_context):
         source = layer.get("provider") or environmental_context.get("provider") or "PLANMalaysia"
         if status == "LIVE_QUERY":
             _add_signal(signals, "environment", f"{key}_source_context", "SOURCE_CONTEXT", count if count is not None else 0, "REVIEW_REQUIRED", source)
-            if key in {"flood", "slope", "geohazard", "seismic", "coastal_erosion", "fault", "ksas", "ecology", "protected_area"}:
+            if key in set(ENVIRONMENTAL_KEYS):
                 _add_signal(signals, "environment", f"{key}_constraint_screening", "SOURCE_CONTEXT", count if count is not None else 0, "REVIEW_REQUIRED", source)
         elif status == "NO_FEATURE":
             _add_signal(signals, "environment", f"{key}_screened_no_feature", "SOURCE_CONTEXT", 0, "REVIEW_REQUIRED", source)
@@ -37,6 +41,25 @@ def _environment_layer_summary(environmental_context):
             gaps.append(f"Environmental layer {key} could not be established as a usable query result.")
     gaps.append("Environmental layer results are screening evidence only; confirm currency, geometry, thresholds and agency requirements.")
     return signals, gaps
+
+
+def _legacy_spatial_environment(spatial):
+    """Normalize older direct spatial layer payloads without upgrading certainty."""
+    if not isinstance(spatial, dict):
+        return None
+    direct = {k: v for k, v in spatial.items() if k in ENVIRONMENTAL_KEYS and isinstance(v, dict)}
+    if not direct:
+        return None
+    layers = {}
+    for key, layer in direct.items():
+        status = str(layer.get("status") or "UNKNOWN")
+        count = layer.get("feature_count")
+        layers[key] = {
+            "status": "LIVE_QUERY" if status in {"screening", "LIVE_QUERY", "SOURCE_CONTEXT"} else status,
+            "feature_count": count if count is not None else 0,
+            "provider": layer.get("provider") or "PLANMalaysia",
+        }
+    return {"layers": layers, "provider": "PLANMalaysia"}
 
 
 def build_impact_intelligence(spatial=None, assessment=None, evidence=None, environmental_context=None):
@@ -48,7 +71,7 @@ def build_impact_intelligence(spatial=None, assessment=None, evidence=None, envi
     spatial = spatial or {}
     assessment = assessment or {}
     evidence = evidence or {}
-    environmental_context = environmental_context or spatial.get("environment") or {}
+    environmental_context = environmental_context or spatial.get("environment") or _legacy_spatial_environment(spatial) or {}
     signals = []
     review_gaps = []
 
