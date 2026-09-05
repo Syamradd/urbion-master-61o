@@ -20,14 +20,14 @@ def haversine_m(lat1, lon1, lat2, lon2):
 
 
 def bearing_deg(lat1, lon1, lat2, lon2):
-    lat1, lon1 = _coords(lat1); lat2, lon2 = _coords(lat2)
+    lat1, lon1 = _coords(lat1, lon1); lat2, lon2 = _coords(lat2, lon2)
     p1, p2 = math.radians(lat1), math.radians(lat2); dl = math.radians(lon2-lon1)
     x = math.sin(dl)*math.cos(p2); y = math.cos(p1)*math.sin(p2)-math.sin(p1)*math.cos(p2)*math.cos(dl)
     return (math.degrees(math.atan2(x,y))+360.0)%360.0
 
 
 def midpoint(lat1, lon1, lat2, lon2):
-    lat1, lon1 = _coords(lat1); lat2, lon2 = _coords(lat2)
+    lat1, lon1 = _coords(lat1, lon1); lat2, lon2 = _coords(lat2, lon2)
     p1, p2 = math.radians(lat1), math.radians(lat2); dl = math.radians(lon2-lon1)
     x = math.cos(p2)*math.cos(dl); y = math.cos(p2)*math.sin(dl)
     p3 = math.atan2(math.sin(p1)+math.sin(p2), math.sqrt((math.cos(p1)+x)**2+y**2)); l3 = math.radians(lon1)+math.atan2(y,math.cos(p1)+x)
@@ -35,7 +35,7 @@ def midpoint(lat1, lon1, lat2, lon2):
 
 
 def destination(lat, lon, distance_m, bearing):
-    lat, lon = _coords(lat); distance_m=float(distance_m)
+    lat, lon = _coords(lat, lon); distance_m=float(distance_m)
     if not math.isfinite(distance_m) or distance_m<0: raise ValueError("distance_m must be a non-negative finite number")
     theta=math.radians(float(bearing)%360); delta=distance_m/EARTH_RADIUS_M; p1=math.radians(lat); l1=math.radians(lon)
     p2=math.asin(math.sin(p1)*math.cos(delta)+math.cos(p1)*math.sin(delta)*math.cos(theta)); l2=l1+math.atan2(math.sin(theta)*math.sin(delta)*math.cos(p1),math.cos(delta)-math.sin(p1)*math.sin(p2))
@@ -43,7 +43,7 @@ def destination(lat, lon, distance_m, bearing):
 
 
 def circle_geojson(lat, lon, radius_m, segments=72):
-    lat, lon = _coords(lat); radius_m=float(radius_m)
+    lat, lon = _coords(lat, lon); radius_m=float(radius_m)
     if not math.isfinite(radius_m) or radius_m<=0: raise ValueError("radius_m must be positive")
     segments=max(24,min(180,int(segments))); ring=[]
     for i in range(segments+1):
@@ -106,8 +106,9 @@ def build_spatial_intelligence(site_lat, site_lon, tod_lat=None, tod_lon=None, r
     result={"site":{"latitude":site_lat,"longitude":site_lon},"catchments":catchment_features(site_lat,site_lon,radii),"constraints":constraint_summary(constraints),"evidence_model":{"geometry":"CALCULATED","constraints":"USER_PROVIDED","authoritative_overlay":"SOURCE_CONTEXT ONLY"}}
     if tod_lat is not None or tod_lon is not None:
         if tod_lat is None or tod_lon is None: raise ValueError("tod_lat and tod_lon must be provided together")
+        tod_lat,tod_lon=_coords(tod_lat,tod_lon)
         d=haversine_m(site_lat,site_lon,tod_lat,tod_lon)
-        result["tod"]={"latitude":float(tod_lat),"longitude":float(tod_lon),"distance_m":round(d,2),"bearing_deg":round(bearing_deg(site_lat,site_lon,tod_lat,tod_lon),2),"classification":"TOD 400m" if d<=400 else ("TOD 800m" if d<=800 else "OUTSIDE TOD 800m"),"midpoint":midpoint(site_lat,site_lon,tod_lat,tod_lon),"evidence":"CALCULATED"}
+        result["tod"]={"latitude":tod_lat,"longitude":tod_lon,"distance_m":round(d,2),"bearing_deg":round(bearing_deg(site_lat,site_lon,tod_lat,tod_lon),2),"classification":"TOD 400m" if d<=400 else ("TOD 800m" if d<=800 else "OUTSIDE TOD 800m"),"midpoint":midpoint(site_lat,site_lon,tod_lat,tod_lon),"evidence":"CALCULATED"}
     result["planning_signals"]=_planning_signals(result)
     result["review_gaps"]=["Authoritative spatial overlays remain source context until verified."]
     if result["constraints"]["flagged_count"]:
