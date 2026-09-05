@@ -47,14 +47,14 @@ def _frontend_asset(asset:str):
     return FileResponse(target,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
 @app.middleware("http")
 async def _championship_frontend_override(request:Request,call_next):
-    if request.url.path in {"/","/index.html","/championship.html"}: return _frontend_root()
-    if request.url.path in {"/what-if.html"}: return _what_if_page()
+    path=request.url.path
+    if path in {"/","/index.html","/championship.html"}: return _frontend_root()
+    if path == "/what-if.html": return _what_if_page()
+    if path.startswith("/") and path[1:] in ALLOWED_ASSETS: return _frontend_asset(path[1:])
     return await call_next(request)
-app.add_api_route("/",_frontend_root,methods=["GET"],include_in_schema=False)
+app.add_api_route("/","_frontend_root",methods=["GET"],include_in_schema=False)
 app.add_api_route("/index.html",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/championship.html",_frontend_root,methods=["GET"],include_in_schema=False)
-# Keep the newest workstation asset explicit: server.py contains legacy wildcard routes,
-# so an exact production route prevents route-order regressions from turning the asset into 404.
 app.add_api_route("/urbion_championship_workstation_v2.js",lambda: _frontend_asset("urbion_championship_workstation_v2.js"),methods=["GET"],include_in_schema=False)
 app.add_api_route("/{asset}.js",_frontend_asset,methods=["GET"],include_in_schema=False)
 for _path in ("/{asset}.js","/urbion_championship_workstation_v2.js","/championship.html","/index.html","/"):
