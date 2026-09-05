@@ -93,7 +93,7 @@ jobs:
                   with urllib.request.urlopen(base + '/health', timeout=3) as response:
                       health = json.loads(response.read().decode('utf-8'))
                   assert health['status'] == 'healthy'
-                  assert health['engine'] == 'URBION PHASE-E.7'
+                  assert health['engine'] == 'URBION PHASE-E.8'
                   print('RUNTIME_SMOKE_OK')
                   raise SystemExit(0)
               except (urllib.error.URLError, TimeoutError, RuntimeError, AssertionError, json.JSONDecodeError) as exc:
