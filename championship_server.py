@@ -4,6 +4,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from server import app
 import urbion_spatial_api
+import urbion_workstation_api
 BASE_DIR = Path(__file__).resolve().parent
 ALLOWED_ASSETS = {"urbion_ui.js","urbion_championship_ui.js","urbion_championship_upgrade.js","urbion_championship_dashboard.js","urbion_championship_polish.js","urbion_championship_v279.js","urbion_public_source_ui.js","urbion_public_spatial_v283.js","urbion_public_spatial_v284.js","urbion_championship_spatial_studio.js","urbion_championship_decision_layer.js","urbion_championship_intelligence_upgrade.js","urbion_championship_input_sync.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_what_if_upgrade.js","urbion_spatial_workstation_upgrade.js","urbion_spatial_implication_bridge.js"}
 def _remove_routes(*paths: str)->None:
