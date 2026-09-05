@@ -1,11 +1,13 @@
 {
   "project": "URBION HORIZON",
-  "release": "PHASE-E.7",
+  "release": "MASTER-132",
+  "engine_version": "PHASE-E.8",
+  "frontend_release": "MASTER-330",
   "framework": "FastAPI",
   "server": "Uvicorn",
   "health_endpoint": "/health",
   "assessment_endpoint": "/assess",
-  "frontend": "INDEX.HTML SERVED BY SAME RENDER SERVICE",
+  "frontend": "CHAMPIONSHIP.HTML SERVED BY SAME RENDER SERVICE",
   "gis": "OFFICIAL i-PLAN SOURCE CONTEXT + WMS COMMITTED LAYER",
   "retrieval": "CONNECTED",
   "applicability": "CONNECTED",
@@ -14,5 +16,7 @@
   "committed_land_use": "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms :: iplan:gunatanah_komited_04",
   "test_basis": "DETERMINISTIC SYNTHETIC COORDINATE CHECK + FRONTEND DEPLOYMENT CONTRACT",
   "evidence_policy": "LIVE SOURCE CONTEXT IS NOT AUTOMATIC STATUTORY VERIFICATION",
+  "decision_authority": "NONE",
+  "statutory_verification": "NOT_CLAIMED",
   "deployment_ready": true
 }
