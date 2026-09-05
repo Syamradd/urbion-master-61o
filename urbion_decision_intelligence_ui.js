@@ -3,7 +3,7 @@
   'use strict';
   function esc(v){return String(v==null?'—':v).replace(/[&<>\"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'})[c]||c;});}
   function input(id,fallback){var e=document.getElementById(id);return e&&e.value!==''?e.value:fallback;}
-  function currentInputs(){return {site_lat:+input('dash-lat',2.285),site_lon:+input('dash-lon',102.196),tod_lat:+input('dash-todlat',2.286),tod_lon:+input('dash-todlon',2.197),plot_ratio:+input('dash-ratio',4.5),development_type:input('dash-dev','TOD Development / Mixed Use'),development_class:'Mixed Use',state:input('dash-state','Melaka'),district:'Melaka Tengah',pbt:'Majlis Bandaraya Melaka Bersejarah',lot_no:input('dash-lot','')};}
+  function currentInputs(){return {site_lat:+input('dash-lat',2.285),site_lon:+input('dash-lon',102.196),tod_lat:+input('dash-todlat',2.286),tod_lon:+input('dash-todlon',102.197),plot_ratio:+input('dash-ratio',4.5),development_type:input('dash-dev','TOD Development / Mixed Use'),development_class:'Mixed Use',state:input('dash-state','Melaka'),district:'Melaka Tengah',pbt:'Majlis Bandaraya Melaka Bersejarah',lot_no:input('dash-lot','')};}
   function validationButton(){
     if(document.getElementById('urbion-validation-open'))return;
     var b=document.createElement('button');b.id='urbion-validation-open';b.textContent='VALIDATION LAB';
