@@ -19,3 +19,13 @@ def test_judge_run_has_complete_core_path():
 def test_judge_run_frontend_chain_is_present():
     for path in ('map-studio.html','what-if.html','decision-center.html','planner-review.html','lcp-intelligence.html'):
         assert Path(path).is_file(), path
+
+
+def test_judge_mode_is_a_90_second_decision_story():
+    text=Path('judge-mode.html').read_text(encoding='utf-8')
+    for token in ('90-SECOND JUDGE STORY','EVIDENCE','SCORE','WHY','DECISION','REVIEW','ACTION','DECISION STORY','SCORE DRIVERS','REVIEW BEFORE ACTION','OPEN DECISION CENTER','RUN WHAT-IF','PLANNER REVIEW','NOT_CLAIMED','not approval probability','No decision has been fabricated'):
+        assert token in text
+    assert 'fetch(\'/judge-mode\'' in text
+    assert 'cache:\'no-store\'' in text
+    assert 'textContent' in text
+    assert 'innerHTML' in text
