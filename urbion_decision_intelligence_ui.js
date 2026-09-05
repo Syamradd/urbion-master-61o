@@ -1,15 +1,27 @@
-/* URBION HORIZON — explainable decision intelligence panel. */
+/* URBION HORIZON — explainable decision intelligence + bounded planner copilot panel. */
 (function(){
   'use strict';
   function esc(v){return String(v==null?'—':v).replace(/[&<>\"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'})[c]||c;});}
+  function input(id, fallback){var e=document.getElementById(id);return e&&e.value!==''?e.value:fallback;}
   function mount(){
     if(document.getElementById('urbion-di-panel')) return;
     var panel=document.createElement('section');
     panel.id='urbion-di-panel';
-    panel.style.cssText='position:fixed;left:18px;bottom:18px;z-index:1300;width:min(420px,calc(100vw - 36px));max-height:54vh;overflow:auto;background:#09131deF;border:1px solid #294052;border-radius:16px;padding:14px;color:#eff8ff;font:12px Inter,system-ui;box-shadow:0 18px 60px #0008;display:none;';
-    panel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><strong>DECISION INTELLIGENCE</strong><button id="urbion-di-close" style="background:none;border:0;color:#9eb5c7;font-size:18px">×</button></div><div id="urbion-di-body" style="margin-top:10px;color:#b9cbd7">Run an assessment to generate evidence-weighted priorities.</div>';
+    panel.style.cssText='position:fixed;left:18px;bottom:18px;z-index:1300;width:min(440px,calc(100vw - 36px));max-height:60vh;overflow:auto;background:#09131deF;border:1px solid #294052;border-radius:16px;padding:14px;color:#eff8ff;font:12px Inter,system-ui;box-shadow:0 18px 60px #0008;display:none;';
+    panel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><strong>URBION AI COPILOT</strong><button id="urbion-di-close" style="background:none;border:0;color:#9eb5c7;font-size:18px">×</button></div><div id="urbion-di-body" style="margin-top:10px;color:#b9cbd7">Run an assessment to generate evidence-weighted priorities.</div><button id="urbion-copilot-run" style="margin-top:10px;width:100%;border:1px solid #35e2b0;background:#35e2b0;color:#061018;border-radius:8px;padding:9px;font:900 10px Inter;cursor:pointer">RUN PLANNER COPILOT</button>';
     document.body.appendChild(panel);
     document.getElementById('urbion-di-close').onclick=function(){panel.style.display='none';};
+    document.getElementById('urbion-copilot-run').onclick=async function(){
+      var body=document.getElementById('urbion-di-body');
+      body.innerHTML='<b>Running bounded planner copilot…</b><div style="margin-top:6px;color:#8299aa">Assessment → spatial → knowledge → impact → agents → decision</div>';
+      var payload={site_lat:+input('dash-lat',2.285),site_lon:+input('dash-lon',102.196),tod_lat:+input('dash-todlat',2.286),tod_lon:+input('dash-todlon',102.197),plot_ratio:+input('dash-ratio',4.5),development_type:input('dash-dev','TOD Development / Mixed Use'),development_class:'Mixed Use',state:input('dash-state','Melaka'),district:'Melaka Tengah',pbt:'Majlis Bandaraya Melaka Bersejarah',lot_no:input('dash-lot','')};
+      try{
+        var r=await fetch('/copilot/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        if(!r.ok)throw Error('HTTP '+r.status);
+        var x=await r.json(), d=x.decision||{}, k=x.knowledge||{}, i=x.impact||{}, a=x.agents||{};
+        body.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0"><div><small>DECISION</small><br><b>'+esc(d.status||d.decision_status)+'</b></div><div><small>AGENT MODE</small><br><b>'+esc(a.mode)+'</b></div><div><small>POLICY HITS</small><br><b>'+esc(k.retrieval_count)+'</b></div><div><small>IMPACT</small><br><b>'+esc(i.status)+'</b></div></div><div style="font-weight:800;margin:8px 0">NEXT ACTIONS</div>'+(x.next_actions||[]).map(function(v,n){return '<div style="padding:7px 0;border-top:1px solid #203443"><b>'+(n+1)+'.</b> '+esc(v)+'</div>';}).join('')+'<div style="margin-top:10px;font-size:10px;color:#8299aa">BOUNDED COPILOT · DECISION-SUPPORT ONLY · STATUTORY VERIFICATION NOT CLAIMED</div>';
+      }catch(e){body.innerHTML='<div style="color:#ff8292">Copilot failed · '+esc(e.message)+'</div>'+'<div style="margin-top:8px;color:#8299aa">Check site inputs and rerun.</div>';}
+    };
     window.urbionDecisionIntelligence=function(payload){
       panel.style.display='block';
       var body=document.getElementById('urbion-di-body');
