@@ -18,5 +18,5 @@ def test_intelligence_ui_represents_missing_scores_as_unknown():
 
 def test_intelligence_ui_preserves_decision_support_guardrail():
     assert "not statutory approval" in JS
-    assert "does not interpret the score as approval probability" in JS
+    assert "never interprets the score as approval probability" in JS
     assert "coordinate-based screening calculations" in JS
