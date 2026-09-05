@@ -6,13 +6,14 @@ HTML = Path("decision-center.html").read_text(encoding="utf-8")
 
 def test_decision_center_exposes_decision_first_workstation():
     required = [
-        "DECISION INTELLIGENCE · LIVE",
-        "SCORE BREAKDOWN",
+        "DECISION WORKFLOW · LIVE",
+        "SCORE DRIVERS",
         "WHY THIS DECISION",
         "DECISION TRACE",
         "SPATIAL CONTEXT",
         "REVIEW GAPS",
         "NEXT ACTIONS",
+        "EVIDENCE COVERAGE",
         "PLANNER DECISION SUPPORT ONLY",
     ]
     for token in required:
@@ -21,7 +22,7 @@ def test_decision_center_exposes_decision_first_workstation():
 
 def test_decision_center_renders_structured_decision_fields():
     required = [
-        "j.decision",
+        "const d=j.decision||{}",
         "d.score_breakdown",
         "j.decision_trace",
         "j.spatial_intelligence",
@@ -31,6 +32,8 @@ def test_decision_center_renders_structured_decision_fields():
         "renderTrace",
         "renderSpatial",
         "renderList",
+        "renderEvidence",
+        "renderChain",
     ]
     for token in required:
         assert token in HTML
