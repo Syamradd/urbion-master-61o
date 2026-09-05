@@ -28,6 +28,22 @@ def test_copilot_packet_is_unified_and_guarded():
     assert len(packet["agents"]["agents"]) == 7
 
 
+def test_copilot_scenarios_are_executed_and_ranked():
+    packet = build_copilot_packet(_inputs(), variants=[
+        {"id": "A", "name": "Lower intensity", "changes": {"plot_ratio": 3.0}},
+        {"id": "B", "name": "Higher intensity", "changes": {"plot_ratio": 6.0}},
+    ])
+    scenarios = packet["scenario_intelligence"]
+    assert scenarios["status"] == "COMPLETE"
+    assert scenarios["count"] == 2
+    assert len(scenarios["scenarios"]) == 2
+    assert len(scenarios["ranked_scenarios"]) == 2
+    assert packet["preferred_scenario"] is not None
+    assert packet["agents"]["agents"][5]["agent"] == "SCENARIO"
+    assert packet["agents"][5]["status"] == "COMPLETE"
+    assert packet["statutory_verification"] == "NOT_CLAIMED"
+
+
 def test_copilot_api_is_reachable_from_production_entrypoint():
     client = TestClient(app)
     response = client.post("/copilot/run", json=_inputs())
