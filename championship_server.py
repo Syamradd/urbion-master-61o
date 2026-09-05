@@ -52,7 +52,7 @@ async def _championship_frontend_override(request:Request,call_next):
     if path == "/what-if.html": return _what_if_page()
     if path.startswith("/") and path[1:] in ALLOWED_ASSETS: return _frontend_asset(path[1:])
     return await call_next(request)
-app.add_api_route("/","_frontend_root",methods=["GET"],include_in_schema=False)
+app.add_api_route("/",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/index.html",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/championship.html",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/urbion_championship_workstation_v2.js",lambda: _frontend_asset("urbion_championship_workstation_v2.js"),methods=["GET"],include_in_schema=False)
