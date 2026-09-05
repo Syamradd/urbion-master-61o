@@ -38,9 +38,8 @@ def _what_if_page():
     if script not in source: source=source.replace('</body>',script+'</body>',1)
     return HTMLResponse(source,media_type="text/html; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
 def _frontend_asset(asset:str):
-    filename=f"{asset}.js"
-    if filename not in ALLOWED_ASSETS: raise HTTPException(status_code=404,detail="Unknown frontend asset")
-    target=BASE_DIR/filename
+    if asset not in ALLOWED_ASSETS: raise HTTPException(status_code=404,detail="Unknown frontend asset")
+    target=BASE_DIR/asset
     if not target.is_file(): raise HTTPException(status_code=404,detail="Frontend asset not found")
     return FileResponse(target,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
 @app.middleware("http")
