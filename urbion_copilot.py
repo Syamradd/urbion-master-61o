@@ -14,7 +14,7 @@ from urbion_scenario_ranking import rank_scenarios
 from server import assess_core, AssessmentRequest
 
 
-def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constraints=None):
+def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constraints=None, environmental_context=None):
     raw = dict(inputs or {})
     assessment = assess_core(AssessmentRequest(**raw))
     site = assessment["site"]
@@ -22,12 +22,19 @@ def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constrai
         site["latitude"], site["longitude"], raw.get("tod_lat"), raw.get("tod_lon"),
         tuple(radii or (400, 800)), constraints,
     )
+    if environmental_context:
+        spatial["environment"] = environmental_context
+        spatial["evidence_model"]["environmental_overlay"] = "SOURCE_CONTEXT ONLY"
     knowledge = build_knowledge_pack(
         assessment.get("development_type") or raw.get("development_type") or "",
         site.get("pbt") or raw.get("pbt") or "MBMB",
         spatial,
     )
-    impact = build_impact_intelligence(spatial=spatial, assessment=assessment)
+    impact = build_impact_intelligence(
+        spatial=spatial,
+        assessment=assessment,
+        environmental_context=environmental_context,
+    )
 
     variant_list = variants or []
     if not isinstance(variant_list, list) or len(variant_list) > 12:
