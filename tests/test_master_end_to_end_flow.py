@@ -64,5 +64,6 @@ def test_workstation_exposes_complete_decision_chain():
     assert workflow['name'] == 'Planner Decision Workstation'
     assert [step['id'] for step in workflow['steps']] == ['ASSESSMENT', 'SPATIAL', 'WHAT_IF', 'DECISION', 'LCP', 'KM', 'AGENTS']
     assert workflow['completed'] == workflow['total'] == 7
-    assert isinstance(body['agents'], list)
-    assert len(body['agents']) == 7
+    assert isinstance(body['agents'], dict)
+    assert isinstance(body['agents'].get('agents'), list)
+    assert len(body['agents']['agents']) == 7
