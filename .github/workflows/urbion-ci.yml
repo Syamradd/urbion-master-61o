@@ -30,22 +30,22 @@ jobs:
         run: |
           case "${{ matrix.lane }}" in
             core) python -m pytest -q tests/test_spatial_input_guard.py tests/test_km_endpoint_contract.py tests/test_kebenaran_merancang.py tests/test_master_hardening_scoring.py ;;
-            frontend) python -m pytest -q tests/test_live_frontend_contract.py tests/test_ui_controller_contract.py tests/test_decision_center_contract.py tests/test_master171_evidence_ui.py tests/test_master172_what_if_delta.py tests/test_what_if_frontend_contract.py tests/test_planner_review_contract.py tests/test_master174_planner_actions.py tests/test_master_decision_rendering.py tests/test_master_decision_center_workstation.py tests/test_master308_input_sync.py tests/test_master309_unified_assessment_state.py tests/test_master312_workflow.py tests/test_master313_workflow_engine.py tests/test_master314_intelligence_ui.py tests/test_master322_spatial_workstation.py tests/test_master323_spatial_implications.py tests/test_master324_decision_chain_consolidation.py test_championship_entrypoint.py ;;
+            frontend) python -m pytest -q tests/test_live_frontend_contract.py tests/test_ui_controller_contract.py tests/test_decision_center_contract.py tests/test_master171_evidence_ui.py tests/test_master172_what_if_delta.py tests/test_what_if_frontend_contract.py tests/test_planner_review_contract.py tests/test_master174_planner_actions.py tests/test_master_decision_rendering.py tests/test_master_decision_center_workstation.py tests/test_master308_input_sync.py tests/test_master309_unified_assessment_state.py tests/test_master312_workflow.py tests/test_master313_workflow_engine.py tests/test_master314_intelligence_ui.py tests/test_master322_spatial_workstation.py tests/test_master323_spatial_implications.py tests/test_master324_decision_chain_consolidation.py tests/test_master325_330_final_acceptance.py test_championship_entrypoint.py ;;
             mapping) python -m pytest -q tests/test_map_studio_contract.py tests/test_master170_controls.py tests/test_hydrology_source.py tests/test_master_map_layer_renderability.py ;;
             planning) python -m pytest -q tests/test_master173_km_planner_surface.py tests/test_km_endpoint_contract.py ;;
-            judge) python -m pytest -q tests/test_master175_release_gate.py tests/test_decision_center_contract.py tests/test_master171_evidence_ui.py tests/test_master172_what_if_delta.py tests/test_what_if_frontend_contract.py tests/test_master192_judge_run.py tests/test_master308_input_sync.py tests/test_master309_unified_assessment_state.py ;;
-            spatial) python -m pytest -q tests/test_master183_spatial_sources.py tests/test_master183_multi_source_helpers.py tests/test_master183_decision_spatial_surface.py ;;
+            judge) python -m pytest -q tests/test_master175_release_gate.py tests/test_decision_center_contract.py tests/test_master171_evidence_ui.py tests/test_master172_what_if_delta.py tests/test_what_if_frontend_contract.py tests/test_master192_judge_run.py tests/test_master308_input_sync.py tests/test_master309_unified_assessment_state.py tests/test_master325_330_final_acceptance.py ;;
+            spatial) python -m pytest -q tests/test_master183_spatial_sources.py tests/test_master183_multi_source_helpers.py tests/test_master183_decision_spatial_surface.py tests/test_master325_330_final_acceptance.py ;;
             station) python -m pytest -q tests/test_master184_station_intelligence.py tests/test_master184_endpoint_contract.py ;;
             impact) python -m pytest -q tests/test_master185_development_impact.py ;;
             policy) python -m pytest -q tests/test_master186_policy_graph.py ;;
             recommendation) python -m pytest -q tests/test_master187_recommendations.py ;;
             lcp) python -m pytest -q tests/test_master188_lcp_intelligence.py tests/test_master188_lcp_endpoint.py tests/test_master189_integration_ui.py tests/test_master199_integrated_decision_orchestration.py ;;
-            redteam) python -m pytest -q tests/test_master190_red_team.py tests/test_master196_integrity_gate.py ;;
+            redteam) python -m pytest -q tests/test_master190_red_team.py tests/test_master196_integrity_gate.py tests/test_master325_330_final_acceptance.py ;;
             smoke) python -m pytest -q tests/test_master191_deployment_smoke.py ;;
-            release) python -m pytest -q tests/test_master193_release_lock.py tests/test_master194_release_candidate.py tests/test_master194_visual_function.py tests/test_master195_release_packet.py ;;
+            release) python -m pytest -q tests/test_master193_release_lock.py tests/test_master194_release_candidate.py tests/test_master194_visual_function.py tests/test_master195_release_packet.py tests/test_master325_330_final_acceptance.py ;;
             presentation) python -m pytest -q tests/test_master197_presentation_ready.py ;;
             contract) python -m pytest -q tests/test_master202_championship_contract.py ;;
-            final) python -m pytest -q tests/test_master198_final_acceptance.py tests/test_master202_championship_contract.py ;;
+            final) python -m pytest -q tests/test_master198_final_acceptance.py tests/test_master202_championship_contract.py tests/test_master325_330_final_acceptance.py ;;
           esac
 
   runtime-smoke:
@@ -113,8 +113,6 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-      - name: Install dependencies
-        run: python -m pip install -r requirements.txt
       - name: Full regression suite
         env:
           PYTHONPATH: .
