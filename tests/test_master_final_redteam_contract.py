@@ -63,3 +63,6 @@ def test_final_redteam_frontend_does_not_overwrite_fetch():
     text = Path("urbion_championship_input_sync.js").read_text(encoding="utf-8")
     assert "window.fetch=" not in text
     assert "payloadKey=payload=>JSON.stringify(payload)" in text
+
+
+# Final-release retarget trigger: rerun this isolated red-team suite against current main.
