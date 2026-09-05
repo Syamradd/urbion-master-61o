@@ -7,6 +7,7 @@ from urbion_scenario_ranking import rank_scenarios
 from urbion_decision_center import build_decision_center
 from urbion_lcp_intelligence import build_lcp_intelligence
 from urbion_kebenaran_merancang import build_km_readiness
+from urbion_agent_orchestrator import run_agents
 
 router = APIRouter(tags=["planner-workstation"])
 
@@ -38,6 +39,8 @@ def workstation_analysis(payload: dict = Body(default_factory=dict)):
     steps.append({"id":"LCP","label":"LCP intelligence","status":"COMPLETE"})
     km = build_km_readiness(pbt=raw.get("pbt",""), development_type=raw.get("development_type",""), documents=payload.get("documents"), km_category=payload.get("km_category"), technical_reviews=payload.get("technical_reviews"))
     steps.append({"id":"KM","label":"KM readiness","status":"COMPLETE"})
-    return {"project":"URBION HORIZON","version":"PHASE-E.8","workflow":{"name":"Planner Decision Workstation","steps":steps,"completed":sum(x["status"]=="COMPLETE" for x in steps),"total":len(steps)},"assessment":assessment,"spatial":spatial,"what_if":comparison,"decision_center":decision,"lcp_intelligence":lcp,"km_readiness":km,"decision_authority":"NONE","statutory_verification":"NOT_CLAIMED"}
+    agents = run_agents(assessment=assessment, spatial=spatial, scenarios=comparison if executed else None, decision=decision)
+    steps.append({"id":"AGENTS","label":"Bounded agent synthesis","status":"COMPLETE"})
+    return {"project":"URBION HORIZON","version":"PHASE-E.8","workflow":{"name":"Planner Decision Workstation","steps":steps,"completed":sum(x["status"]=="COMPLETE" for x in steps),"total":len(steps)},"assessment":assessment,"spatial":spatial,"what_if":comparison,"decision_center":decision,"lcp_intelligence":lcp,"km_readiness":km,"agents":agents,"decision_authority":"NONE","statutory_verification":"NOT_CLAIMED"}
 
 app.include_router(router)
