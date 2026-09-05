@@ -1,6 +1,7 @@
 """Knowledge retrieval API: traceable context, never statutory verification."""
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
+from server import app
 from urbion_knowledge_orchestrator import build_knowledge_pack
 
 router = APIRouter(tags=["knowledge"])
@@ -13,3 +14,5 @@ class KnowledgeRequest(BaseModel):
 @router.post("/knowledge/retrieve")
 def retrieve_knowledge(payload: KnowledgeRequest):
     return build_knowledge_pack(payload.development_type, payload.authority, payload.spatial_context)
+
+app.include_router(router)
