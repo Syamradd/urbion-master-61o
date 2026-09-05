@@ -50,8 +50,11 @@ async def _championship_frontend_override(request:Request,call_next):
 app.add_api_route("/",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/index.html",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/championship.html",_frontend_root,methods=["GET"],include_in_schema=False)
+# Keep the newest workstation asset explicit: server.py contains legacy wildcard routes,
+# so an exact production route prevents route-order regressions from turning the asset into 404.
+app.add_api_route("/urbion_championship_workstation_v2.js",lambda: _frontend_asset("urbion_championship_workstation_v2.js"),methods=["GET"],include_in_schema=False)
 app.add_api_route("/{asset}.js",_frontend_asset,methods=["GET"],include_in_schema=False)
-for _path in ("/championship.html","/index.html","/"):
+for _path in ("/urbion_championship_workstation_v2.js","/championship.html","/index.html","/"):
     for _idx,_route in enumerate(app.router.routes):
         if getattr(_route,"path",None)==_path: app.router.routes.insert(0,app.router.routes.pop(_idx)); break
 app.state.frontend_entrypoint="championship.html"
