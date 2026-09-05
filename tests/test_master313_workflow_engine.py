@@ -33,7 +33,7 @@ def test_shared_state_asset_loads_before_consumers():
     for asset in assets:
         assert asset in text
     assert text.index("urbion_championship_spatial_studio.js") < text.index("urbion_spatial_workstation_upgrade.js") < text.index("urbion_spatial_implication_bridge.js")
-    assert 'app.state.frontend_release="MASTER-323"' in text
+    assert 'app.state.frontend_release="MASTER-330"' in text
     assert 'Cache-Control' in text
 
 
