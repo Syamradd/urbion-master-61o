@@ -15,9 +15,13 @@ def _score_breakdown(analysis: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def _next_actions(assessment: dict[str, Any], review_gaps: list[Any]) -> list[str]:
+def _next_actions(assessment: dict[str, Any], review_gaps: list[Any], scenario_comparison: dict[str, Any] | None = None) -> list[str]:
     value = assessment.get("planning_value", {}) or {}
     actions = list(value.get("next_actions", []) or [])
+    scenario = scenario_comparison or {}
+    best = scenario.get("best_candidate")
+    if best:
+        actions.insert(0, f"Review ranked scenario {best} and verify its evidence before advancing.")
     if actions:
         return actions[:5]
     status = str(assessment.get("final_status", "REQUIRES REVIEW")).upper()
@@ -28,8 +32,8 @@ def _next_actions(assessment: dict[str, Any], review_gaps: list[Any]) -> list[st
     return ["Proceed to planner pre-consultation.", "Validate cadastral and technical evidence.", "Re-run if any material proposal parameter changes."]
 
 
-def build_decision_center(*, assessment: dict[str, Any], evidence: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Compose decision, evidence and spatial intelligence without changing statutory outcomes."""
+def build_decision_center(*, assessment: dict[str, Any], evidence: list[dict[str, Any]] | None = None, scenario_comparison: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Compose decision, scenario, evidence and spatial intelligence without changing statutory outcomes."""
     site = assessment.get("site", {})
     status = assessment.get("final_status", "REQUIRES REVIEW")
     analysis = assessment.get("site_analysis", {}) or {}
@@ -45,6 +49,7 @@ def build_decision_center(*, assessment: dict[str, Any], evidence: list[dict[str
     confidence = assessment.get("decision_confidence", {}) or {}
     coverage = evidence_summary.get("total", 0) if isinstance(evidence_summary, dict) else 0
     safe = evidence_summary.get("decision_safe", 0) if isinstance(evidence_summary, dict) else 0
+    scenario = scenario_comparison or {"scenarios": [], "ranked_scenarios": [], "best_candidate": None}
     return {
         "project": "URBION HORIZON",
         "version": "PHASE-E.8",
@@ -55,10 +60,17 @@ def build_decision_center(*, assessment: dict[str, Any], evidence: list[dict[str
         "evidence_state": assessment.get("evidence_state", {}),
         "evidence_coverage": {"total_items": coverage, "decision_safe_items": safe, "review_required": bool(review_gaps)},
         "spatial_intelligence": spatial,
+        "scenario_intelligence": {
+            "count": len(scenario.get("scenarios", []) or []),
+            "ranked_scenarios": scenario.get("ranked_scenarios", []),
+            "best_candidate": scenario.get("best_candidate"),
+            "decision_pathway": scenario.get("decision_pathway", []),
+            "disclaimer": scenario.get("disclaimer", "Scenario comparison is decision support only; it does not replace statutory assessment or authority review."),
+        },
         "decision_trace": assessment.get("decision_trace", []),
         "review_gaps": review_gaps,
         "review_required": bool(review_gaps),
-        "next_actions": _next_actions(assessment, review_gaps),
+        "next_actions": _next_actions(assessment, review_gaps, scenario),
         "map": decision_map_payload([feature]),
         "guardrail": "Decision support only; evidence gaps remain disclosed and no statutory approval is inferred.",
         "decision_boundary": "PLANNER_DECISION_SUPPORT_ONLY",
