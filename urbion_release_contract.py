@@ -14,10 +14,8 @@ REQUIRED_LCP_KEYS = (
     "evidence_summary", "review_gaps", "trace", "decision_boundary",
     "statutory_verification",
 )
-REQUIRED_MANIFEST_KEYS = ("framework", "server", "health_endpoint", "assessment_endpoint", "frontend", "deployment_ready")
+REQUIRED_MANIFEST_KEYS = ("framework", "server", "health_endpoint", "assessment_endpoint", "frontend", "deployment_ready", "release", "engine_version", "frontend_release", "decision_authority", "statutory_verification")
 EVIDENCE_STATES = {"USER_PROVIDED", "CALCULATED", "SOURCE_CONTEXT", "VERIFIED", "UNVERIFIED"}
-# Keep the legacy POLICY/SDG contract token while accepting the richer
-# GUIDELINES/POLICY trace introduced by context intelligence.
 REQUIRED_TRACE = ("SITE", "SPATIAL", "STATION", "IMPACT", "RECOMMENDATION", "WHAT-IF", "DECISION CENTER", "LCP/PLANNER REVIEW")
 
 
@@ -34,32 +32,27 @@ def audit_lcp_contract(result: dict[str, Any] | None) -> dict[str, Any]:
         failures.append("statutory_verification:NOT_CLAIMED_REQUIRED")
     if result.get("decision_boundary") != "INTEGRATED_LCP_PLANNING_SUPPORT":
         failures.append("decision_boundary:INTEGRATED_LCP_PLANNING_SUPPORT_REQUIRED")
-
     trace = str(result.get("trace", ""))
     for token in REQUIRED_TRACE:
         if token not in trace:
             failures.append(f"trace:{token}")
     if "POLICY/SDG" not in trace and "GUIDELINES/POLICY" not in trace:
         failures.append("trace:POLICY/SDG")
-
     counts = (result.get("evidence_summary") or {}).get("counts", {})
     invalid_states = sorted(set(counts) - EVIDENCE_STATES)
     if invalid_states:
         failures.append("evidence_state:" + ",".join(invalid_states))
-
     what_if = result.get("what_if") or {}
     ranked = what_if.get("ranked_scenarios", []) if isinstance(what_if, dict) else []
     if len(ranked) > 12:
         failures.append("what_if:MAX_12_SCENARIOS")
     if what_if and what_if.get("status") == "NOT_PROVIDED":
         warnings.append("what_if:OPTIONAL_NOT_PROVIDED")
-
     gaps = result.get("review_gaps")
     if not isinstance(gaps, list):
         failures.append("review_gaps:LIST_REQUIRED")
     elif len(gaps) != int((result.get("evidence_summary") or {}).get("review_gap_count", len(gaps))):
         warnings.append("review_gap_count:OUT_OF_SYNC")
-
     return {
         "status": "PASS" if not failures else "FAIL",
         "version": result.get("version"),
@@ -87,6 +80,16 @@ def audit_deployment_manifest(manifest: dict[str, Any] | None) -> dict[str, Any]
         failures.append("assessment_endpoint:/assess_REQUIRED")
     if manifest.get("deployment_ready") is not True:
         failures.append("deployment_ready:TRUE_REQUIRED")
+    if manifest.get("release") != "MASTER-132":
+        failures.append("release:MASTER-132_REQUIRED")
+    if manifest.get("engine_version") != "PHASE-E.8":
+        failures.append("engine_version:PHASE-E.8_REQUIRED")
+    if manifest.get("frontend_release") != "MASTER-330":
+        failures.append("frontend_release:MASTER-330_REQUIRED")
+    if manifest.get("decision_authority") != "NONE":
+        failures.append("decision_authority:NONE_REQUIRED")
+    if manifest.get("statutory_verification") != "NOT_CLAIMED":
+        failures.append("statutory_verification:NOT_CLAIMED_REQUIRED")
     return {"status": "PASS" if not failures else "FAIL", "failures": failures, "required_keys": list(REQUIRED_MANIFEST_KEYS)}
 
 
