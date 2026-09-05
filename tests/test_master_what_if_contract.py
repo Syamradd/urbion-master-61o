@@ -19,6 +19,30 @@ def test_compare_exposes_rank_reason_and_deltas():
     assert out["decision_pathway"]
 
 
+def test_same_status_uses_score_direction_for_decision_delta():
+    baseline = _assessment(70, "POTENTIALLY SUITABLE", [{"name": "Planning Fit", "score": 70}])
+    improved = _assessment(76, "POTENTIALLY SUITABLE", [{"name": "Planning Fit", "score": 76}])
+    declined = _assessment(64, "POTENTIALLY SUITABLE", [{"name": "Planning Fit", "score": 64}])
+    out = compare_assessments(
+        baseline,
+        [
+            {"id": "UP", "name": "Improved", "inputs": {}, "baseline_inputs": {}, "assessment": improved},
+            {"id": "DOWN", "name": "Declined", "inputs": {}, "baseline_inputs": {}, "assessment": declined},
+        ],
+    )
+    by_id = {item["id"]: item for item in out["scenarios"]}
+    assert by_id["UP"]["decision_delta"] == "IMPROVED"
+    assert by_id["DOWN"]["decision_delta"] == "DECLINED"
+
+
+def test_unknown_status_does_not_claim_statutory_compliance():
+    baseline = _assessment(60, "REQUIRES REVIEW", [{"name": "Planning Fit", "score": 60}])
+    scenario = _assessment(61, "UNDER REVIEW", [{"name": "Planning Fit", "score": 61}])
+    out = compare_assessments(baseline, [{"id": "A", "name": "Review", "inputs": {}, "baseline_inputs": {}, "assessment": scenario}])
+    assert out["scenarios"][0]["decision_delta"] == "IMPROVED"
+    assert "approval" not in out["scenarios"][0]["decision_delta"].lower()
+
+
 def test_execute_preserves_baseline_inputs_for_change_explanation():
     seen = []
     def assess(inputs):
