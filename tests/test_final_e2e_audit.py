@@ -34,10 +34,13 @@ def test_final_judge_to_planner_e2e_preserves_evidence_and_guardrails():
     handoff = client.post('/planner/handoff', json={'assessment_inputs': INPUTS, 'variants': variants})
     assert handoff.status_code == 200
     body = handoff.json()
-    assert body.get('decision_authority') == 'NONE'
-    assert body.get('statutory_verification') == 'NOT_CLAIMED'
-    assert body.get('evidence_ledger', {}).get('total_items', 0) >= 1
-    assert body.get('review_items') is not None
+    assert body['project'] == 'URBION HORIZON'
+    assert body['mode'] == 'BOUNDED_PLANNER_COPILOT'
+    assert body['handoff']['workflow'][-1] == 'HANDOFF'
+    assert body['handoff']['decision_authority'] == 'NONE'
+    assert body['handoff']['statutory_verification'] == 'NOT_CLAIMED'
+    assert body['copilot']['evidence_ledger']['total_items'] >= 1
+    assert body['handoff']['review_items'] is not None
 
 
 def test_final_e2e_rejects_missing_site_consistently():
