@@ -42,6 +42,7 @@ def test_hotfix_routes_controlled_scenarios_to_canonical_what_if_api():
     assert "variants:[{id:'SELECTED'" in hotfix
     assert "urbion:what-if" in hotfix
     assert "fetch('/assess'" in hotfix
+    assert "stopImmediatePropagation()" in hotfix
 
 
 def test_km_readiness_requires_explicit_category_and_passes_it_to_backend():
@@ -50,3 +51,25 @@ def test_km_readiness_requires_explicit_category_and_passes_it_to_backend():
     assert "KECIL" in layer and "SEDERHANA" in layer and "BESAR" in layer
     assert "km_category" in layer
     assert "q.set('km_category',cat)" in layer
+
+
+def test_unified_export_contains_downstream_planner_state():
+    hotfix = (ROOT / "urbion_championship_final_command_center_hotfix.js").read_text(encoding="utf-8")
+    required = [
+        "UNIFIED_PLANNER_CASE",
+        "assessment:window.__urbionAssessment||u.assessment||null",
+        "spatial_context:window.__URBION_FINAL_CONTEXT||u.spatial||null",
+        "policy_guideline:lcp?.guideline_intelligence||null",
+        "policy_graph:lcp?.policy_graph||null",
+        "recommendations:lcp?.recommendations||null",
+        "agency_intelligence:lcp?.agency_intelligence||null",
+        "km_readiness:window.__URBION_KM_READINESS||u.km||lcp?.km_readiness||null",
+        "what_if:window.__URBION_WHAT_IF||u.whatIf||null",
+        "decision:u.decision||null",
+        "lcp_intelligence:lcp",
+        "evidence_gaps:",
+        "authority_boundary:",
+        "next_authority_action:"
+    ]
+    missing = [item for item in required if item not in hotfix]
+    assert not missing, f"missing unified export contract: {missing}"
