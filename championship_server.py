@@ -1,5 +1,6 @@
 """Deterministic production entrypoint for the URBION HORIZON championship UI."""
 from pathlib import Path
+import re
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from server import app
@@ -69,8 +70,9 @@ def _frontend_root():
         if script not in source:
             source = source.replace('</body>', script + '</body>', 1)
     source = _design_system(source)
-    if 'window.__URBION_FRONTEND_BOOT__' not in source:
-        source = source.replace('</body>', '<script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script></body>', 1)
+    # Normalize any pre-existing boot marker so the served root always declares the canonical release.
+    source = re.sub(r'<script>\s*window\.__URBION_FRONTEND_BOOT__=.*?</script>', '', source, count=1, flags=re.DOTALL)
+    source = source.replace('</body>', '<script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script></body>', 1)
     return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control":"no-store, max-age=0"})
 
 def _what_if_page():
