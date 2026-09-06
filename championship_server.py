@@ -113,4 +113,4 @@ for _path in ("/urbion_championship_unified_bridge.js","/urbion_lot_resolver_ui.
             app.router.routes.insert(0, app.router.routes.pop(_idx))
             break
 app.state.frontend_entrypoint = "championship.html"
-app.state.frontend_release = "PHASE-E.8"
+app.state.frontend_release="MASTER-330"
