@@ -9,7 +9,8 @@ import urbion_decision_intelligence_api
 import urbion_agent_api
 import urbion_knowledge_api
 BASE_DIR = Path(__file__).resolve().parent
-ALLOWED_ASSETS = {"urbion_ui.js","urbion_championship_ui.js","urbion_championship_upgrade.js","urbion_championship_dashboard.js","urbion_championship_polish.js","urbion_championship_v279.js","urbion_public_source_ui.js","urbion_public_spatial_v283.js","urbion_public_spatial_v284.js","urbion_championship_spatial_studio.js","urbion_championship_decision_layer.js","urbion_championship_intelligence_upgrade.js","urbion_championship_input_sync.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_what_if_upgrade.js","urbion_spatial_workstation_upgrade.js","urbion_spatial_implication_bridge.js","urbion_championship_workstation_v2.js","urbion_decision_intelligence_ui.js","urbion_decision_os_ui.js"}
+ALLOWED_ASSETS = {"urbion_ui.js","urbion_championship_ui.js","urbion_championship_upgrade.js","urbion_championship_dashboard.js","urbion_championship_polish.js","urbion_championship_v279.js","urbion_public_source_ui.js","urbion_public_spatial_v283.js","urbion_public_spatial_v284.js","urbion_championship_spatial_studio.js","urbion_championship_decision_layer.js","urbion_championship_intelligence_upgrade.js","urbion_championship_input_sync.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_what_if_upgrade.js","urbion_spatial_workstation_upgrade.js","urbion_spatial_implication_bridge.js","urbion_championship_workstation_v2.js","urbion_decision_intelligence_ui.js","urbion_decision_os_ui.js","urbion_championship_visual_overhaul.js"}
+ALLOWED_LOGOS = {"urbion_logo_dark.svg","urbion_logo_light.svg"}
 def _remove_routes(*paths: str)->None:
     targets=set(paths); app.router.routes[:]=[r for r in app.router.routes if getattr(r,"path",None) not in targets]
 _remove_routes("/","/index.html","/championship.html")
@@ -28,7 +29,7 @@ def _frontend_root():
     source=source.replace('<div class="health"><i></i> ENGINE ONLINE</div>','<div class="health"><i></i> PHASE-E.8 ENGINE ONLINE</div>')
     if 'id="urbion-championship"' not in source:
         marker='<body>'; source=source.replace(marker,marker+'<div id="urbion-championship" aria-hidden="true" style="display:none"></div>',1) if marker in source else '<div id="urbion-championship" aria-hidden="true" style="display:none"></div>'+source
-    for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_spatial_workstation_upgrade.js","urbion_spatial_implication_bridge.js","urbion_championship_workstation_v2.js","urbion_decision_intelligence_ui.js","urbion_decision_os_ui.js"):
+    for asset in ("urbion_championship_input_sync.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_spatial_workstation_upgrade.js","urbion_spatial_implication_bridge.js","urbion_championship_workstation_v2.js","urbion_decision_intelligence_ui.js","urbion_decision_os_ui.js","urbion_championship_visual_overhaul.js"):
         script=f'<script src="/{asset}"></script>'
         if script not in source: source=source.replace('</body>',script+'</body>',1)
     source=_design_system(source)
@@ -45,6 +46,11 @@ def _frontend_asset(asset:str):
     target=BASE_DIR/asset
     if not target.is_file(): raise HTTPException(status_code=404,detail="Frontend asset not found")
     return FileResponse(target,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
+def _frontend_logo(asset:str):
+    if asset not in ALLOWED_LOGOS: raise HTTPException(status_code=404,detail="Unknown logo asset")
+    target=BASE_DIR/asset
+    if not target.is_file(): raise HTTPException(status_code=404,detail="Logo asset not found")
+    return FileResponse(target,media_type="image/svg+xml",headers={"Cache-Control":"no-store, max-age=0"})
 @app.middleware("http")
 async def _championship_frontend_override(request:Request,call_next):
     if request.url.path in {"/","/index.html","/championship.html"}: return _frontend_root()
@@ -53,12 +59,11 @@ async def _championship_frontend_override(request:Request,call_next):
 app.add_api_route("/",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/index.html",_frontend_root,methods=["GET"],include_in_schema=False)
 app.add_api_route("/championship.html",_frontend_root,methods=["GET"],include_in_schema=False)
-# Keep the newest workstation asset explicit: server.py contains legacy wildcard routes,
-# so an exact production route prevents route-order regressions from turning the asset into 404.
 app.add_api_route("/urbion_championship_workstation_v2.js",lambda: _frontend_asset("urbion_championship_workstation_v2.js"),methods=["GET"],include_in_schema=False)
 app.add_api_route("/{asset}.js",_frontend_asset,methods=["GET"],include_in_schema=False)
-for _path in ("/urbion_championship_workstation_v2.js","/championship.html","/index.html","/"):
+app.add_api_route("/{asset}.svg",_frontend_logo,methods=["GET"],include_in_schema=False)
+for _path in ("/urbion_championship_workstation_v2.js","/urbion_championship_visual_overhaul.js","/urbion_logo_dark.svg","/urbion_logo_light.svg","/championship.html","/index.html","/"):
     for _idx,_route in enumerate(app.router.routes):
         if getattr(_route,"path",None)==_path: app.router.routes.insert(0,app.router.routes.pop(_idx)); break
 app.state.frontend_entrypoint="championship.html"
-app.state.frontend_release="MASTER-330"
+app.state.frontend_release="MASTER-330-VISUAL-OVERHAUL"
