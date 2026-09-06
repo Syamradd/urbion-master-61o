@@ -1,0 +1,51 @@
+(()=>{
+'use strict';
+if(window.__URBION_PREMIUM_V2)return;window.__URBION_PREMIUM_V2=true;
+function boot(){
+ const root=document.getElementById('urbion-final-command-centre');if(!root)return;
+ if(!document.getElementById('urbion-premium-v2-style')){
+  const s=document.createElement('style');s.id='urbion-premium-v2-style';s.textContent=`
+#urbion-final-command-centre{--bg:#050b12;--surface:#0a141d;--surface2:#0d1b26;--surface3:#102331;--border:#1d3442;--border-strong:#2a5660;--text:#eef8fb;--muted:#78919f;--soft:#abc0c9;--mint:#67e6c5;--cyan:#58c9e8;--blue:#6d9eff;--amber:#f3c75e;--danger:#ff7180;--shadow:0 24px 70px rgba(0,0,0,.32);font-size:13px;line-height:1.45}
+#urbion-final-command-centre,.fcc-header,.fcc-case,.fcc-main,.fcc-rail,.fcc-card,.fcc-map-card,.fcc-layer-drawer,.fcc-modal-box{letter-spacing:normal}
+#urbion-final-command-centre{background:radial-gradient(circle at 74% -5%,rgba(88,201,232,.12),transparent 30%),radial-gradient(circle at 4% 102%,rgba(103,230,197,.08),transparent 28%),linear-gradient(180deg,#050b12 0%,#071019 55%,#050b12 100%);}
+#urbion-final-command-centre .fcc-header{height:76px;padding:0 26px;border-bottom:1px solid rgba(108,161,177,.16);background:rgba(5,11,18,.82);backdrop-filter:blur(24px);box-shadow:0 10px 40px rgba(0,0,0,.14)}
+#urbion-final-command-centre .fcc-brand img{width:180px}.fcc-brand div{padding-left:14px}.fcc-brand b{font-size:14px;letter-spacing:.03em}.fcc-brand small{font-size:7px;letter-spacing:.15em;color:#7f99a7}
+#urbion-final-command-centre .fcc-head-actions{gap:7px}.fcc-head-actions button{width:34px;height:32px;border-radius:9px;background:rgba(12,28,39,.9);border-color:#223b49;color:#8fa9b5}.fcc-system{font-size:8px;margin-right:7px}.fcc-system i{width:7px;height:7px}
+#urbion-final-command-centre .fcc-layout{grid-template-columns:320px minmax(0,1fr) 360px;min-height:calc(100vh - 76px)}
+#urbion-final-command-centre .fcc-case,#urbion-final-command-centre .fcc-rail{top:76px;height:calc(100vh - 76px);padding:22px 18px;background:linear-gradient(180deg,rgba(6,16,25,.92),rgba(6,13,21,.94));border-color:rgba(108,161,177,.14)}
+#urbion-final-command-centre .fcc-main{padding:18px 20px 28px}
+#urbion-final-command-centre .fcc-case h1,#urbion-final-command-centre .fcc-rail h2{font-size:22px;line-height:1.15;letter-spacing:-.02em;margin:6px 0 8px}.fcc-muted{font-size:10px;line-height:1.65;color:#8098a5}.fcc-kicker{font-size:8px;letter-spacing:.16em}
+#urbion-final-command-centre .fcc-step{margin:18px 0 10px;font-size:9px}.fcc-step span{width:22px;height:22px;font-size:7px}.fcc-step b{font-size:9px}
+#urbion-final-command-centre .fcc-case label{font-size:8px;margin:11px 0;color:#90a8b5}.fcc-case input,.fcc-case select{padding:10px 11px;border-radius:9px;background:#07121b;border-color:#1f3948;font-size:11px;min-height:38px}.fcc-case input::placeholder{color:#58717e}
+#urbion-final-command-centre .fcc-readiness{padding:12px;border-radius:11px;background:linear-gradient(145deg,#0a1c27,#08151f);border-color:#244552}.fcc-readiness span{font-size:8px}.fcc-readiness b{font-size:15px}.fcc-readiness small{font-size:8px}.fcc-progress{height:6px;margin:9px 0}.fcc-run{padding:12px;border-radius:10px;font-size:9px;box-shadow:0 10px 30px rgba(103,230,197,.10)}.fcc-reset{padding:10px;border-radius:9px;font-size:8px}.fcc-status{font-size:8px;line-height:1.55}
+#urbion-final-command-centre .fcc-commandbar{margin-bottom:12px;align-items:flex-end}.fcc-commandbar h2{font-size:25px;line-height:1.12;letter-spacing:-.03em}.fcc-tabs{gap:5px}.fcc-tabs button{padding:9px 11px;border-radius:9px;background:#08151f;font-size:8px}.fcc-tabs button.active{background:linear-gradient(180deg,rgba(103,230,197,.16),rgba(103,230,197,.07));border-color:#2e6a64}
+#urbion-final-command-centre .fcc-map-card,.fcc-card{border-color:#1d3442;border-radius:15px;background:linear-gradient(150deg,rgba(13,28,40,.96),rgba(7,17,26,.96));box-shadow:0 16px 50px rgba(0,0,0,.20)}
+#urbion-final-command-centre .fcc-map-head{padding:12px 14px;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);border-bottom-color:#1d3442}.fcc-map-head b{font-size:8px}.fcc-map-head span{font-size:8px}.fcc-map-actions{gap:5px}.fcc-map-actions button{padding:8px 10px;border-radius:8px;font-size:7px}
+#urbion-final-command-centre #fcc-map{height:min(61vh,620px);min-height:470px;background:#071018}.leaflet-control-zoom a{width:34px!important;height:34px!important;line-height:34px!important;font-size:17px!important}.leaflet-popup-content{font-size:12px!important}
+#urbion-final-command-centre .fcc-layer-drawer{top:54px;right:12px;width:330px;max-height:470px;padding:10px;border-radius:12px;background:rgba(6,17,26,.95);border-color:#294b59}.fcc-layer-row{padding:8px}.fcc-layer-row b{font-size:8px}.fcc-layer-row small{font-size:7px}
+#urbion-final-command-centre .fcc-card{padding:14px}.fcc-card-head span{font-size:8px}.fcc-card-head>b{font-size:14px}.fcc-card strong{font-size:16px}.fcc-card p{font-size:9px;line-height:1.65;color:#9db2bc}.fcc-grid{gap:10px;margin-top:10px}.fcc-grid3{gap:10px;margin-top:10px}
+#urbion-final-command-centre .fcc-chain{gap:8px;margin-top:13px}.fcc-chain span{padding:11px;font-size:9px;background:#081720;border-color:#1c3947}.fcc-chain small{font-size:7px;line-height:1.45}.fcc-chain i{font-size:15px;color:#5fd8bc}
+#urbion-final-command-centre .fcc-signal{padding:9px 0;font-size:8px}.fcc-signal b{font-size:7px}.fcc-health-list span{padding:7px 0;font-size:7px}.fcc-health-list small{font-size:6px}.fcc-next strong{font-size:13px}
+#urbion-final-command-centre .e-row{grid-template-columns:minmax(0,1.6fr) 125px 95px 160px;padding:10px 0}.e-row b{font-size:9px}.e-row small{font-size:7px}.e-row>strong,.e-row>span{font-size:7px}
+#urbion-final-command-centre .scenario strong{font-size:29px}.scenario span{font-size:8px}.scenario button{padding:8px 10px;font-size:7px}.fcc-decision-list{gap:6px}.fcc-decision-list div{padding:9px;font-size:8px}.output-grid{gap:7px}.output-grid strong{font-size:9px}.output-grid span{font-size:6px}
+#urbion-final-command-centre .fcc-footer{padding:18px 2px 4px;font-size:7px}.fcc-footer b{font-size:8px}.fcc-footer button{font-size:7px}
+#urbion-final-command-centre .fcc-modal{background:rgba(2,7,12,.82);backdrop-filter:blur(13px)}.fcc-modal-box{width:min(640px,100%);padding:25px;border-radius:16px;box-shadow:var(--shadow)}.fcc-modal-box h2{font-size:27px}.fcc-modal-box p{font-size:10px;line-height:1.8}
+#urbion-final-command-centre::after{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 0 54%,rgba(88,201,232,.018) 54% 64%,transparent 64%),repeating-linear-gradient(90deg,transparent 0 48px,rgba(103,230,197,.012) 48px 49px);opacity:.7;z-index:0}
+#urbion-final-command-centre .fcc-header,#urbion-final-command-centre .fcc-layout{position:relative;z-index:1}
+body.fcc-light #urbion-final-command-centre{--bg:#edf5f7;--surface:#fff;--surface2:#f5fafb;--surface3:#e8f1f4;--border:#cedfe5;--border-strong:#a8c4cd;--text:#10242d;--muted:#5d7783;--soft:#46616c;background:radial-gradient(circle at 72% 0%,rgba(88,201,232,.12),transparent 32%),linear-gradient(180deg,#f6fbfc,#edf5f7)}
+body.fcc-light #urbion-final-command-centre .fcc-header,body.fcc-light #urbion-final-command-centre .fcc-case,body.fcc-light #urbion-final-command-centre .fcc-rail{background:rgba(247,251,252,.90)}
+body.fcc-light #urbion-final-command-centre .fcc-card,body.fcc-light #urbion-final-command-centre .fcc-map-card{background:linear-gradient(150deg,#fff,#f1f7f9);box-shadow:0 14px 38px rgba(33,78,92,.10)}
+body.fcc-light #urbion-final-command-centre .fcc-case input,body.fcc-light #urbion-final-command-centre .fcc-case select,body.fcc-light #urbion-final-command-centre .fcc-tabs button,body.fcc-light #urbion-final-command-centre .fcc-map-actions button{background:#fff;color:#10242d}
+@media(max-width:1250px){#urbion-final-command-centre .fcc-layout{grid-template-columns:300px minmax(0,1fr)}#urbion-final-command-centre .fcc-rail{grid-column:1/-1;position:relative;top:auto;height:auto;border-left:0;border-top:1px solid #1d3442;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}#urbion-final-command-centre .fcc-rail>.fcc-kicker,#urbion-final-command-centre .fcc-rail>h2{grid-column:1/-1}}
+@media(max-width:900px){#urbion-final-command-centre .fcc-layout{grid-template-columns:1fr}#urbion-final-command-centre .fcc-case{position:relative;top:auto;height:auto;border-right:0;border-bottom:1px solid #1d3442}#urbion-final-command-centre .fcc-rail{display:block}#urbion-final-command-centre .fcc-main{padding:12px}#urbion-final-command-centre .fcc-commandbar{display:block}.fcc-tabs{margin-top:10px}#urbion-final-command-centre .e-row{grid-template-columns:1fr 100px}.e-row>span,.e-row>small{display:none}}
+@media(max-width:600px){#urbion-final-command-centre .fcc-header{padding:0 11px}.fcc-brand div{display:none}#urbion-final-command-centre .fcc-brand img{width:145px}.fcc-system{display:none}#urbion-final-command-centre .fcc-main{padding:9px}.fcc-commandbar h2{font-size:21px}#urbion-final-command-centre #fcc-map{min-height:340px;height:54vh}.fcc-map-head{align-items:flex-start}.fcc-map-actions{flex-wrap:wrap;justify-content:flex-end}}
+@media(prefers-reduced-motion:reduce){#urbion-final-command-centre *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+`;
+  document.head.appendChild(s);
+ }
+ const rootTitle=root.querySelector('.fcc-commandbar h2');if(rootTitle)rootTitle.textContent='From site intelligence to defensible planning decisions';
+ const system=document.getElementById('fcc-system-text');if(system)system.textContent='PHASE-E.8 · LIVE';
+ const status=document.getElementById('fcc-case-status');if(status&&!status.dataset.premium){status.dataset.premium='1';status.textContent='Ready to build a source-labelled planning evidence chain.';}
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,0),{once:true});else setTimeout(boot,0);
+})();
