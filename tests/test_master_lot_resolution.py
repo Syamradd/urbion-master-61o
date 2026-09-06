@@ -24,7 +24,8 @@ def test_lot_resolver_exact_lot_becomes_verified_candidate_not_statutory_authori
     assert result["status"] == "VERIFIED_CANDIDATE"
     assert "LOT" in result["corroboration"]
     assert result["authority_model"].startswith("OFFICIAL_SOURCE_CANDIDATE")
-    assert result["jupem_verification"]["status"] if "jupem_verification" in result else True
+    assert any(source["id"] == "jupem-mylot" and source["evidence"] == "MANUAL_VERIFICATION" for source in result["sources"])
+    assert result["decision_safe"] is False
 
 
 def test_lot_resolver_discloses_source_gap(monkeypatch):
