@@ -7,6 +7,7 @@ def test_v4_is_wired_and_preserves_release_identity():
     server = (ROOT / 'championship_server.py').read_text(encoding='utf-8')
     assert 'urbion_championship_ux_v4.js' in server
     assert 'urbion_championship_ux_v4_plus.js' in server
+    assert 'urbion_championship_ux_v4_flow.js' in server
     assert 'app.state.frontend_release="MASTER-330"' in server
 
 
@@ -43,6 +44,13 @@ def test_v4_plus_has_bilingual_theme_and_professional_utility_chrome():
     assert 'urbion-map-fullscreen' in text
     assert 'toLocaleString' in text
     assert 'MASTER-330' in text
+
+
+def test_v4_flow_guides_analysis_to_evidence():
+    text = (ROOT / 'urbion_championship_ux_v4_flow.js').read_text(encoding='utf-8')
+    assert "nav('evidence')" in text
+    assert 'analysis complete' in text.lower()
+    assert 'NEXT · VIEW EVIDENCE' in text
 
 
 def test_v4_official_authority_lists_use_long_names():
