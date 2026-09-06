@@ -67,4 +67,4 @@ for _path in ("/urbion_championship_workstation_v2.js","/urbion_championship_vis
     for _idx,_route in enumerate(app.router.routes):
         if getattr(_route,"path",None)==_path: app.router.routes.insert(0,app.router.routes.pop(_idx)); break
 app.state.frontend_entrypoint="championship.html"
-app.state.frontend_release="MASTER-330-VISUAL-OVERHAUL"
+app.state.frontend_release="MASTER-330"
