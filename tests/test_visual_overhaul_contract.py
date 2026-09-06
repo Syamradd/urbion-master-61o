@@ -22,6 +22,13 @@ def test_visual_overhaul_assets_and_routes_are_wired():
     assert 'MOBILITY' in visual
     assert '#urbion-workstation-v2,#urbion-decision-os{display:none!important}' in visual
     assert 'm.eachLayer' in cleanup
+    assert 'SATELLITE · ESRI' in cleanup
+    assert 'HYBRID · ESRI' in cleanup
+    assert 'TOPO · ESRI' in cleanup
+    assert 'LIGHT · CARTO' in cleanup
+    assert 'DARK · CARTO' in cleanup
+    assert 'TERRAIN · OTM' in cleanup
+    assert 'urbion-basemap-dock' in cleanup
 
 
 def test_logo_lockups_are_scalable_svg():
