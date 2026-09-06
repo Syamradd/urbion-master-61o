@@ -13,6 +13,7 @@ from urbion_what_if import execute_what_if
 from urbion_scenario_ranking import rank_scenarios
 from urbion_evidence_ledger import build_evidence_ledger
 from server import assess_core, AssessmentRequest
+from urbion_network_intelligence import network_distance_m
 
 
 def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constraints=None, environmental_context=None):
@@ -23,6 +24,10 @@ def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constrai
     if environmental_context:
         spatial["environment"] = environmental_context
         spatial["evidence_model"]["environmental_overlay"] = "SOURCE_CONTEXT ONLY"
+    network_target = raw.get("network_target_lat"), raw.get("network_target_lon")
+    if all(value is not None for value in network_target):
+        spatial["network_access"] = network_distance_m(site["latitude"], site["longitude"], float(network_target[0]), float(network_target[1]))
+        spatial["evidence_model"]["network_access"] = spatial["network_access"].get("evidence_state", "UNVERIFIED")
     knowledge = build_knowledge_pack(assessment.get("development_type") or raw.get("development_type") or "", site.get("pbt") or raw.get("pbt") or "MBMB", spatial)
     impact = build_impact_intelligence(spatial=spatial, assessment=assessment, environmental_context=environmental_context)
     variant_list = variants or []
