@@ -1,1 +1,0 @@
-Final UI shell: one primary workstation with case controls, central GIS workspace, and Planning Intelligence rail; legacy floating overlays removed; fixed URBION HORIZON logo retained.
