@@ -8,12 +8,14 @@ def test_final_command_centre_is_wired():
     assert 'urbion_championship_final_command_center.js' in server
     assert 'urbion_championship_final_command_center_hotfix.js' in server
     assert 'urbion_championship_final_command_center_policy.js' in server
-    assert 'app.state.frontend_release="MASTER-330"' in server
+    assert 'urbion_championship_final_runtime_enforcer.js' in server
+    assert 'app.state.frontend_release="MASTER-331"' in server
 
 
 def test_final_command_centre_covers_required_case_flow_and_support_surfaces():
     ui = (ROOT / 'urbion_championship_final_command_center.js').read_text(encoding='utf-8')
     policy_ui = (ROOT / 'urbion_championship_final_command_center_policy.js').read_text(encoding='utf-8')
+    enforcer = (ROOT / 'urbion_championship_final_runtime_enforcer.js').read_text(encoding='utf-8')
     required = [
         'Site / Project Full Name', 'Latitude / Longitude', 'State',
         'Pihak Berkuasa Tempatan (PBT)', 'District / Daerah', 'Lot / UPI Reference',
@@ -35,6 +37,9 @@ def test_final_command_centre_covers_required_case_flow_and_support_surfaces():
     ]
     missing = [item for item in required if item not in ui]
     assert not missing, f'missing final command-centre scope: {missing}'
+    assert 'FINAL COMMAND CENTRE DID NOT MOUNT' in enforcer
+    assert 'urbion_championship_final_command_center.js?runtime=' in enforcer
+    assert 'urbion_championship_ux_v5_integrity.js?runtime=' in enforcer
     policy_required = [
         'Policy & Guideline Intelligence', 'Garis Panduan Perancangan',
         'Town and Country Planning Act 1976 (Act 172)', 'National Land Code 1965 (Act 828)',
