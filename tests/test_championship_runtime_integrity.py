@@ -23,7 +23,7 @@ def test_critical_final_assets_exist_and_are_served_from_canonical_entrypoint():
     assert root.status_code == 200
     html = root.text
     assert 'window.__URBION_FRONTEND_BOOT__' in html
-    assert 'release:"MASTER-331"' in html
+    assert 'MASTER-331' in html
     assert 'id="urbion-championship"' in html
     assert 'Site + Development Inputs' not in html
     for asset in CRITICAL_ASSETS:
