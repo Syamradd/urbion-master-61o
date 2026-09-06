@@ -1,0 +1,24 @@
+name: URBION UX Contract
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  ux-contract:
+    name: ux-contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run UX contracts
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_championship_ux_v4_contract.py tests/test_championship_ux_v5_contract.py test_championship_entrypoint.py
