@@ -2,17 +2,20 @@
 function reconcile(){
  const legacy=['urbion-decision-os','urbion-workstation-v2','urbion-theme-toggle'];
  legacy.forEach(id=>document.getElementById(id)?.remove());
- const chrome=document.getElementById('urbion-chrome'),tools=document.getElementById('ux5-tools'),menu=document.getElementById('ux5-menu');
- if(chrome){tools?.remove();menu?.remove()}
- $$('#urbion-workstation-v2,#urbion-decision-os,#urbion-theme-toggle').forEach(e=>e.remove());
+ document.getElementById('urbion-chrome')?.remove();
+ document.getElementById('ux-footer')?.remove();
+ document.getElementById('ux5-menu')?.remove();
  $$('body *').forEach(el=>{if(el===document.body||el.id==='ux-v5-rail'||el.closest('#ux-v5-rail'))return;const t=(el.textContent||'').trim();if(t==='PLANNER HANDOFF'&&el.children.length===0)el.remove()});
  const logo=$('.header .logo');
  if(logo){logo.textContent='';logo.setAttribute('aria-label','URBION HORIZON');logo.style.cssText+=';width:190px!important;height:48px!important;border:0!important;border-radius:0!important;background:transparent url(/urbion_logo_dark.svg) left center/contain no-repeat!important;color:transparent!important;';if(!logo.dataset.urbionTheme){logo.dataset.urbionTheme='1';new MutationObserver(()=>{logo.style.backgroundImage=document.body.classList.contains('urbion-light')?'url(/urbion_logo_light.svg)':'url(/urbion_logo_dark.svg)'}).observe(document.body,{attributes:true,attributeFilter:['class']})}}
  if(!document.getElementById('urbion-final-integrity-style')){const s=document.createElement('style');s.id='urbion-final-integrity-style';s.textContent=`
- #urbion-decision-os,#urbion-workstation-v2,#urbion-theme-toggle{display:none!important}
+ #urbion-decision-os,#urbion-workstation-v2,#urbion-theme-toggle,#ux-footer{display:none!important}
  body{overflow-x:hidden!important}
  .header{height:74px!important;padding:0 24px!important;background:rgba(4,13,21,.94)!important;backdrop-filter:blur(20px)!important;z-index:5000!important}
  .header .logo{flex:0 0 190px!important}
+ #ux5-tools{display:flex!important;align-items:center!important;gap:5px!important}
+ #ux5-tools button{width:32px!important;height:30px!important;border:1px solid #234151!important;border-radius:8px!important;background:#081722!important;color:#9db4c0!important;font-size:8px!important;font-weight:900!important}
+ #ux5-tools button:hover{border-color:#5ee7c2!important;color:#5ee7c2!important}
  .layout{grid-template-columns:280px minmax(0,1fr) 318px!important;min-height:calc(100vh - 74px)!important}
  .sidebar{top:74px!important;height:calc(100vh - 74px)!important;padding:18px 15px!important}
  .main{padding:16px 18px 30px!important;min-width:0!important}
