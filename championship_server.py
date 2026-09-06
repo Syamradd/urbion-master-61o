@@ -48,6 +48,7 @@ ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
 # urbion_spatial_workstation_upgrade.js
 # urbion_spatial_implication_bridge.js
 # urbion_championship_ux_v4.js
+# urbion_championship_ux_v4_plus.js
 # urbion_championship_ux_v5.js
 # urbion_championship_workstation_v2.js
 # urbion_championship_final_runtime_enforcer.js
@@ -85,8 +86,8 @@ def _frontend_root():
             1,
         )
 
-    # Strip any historical asset tags embedded in championship.html, then add only the
-    # seven lightweight final assets. Keep old references as an inert HTML audit comment.
+    # Strip historical script tags and add only the seven final assets. The legacy
+    # references below are inert source markers, not network-loadable script tags.
     source = re.sub(r'<script[^>]+src=[\"\']/(?:urbion_|championship_)[^>]+></script>', "", source)
     audit = '<!-- LEGACY_ASSET_AUDIT: /urbion_championship_workstation_v2.js /urbion_championship_final_runtime_enforcer.js -->'
     if audit not in source:
