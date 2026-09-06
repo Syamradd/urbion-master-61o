@@ -31,6 +31,3 @@ function boot(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,0);
 })();
-
-// Championship Review Layer loader — kept here so the final command centre remains a single canonical entrypoint.
-(()=>{const load=()=>{if(window.__URBION_CHAMPION_REVIEW_LOADED)return;const s=document.createElement('script');s.src='/urbion_championship_champion_review.js';s.async=false;s.onload=()=>{window.__URBION_CHAMPION_REVIEW_LOADED=true};document.head.appendChild(s)};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(load,120));else setTimeout(load,120)})();
