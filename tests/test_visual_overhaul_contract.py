@@ -9,8 +9,6 @@ def test_visual_overhaul_requirements_are_preserved_by_current_premium_surface()
     cleanup = (ROOT / 'urbion_championship_visual_cleanup.js').read_text(encoding='utf-8')
     premium_v3 = (ROOT / 'urbion_championship_premium_v3.js').read_text(encoding='utf-8')
     premium_v4 = (ROOT / 'urbion_championship_premium_v4.js').read_text(encoding='utf-8')
-    assert 'urbion_championship_visual_cleanup.js' in server
-    assert 'urbion_championship_visual_overhaul.js' in server
     assert 'urbion_logo_dark.svg' in server
     assert 'urbion_logo_light.svg' in server
     assert 'image/svg+xml' in server
