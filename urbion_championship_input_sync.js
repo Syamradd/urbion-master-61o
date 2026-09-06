@@ -28,6 +28,22 @@
   window.URBION.invalidateAssessment=source=>invalidate(source||'unknown');
   window.URBION.assess=sharedAssess;
   window.URBION.getAssessmentStats=()=>({version,assessCount,cached:Boolean(cached),cachedKey});
+  function hookLeaflet(){
+    if(!window.L||!window.L.map||window.L.map.__urbionWrapped)return false;
+    const original=window.L.map;
+    const wrapped=function(){
+      const m=original.apply(this,arguments);
+      window.__URBION_MAPS=window.__URBION_MAPS||[];
+      window.__URBION_MAPS.push(m);
+      const target=arguments[0];
+      const node=typeof target==='string'?document.getElementById(target):target;
+      if(node)node.__urbionMap=m;
+      return m;
+    };
+    wrapped.__urbionWrapped=true;
+    window.L.map=wrapped;
+    return true;
+  }
   function publish(source){
     const s=snapshot();
     const coords=['lat','lon','todlat','todlon'];
@@ -41,8 +57,9 @@
   function schedule(source){clearTimeout(timer);timer=setTimeout(()=>publish(source),180);}
   function bind(){
     ids.forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',()=>schedule(`input:${id}`));el.addEventListener('change',()=>schedule(`change:${id}`));});
-    window.addEventListener('urbion:site-change',e=>{if(e.detail?.source?.startsWith('input:')||e.detail?.source?.startsWith('change:'))return;persistInputs();invalidate(e.detail?.source||'map');status('Site changed on map. Run analysis to refresh the decision chain.');});
+    window.addEventListener('urbion:site-change',e=>{if(e.detail?.source?.startsWith('input:')||e.detail?.source?.startsWith('change:'))return;persistInputs();invalidate(e.detail?.source||'map');});
     window.addEventListener('urbion:analysis',()=>status('Analysis complete. Decision chain refreshed.'));
+    hookLeaflet();
     window.dispatchEvent(new CustomEvent('urbion:inputs-ready',{detail:{inputs:snapshot()}}));
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
