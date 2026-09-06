@@ -116,5 +116,5 @@ for _path in ("/urbion_championship_unified_bridge.js","/urbion_lot_resolver_ui.
         if getattr(_route, "path", None) == _path:
             app.router.routes.insert(0, app.router.routes.pop(_idx))
             break
-app.state.frontend_entrypoint = "championship.html"
+app.state.frontend_entrypoint="championship.html"
 app.state.frontend_release="MASTER-330"
