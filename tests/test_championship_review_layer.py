@@ -42,3 +42,11 @@ def test_hotfix_routes_controlled_scenarios_to_canonical_what_if_api():
     assert "variants:[{id:'SELECTED'" in hotfix
     assert "urbion:what-if" in hotfix
     assert "fetch('/assess'" in hotfix
+
+
+def test_km_readiness_requires_explicit_category_and_passes_it_to_backend():
+    layer = (ROOT / "urbion_championship_champion_review.js").read_text(encoding="utf-8")
+    assert "fcr-km-category" in layer
+    assert "KECIL" in layer and "SEDERHANA" in layer and "BESAR" in layer
+    assert "km_category" in layer
+    assert "q.set('km_category',cat)" in layer
