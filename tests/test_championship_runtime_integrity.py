@@ -14,6 +14,7 @@ CRITICAL_ASSETS = (
     'urbion_championship_final_command_center_policy.js',
     'urbion_championship_champion_review.js',
     'urbion_championship_final_runtime_enforcer.js',
+    'urbion_championship_gap_closure.js',
 )
 
 
@@ -26,7 +27,7 @@ def test_critical_final_assets_exist_and_are_served_from_canonical_entrypoint():
     assert app.state.frontend_release == 'MASTER-331'
     assert app.state.frontend_entrypoint == 'championship.html'
     assert 'id="urbion-championship"' in html
-    assert 'Site + Development Inputs' not in html
+    assert '/urbion_championship_gap_closure.js' in html
     for asset in CRITICAL_ASSETS:
         assert f'/{asset}' in html
         response = client.get(f'/{asset}')
@@ -40,6 +41,14 @@ def test_canonical_root_has_no_legacy_dashboard_mount_markers():
     html = client.get('/').text
     for marker in ('urbion-workstation-v2', 'urbion-decision-os', 'Decision OS', 'Planner Workstation'):
         assert marker not in html
+
+
+def test_gap_closure_has_all_championship_completion_surfaces_without_polling():
+    text = (ROOT / 'urbion_championship_gap_closure.js').read_text(encoding='utf-8')
+    for token in ('AI EXPLAIN', 'STATION / MOBILITY', 'OPEN JUDGE VIEW', 'EXPORT UNIFIED PACKAGE', 'REFRESH CASCADE', 'urbion-horizon-unified-case-package'):
+        assert token in text
+    assert 'setInterval(' not in text
+    assert 'new MutationObserver' not in text
 
 
 def test_all_critical_final_javascript_assets_pass_node_syntax_check_when_available():
