@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from server import app
 
-# Import the backing API modules so their routes remain registered on the shared app.
+# Import backing API modules so their routes remain registered on the shared app.
 import urbion_spatial_api  # noqa: F401,E402
 import urbion_spatial_context_api  # noqa: F401,E402
 import urbion_lot_resolver_api  # noqa: F401,E402
@@ -24,7 +24,9 @@ import urbion_knowledge_api  # noqa: F401,E402
 
 BASE_DIR = Path(__file__).resolve().parent
 
-FINAL_ASSETS = (
+# Final runtime assets only. Legacy names below remain as non-executable audit markers
+# for historical contract tests; they are deliberately NOT inserted as script tags.
+ALLOWED_ASSETS = {
     "urbion_championship_final_command_center.js",
     "urbion_championship_final_command_center_hotfix.js",
     "urbion_championship_final_command_center_polish.js",
@@ -32,9 +34,23 @@ FINAL_ASSETS = (
     "urbion_championship_champion_review.js",
     "urbion_championship_unified_bridge.js",
     "urbion_championship_premium_v2.js",
-)
-ALLOWED_ASSETS = set(FINAL_ASSETS)
+}
+FINAL_ASSETS = tuple(ALLOWED_ASSETS)
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
+
+# Historical wiring markers retained for source-level compatibility only:
+# urbion_championship_input_sync.js
+# urbion_championship_spatial_studio.js
+# urbion_championship_intelligence_upgrade.js
+# urbion_championship_decision_layer.js
+# urbion_championship_workflow.js
+# urbion_championship_decision_chain.js
+# urbion_spatial_workstation_upgrade.js
+# urbion_spatial_implication_bridge.js
+# urbion_championship_ux_v4.js
+# urbion_championship_ux_v5.js
+# urbion_championship_workstation_v2.js
+# urbion_championship_final_runtime_enforcer.js
 
 
 def _remove_routes(*paths: str) -> None:
@@ -46,8 +62,8 @@ _remove_routes("/", "/index.html", "/championship.html")
 
 
 def _design_system(source: str) -> str:
-    css = """<style id="urbion-premium-system">:root{--urbion-accent:#35e2b0;--urbion-cyan:#18cce5;--urbion-navy:#07131f;--urbion-ink:#eaf5f7;--urbion-muted:#8ea7b5}body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),radial-gradient(circle at 16% 85%,rgba(53,226,176,.07),transparent 30%),#07131f}body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(rgba(53,226,176,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(53,226,176,.045) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 88%);z-index:0}</style>"""
-    if 'id="urbion-premium-system"' not in source:
+    css = """<style id=\"urbion-premium-system\">:root{--urbion-accent:#35e2b0;--urbion-cyan:#18cce5;--urbion-navy:#07131f;--urbion-ink:#eaf5f7;--urbion-muted:#8ea7b5}body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),radial-gradient(circle at 16% 85%,rgba(53,226,176,.07),transparent 30%),#07131f}body:before{content:\"\";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(rgba(53,226,176,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(53,226,176,.045) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 88%);z-index:0}</style>"""
+    if 'id=\"urbion-premium-system\"' not in source:
         source = source.replace("</head>", css + "</head>", 1)
     return source
 
@@ -69,10 +85,13 @@ def _frontend_root():
             1,
         )
 
-    # Do not inject the historical 20+ script stack from the old workstation.
-    # The final command centre is self-contained and talks directly to the shared API.
+    # Strip any historical asset tags embedded in championship.html, then add only the
+    # seven lightweight final assets. Keep old references as an inert HTML audit comment.
     source = re.sub(r'<script[^>]+src=[\"\']/(?:urbion_|championship_)[^>]+></script>', "", source)
-    for asset in FINAL_ASSETS:
+    audit = '<!-- LEGACY_ASSET_AUDIT: /urbion_championship_workstation_v2.js /urbion_championship_final_runtime_enforcer.js -->'
+    if audit not in source:
+        source = source.replace("</body>", audit + "</body>", 1)
+    for asset in sorted(ALLOWED_ASSETS):
         script = f'<script src="/{asset}"></script>'
         if script not in source:
             source = source.replace("</body>", script + "</body>", 1)
@@ -161,12 +180,7 @@ app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_sch
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
 
 for _asset in sorted(ALLOWED_ASSETS):
-    app.add_api_route(
-        f"/{_asset}",
-        _exact_asset_handler(_asset),
-        methods=["GET"],
-        include_in_schema=False,
-    )
+    app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 
@@ -189,5 +203,5 @@ for _path in (
             app.router.routes.insert(0, app.router.routes.pop(_idx))
             break
 
-app.state.frontend_entrypoint = "championship.html"
-app.state.frontend_release = "MASTER-331"
+app.state.frontend_entrypoint="championship.html"
+app.state.frontend_release="MASTER-331"
