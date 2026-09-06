@@ -9,6 +9,8 @@ def test_final_command_centre_is_wired():
     assert 'urbion_championship_final_command_center_hotfix.js' in server
     assert 'urbion_championship_final_command_center_policy.js' in server
     assert 'urbion_championship_final_runtime_enforcer.js' in server
+    assert 'def _exact_asset_handler(asset_name: str):' in server
+    assert 'for _asset in sorted(ALLOWED_ASSETS):' in server
     assert 'app.state.frontend_release="MASTER-331"' in server
 
 
