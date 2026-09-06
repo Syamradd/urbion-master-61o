@@ -28,4 +28,4 @@ def test_ux_v3_binds_real_layer_opacity_and_removes_floating_panels():
 def test_ux_v3_is_wired_and_release_identity_is_preserved():
     server = (ROOT / 'championship_server.py').read_text(encoding='utf-8')
     assert 'urbion_championship_ux_v3.js' in server
-    assert 'app.state.frontend_release="MASTER-330"' in server
+    assert 'app.state.frontend_release="MASTER-331"' in server
