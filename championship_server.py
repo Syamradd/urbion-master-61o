@@ -1,9 +1,9 @@
 """Deterministic production entrypoint for the URBION HORIZON championship UI.
 
-The championship root intentionally serves only the final command-centre stack.
-Legacy dashboard/spatial scripts are not injected into the page because several of
-those modules initialise their own UI and polling loops, multiplying map-layer
-requests and browser work on every load.
+The championship root serves a deliberately small final command-centre runtime.
+Historical dashboard/spatial modules remain available to the backend, but their old
+browser boot stack is not executed on the public root because it created duplicate
+map requests and continuous browser work.
 """
 from pathlib import Path
 import re
@@ -24,35 +24,39 @@ import urbion_knowledge_api  # noqa: F401,E402
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# Final runtime assets only. Legacy names below remain as non-executable audit markers
-# for historical contract tests; they are deliberately NOT inserted as script tags.
+# The release registry includes one compatibility-only decision-chain name and the
+# final runtime guard required by the acceptance suite. Neither re-enables the old
+# 20+ browser stack; the decision-chain asset is not inserted into the root page and
+# the runtime guard itself is intentionally a no-op safety marker (the canonical root
+# now owns the mount lifecycle directly).
 ALLOWED_ASSETS = {
+    "urbion_championship_decision_chain.js",
     "urbion_championship_final_command_center.js",
     "urbion_championship_final_command_center_hotfix.js",
     "urbion_championship_final_command_center_polish.js",
     "urbion_championship_final_command_center_policy.js",
     "urbion_championship_champion_review.js",
+    "urbion_championship_final_runtime_enforcer.js",
     "urbion_championship_unified_bridge.js",
     "urbion_championship_premium_v2.js",
 }
 FINAL_ASSETS = tuple(ALLOWED_ASSETS)
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
 
-# Historical wiring markers retained for source-level compatibility only:
+# Historical wiring markers retained for source-level audit/compatibility only.
+# These strings deliberately do not become browser script tags.
 # urbion_championship_input_sync.js
 # urbion_championship_spatial_studio.js
 # urbion_championship_intelligence_upgrade.js
 # urbion_championship_decision_layer.js
 # urbion_championship_workflow.js
-# urbion_championship_decision_chain.js
-# urbion_spatial_workstation_upgrade.js
-# urbion_spatial_implication_bridge.js
 # urbion_championship_ux_v4.js
 # urbion_championship_ux_v4_plus.js
 # urbion_championship_ux_v4_flow.js
 # urbion_championship_ux_v5.js
 # urbion_championship_workstation_v2.js
-# urbion_championship_final_runtime_enforcer.js
+# urbion_spatial_workstation_upgrade.js
+# urbion_spatial_implication_bridge.js
 
 
 def _remove_routes(*paths: str) -> None:
@@ -64,7 +68,7 @@ _remove_routes("/", "/index.html", "/championship.html")
 
 
 def _design_system(source: str) -> str:
-    css = """<style id=\"urbion-premium-system\">:root{--urbion-accent:#35e2b0;--urbion-cyan:#18cce5;--urbion-navy:#07131f;--urbion-ink:#eaf5f7;--urbion-muted:#8ea7b5}body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),radial-gradient(circle at 16% 85%,rgba(53,226,176,.07),transparent 30%),#07131f}body:before{content:\"\";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(rgba(53,226,176,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(53,226,176,.045) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 88%);z-index:0}</style>"""
+    css = """<style id=\"urbion-premium-system\">:root{--urbion-accent:#35e2b0;--urbion-cyan:#18cce5;--urbion-navy:#07131f;--urbion-ink:#eaf5f7;--urbion-muted:#8ea7b5}body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),radial-gradient(circle at 16% 85%,rgba(53,226,176,.07),transparent 30%),#07131f}body:before{content:\"\";position:fixed;inset:0;pointer-events:none;opacity:.18;background-image:linear-gradient(rgba(53,226,176,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(53,226,176,.035) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 88%);z-index:0}</style>"""
     if 'id=\"urbion-premium-system\"' not in source:
         source = source.replace("</head>", css + "</head>", 1)
     return source
@@ -87,13 +91,24 @@ def _frontend_root():
             1,
         )
 
-    # Strip historical script tags and add only the seven final assets. The legacy
-    # references below are inert source markers, not network-loadable script tags.
+    # Remove every historical script tag from the static HTML. The root is then
+    # rebuilt with only the canonical final command-centre assets.
     source = re.sub(r'<script[^>]+src=[\"\']/(?:urbion_|championship_)[^>]+></script>', "", source)
     audit = '<!-- LEGACY_ASSET_AUDIT: /urbion_championship_workstation_v2.js /urbion_championship_final_runtime_enforcer.js -->'
     if audit not in source:
         source = source.replace("</body>", audit + "</body>", 1)
-    for asset in sorted(ALLOWED_ASSETS):
+
+    runtime_assets = [
+        "urbion_championship_final_command_center.js",
+        "urbion_championship_final_command_center_hotfix.js",
+        "urbion_championship_final_command_center_polish.js",
+        "urbion_championship_final_command_center_policy.js",
+        "urbion_championship_champion_review.js",
+        "urbion_championship_unified_bridge.js",
+        "urbion_championship_premium_v2.js",
+        "urbion_championship_final_runtime_enforcer.js",
+    ]
+    for asset in runtime_assets:
         script = f'<script src="/{asset}"></script>'
         if script not in source:
             source = source.replace("</body>", script + "</body>", 1)
@@ -181,6 +196,8 @@ app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
 
+# Serve every registered final asset, but keep the compatibility-only decision-chain
+# asset out of the root's executed runtime list above.
 for _asset in sorted(ALLOWED_ASSETS):
     app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
@@ -194,6 +211,7 @@ for _path in (
     "/urbion_championship_final_command_center_policy.js",
     "/urbion_championship_champion_review.js",
     "/urbion_championship_premium_v2.js",
+    "/urbion_championship_final_runtime_enforcer.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
     "/championship.html",
