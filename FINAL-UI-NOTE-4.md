@@ -1,0 +1,1 @@
+Final shell target: one primary workstation, real URBION HORIZON logo, no legacy floating dashboard overlays, V5 Planning Intelligence rail preserved.
