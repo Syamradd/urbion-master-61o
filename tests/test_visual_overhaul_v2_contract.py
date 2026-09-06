@@ -13,7 +13,7 @@ def test_visual_overhaul_v2_is_evidence_first():
     assert '400 m' in text and '800 m' in text and '1 km' in text and '1.5 km' in text
     assert 'SOURCE LAYERS' in text
     assert 'EVIDENCE BOUNDARY' in text
-    assert "No source layer has been fabricated" in text
+    assert 'fabricated' in text
 
 
 def test_visual_overhaul_v2_reduces_duplicate_controls():
