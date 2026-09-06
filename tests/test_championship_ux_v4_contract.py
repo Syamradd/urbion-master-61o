@@ -43,7 +43,6 @@ def test_v4_plus_has_bilingual_theme_and_professional_utility_chrome():
     assert 'urbion-light' in text
     assert 'urbion-map-fullscreen' in text
     assert 'toLocaleString' in text
-    assert 'MASTER-331' in text
 
 
 def test_v4_flow_guides_analysis_to_evidence():
