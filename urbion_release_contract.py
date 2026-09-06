@@ -84,8 +84,8 @@ def audit_deployment_manifest(manifest: dict[str, Any] | None) -> dict[str, Any]
         failures.append("release:MASTER-132_REQUIRED")
     if manifest.get("engine_version") != "PHASE-E.8":
         failures.append("engine_version:PHASE-E.8_REQUIRED")
-    if manifest.get("frontend_release") != "MASTER-330":
-        failures.append("frontend_release:MASTER-330_REQUIRED")
+    if manifest.get("frontend_release") != "MASTER-331":
+        failures.append("frontend_release:MASTER-331_REQUIRED")
     if manifest.get("decision_authority") != "NONE":
         failures.append("decision_authority:NONE_REQUIRED")
     if manifest.get("statutory_verification") != "NOT_CLAIMED":
