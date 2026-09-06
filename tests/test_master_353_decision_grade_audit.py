@@ -33,9 +33,13 @@ def test_master_353_unified_bridge_remains_the_state_handoff():
 def test_master_353_existing_spatial_and_lot_layers_are_real_source_backed():
     lot = read("urbion_lot_resolver.py")
     spatial = read("urbion_spatial_context.py")
+    sources = read("urbion_data_sources.py")
     assert "scharms.planmalaysia.gov.my" in lot
     assert "returnGeometry" in lot
-    assert "GTsemasa_04" in spatial or "GTzoning_04" in spatial
+    # Spatial context consumes the canonical public i-Plan catalogue/contracts;
+    # the historical ArcGIS service IDs are intentionally not hard-coded here.
+    assert "iplan-current" in spatial or "iplan-current" in sources
+    assert "iplan-zoning" in spatial or "iplan-zoning" in sources
     assert "NO_FEATURE" in lot
     assert "EVIDENCE_GAP" in lot
 
