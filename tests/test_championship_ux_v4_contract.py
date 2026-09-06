@@ -8,7 +8,7 @@ def test_v4_is_wired_and_preserves_release_identity():
     assert 'urbion_championship_ux_v4.js' in server
     assert 'urbion_championship_ux_v4_plus.js' in server
     assert 'urbion_championship_ux_v4_flow.js' in server
-    assert 'app.state.frontend_release="MASTER-330"' in server
+    assert 'app.state.frontend_release="MASTER-331"' in server
 
 
 def test_v4_has_guided_case_information_architecture():
@@ -43,7 +43,7 @@ def test_v4_plus_has_bilingual_theme_and_professional_utility_chrome():
     assert 'urbion-light' in text
     assert 'urbion-map-fullscreen' in text
     assert 'toLocaleString' in text
-    assert 'MASTER-330' in text
+    assert 'MASTER-331' in text
 
 
 def test_v4_flow_guides_analysis_to_evidence():
