@@ -6,12 +6,13 @@ function reconcile(){
  document.getElementById('ux-footer')?.remove();
  $$('body *').forEach(el=>{if(el===document.body||el.id==='ux-v5-rail'||el.id==='ux5-menu'||el.closest('#ux-v5-rail')||el.closest('#ux5-menu'))return;const t=(el.textContent||'').trim();if(t==='PLANNER HANDOFF'&&el.children.length===0)el.remove()});
  const logo=$('.header .logo');
- if(logo){logo.textContent='';logo.setAttribute('aria-label','URBION HORIZON');logo.style.cssText+=';width:190px!important;height:48px!important;border:0!important;border-radius:0!important;background:transparent url(/urbion_logo_dark.svg) left center/contain no-repeat!important;color:transparent!important;';if(!logo.dataset.urbionTheme){logo.dataset.urbionTheme='1';new MutationObserver(()=>{logo.style.backgroundImage=document.body.classList.contains('urbion-light')?'url(/urbion_logo_light.svg)':'url(/urbion_logo_dark.svg)'}).observe(document.body,{attributes:true,attributeFilter:['class']})}}
+ if(logo){logo.textContent='';logo.setAttribute('aria-label','URBION HORIZON');logo.style.cssText+=';width:220px!important;height:48px!important;border:0!important;border-radius:0!important;background:transparent url(/urbion_logo_dark.svg) left center/contain no-repeat!important;color:transparent!important;';if(!logo.dataset.urbionTheme){logo.dataset.urbionTheme='1';new MutationObserver(()=>{logo.style.backgroundImage=document.body.classList.contains('urbion-light')?'url(/urbion_logo_light.svg)':'url(/urbion_logo_dark.svg)'}).observe(document.body,{attributes:true,attributeFilter:['class']})}}
  if(!document.getElementById('urbion-final-integrity-style')){const s=document.createElement('style');s.id='urbion-final-integrity-style';s.textContent=`
  #urbion-decision-os,#urbion-workstation-v2,#urbion-theme-toggle,#ux-footer{display:none!important}
  body{overflow-x:hidden!important}
  .header{height:74px!important;padding:0 24px!important;background:rgba(4,13,21,.94)!important;backdrop-filter:blur(20px)!important;z-index:5000!important}
- .header .logo{flex:0 0 190px!important}
+ .header .brand>div:not(.logo){display:none!important}
+ .header .logo{flex:0 0 220px!important}
  #ux5-tools{display:flex!important;align-items:center!important;gap:5px!important}
  #ux5-tools button{width:32px!important;height:30px!important;border:1px solid #234151!important;border-radius:8px!important;background:#081722!important;color:#9db4c0!important;font-size:8px!important;font-weight:900!important}
  #ux5-tools button:hover{border-color:#5ee7c2!important;color:#5ee7c2!important}
