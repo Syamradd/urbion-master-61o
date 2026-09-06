@@ -10,6 +10,7 @@ from urbion_copilot import build_copilot_packet
 from urbion_validation import validation_cases, run_validation_case
 from urbion_planner_handoff import build_planner_handoff_from_copilot
 from urbion_judge_demo import build_judge_demo
+from urbion_llm_provider import generate_planner_explanation
 
 router = APIRouter(tags=["planning-agents"])
 
@@ -39,6 +40,32 @@ def run_copilot_workflow(payload: dict = Body(default_factory=dict)):
         return build_copilot_packet(inputs, variants=payload.get("variants"), radii=payload.get("radii") or (400,800), constraints=payload.get("constraints"))
     except Exception as exc:
         raise HTTPException(status_code=422, detail={"code":"COPILOT_INPUT_ERROR","message":str(exc)}) from exc
+
+@router.post("/copilot/explain")
+def explain_copilot_workflow(payload: dict = Body(default_factory=dict)):
+    """Add optional LLM narrative without changing deterministic planning outputs."""
+    inputs = payload.get("assessment") or payload.get("assessment_inputs") or payload
+    if not isinstance(inputs, dict) or inputs.get("site_lat") is None or inputs.get("site_lon") is None:
+        raise HTTPException(status_code=422, detail={"code":"SITE_INPUT_REQUIRED"})
+    try:
+        packet = build_copilot_packet(
+            inputs,
+            variants=payload.get("variants"),
+            radii=payload.get("radii") or (400, 800),
+            constraints=payload.get("constraints"),
+        )
+        explanation = generate_planner_explanation(packet)
+        return {
+            "mode": "BOUNDED_PLANNER_COPILOT_LLM",
+            "explanation": explanation,
+            "evidence_ledger": packet.get("evidence_ledger") or {},
+            "decision_authority": "NONE",
+            "statutory_verification": "NOT_CLAIMED",
+            "deterministic_packet": packet,
+            "generation_boundary": "LLM_NARRATIVE_ONLY; DETERMINISTIC_PACKET_REMAINS_SOURCE_OF_TRUTH",
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail={"code":"COPILOT_EXPLANATION_ERROR","message":str(exc)}) from exc
 
 @router.post("/planner/handoff")
 def run_planner_handoff(payload: dict = Body(default_factory=dict)):
