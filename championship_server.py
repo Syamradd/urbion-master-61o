@@ -98,7 +98,13 @@ def _frontend_logo(asset: str):
     target = BASE_DIR / asset
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Frontend logo not found")
-    return FileResponse(target, media_type="image/svg+xml", headers={"Cache-Control":"no-store, max-age=0"})
+    return FileResponse(target, media_type="image/svg+xml; charset=utf-8", headers={"Cache-Control":"no-store, max-age=0"})
+
+def _exact_asset_handler(asset_name: str):
+    def handler():
+        return _frontend_asset(asset_name)
+    handler.__name__ = f"frontend_asset_{asset_name.replace('.', '_').replace('-', '_')}"
+    return handler
 
 @app.middleware("http")
 async def _championship_frontend_override(request: Request, call_next):
@@ -111,8 +117,13 @@ async def _championship_frontend_override(request: Request, call_next):
 app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
+# Register exact asset routes before the legacy wildcard. This removes routing ambiguity
+# observed in production where canonical championship assets returned 404 despite existing on disk.
+for _asset in sorted(ALLOWED_ASSETS):
+    app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
+
 for _path in ("/urbion_championship_unified_bridge.js","/urbion_lot_resolver_ui.js","/urbion_spatial_context_engine_bridge.js","/urbion_spatial_context_intelligence_bridge.js","/urbion_spatial_context_upgrade.js","/urbion_championship_workstation_v2.js","/urbion_championship_visual_cleanup.js","/urbion_championship_visual_overhaul.js","/urbion_championship_ux_v3.js","/urbion_championship_ux_v4.js","/urbion_championship_ux_v4_runtime.js","/urbion_championship_ux_v4_plus.js","/urbion_championship_ux_v4_flow.js","/urbion_championship_ux_v5.js","/urbion_championship_ux_v5_integrity.js","/urbion_championship_final_command_center.js","/urbion_championship_final_command_center_hotfix.js","/urbion_championship_final_command_center_polish.js","/urbion_championship_final_command_center_policy.js","/urbion_championship_champion_review.js","/urbion_championship_final_runtime_enforcer.js","/urbion_logo_dark.svg","/urbion_logo_light.svg","/championship.html","/index.html","/"):
     for _idx, _route in enumerate(app.router.routes):
         if getattr(_route, "path", None) == _path:
