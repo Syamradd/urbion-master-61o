@@ -24,7 +24,7 @@ ALLOWED_ASSETS = {
     "urbion_championship_visual_overhaul.js","urbion_championship_ux_v3.js","urbion_championship_ux_v4.js",
     "urbion_championship_ux_v4_runtime.js","urbion_championship_ux_v4_plus.js","urbion_championship_ux_v4_flow.js",
     "urbion_championship_ux_v5.js","urbion_championship_ux_v5_integrity.js","urbion_championship_unified_bridge.js",
-    "urbion_championship_final_command_center.js"
+    "urbion_championship_final_command_center.js","urbion_championship_final_command_center_hotfix.js"
 }
 ALLOWED_LOGOS = {"urbion_logo_dark.svg","urbion_logo_light.svg"}
 
@@ -58,7 +58,7 @@ def _frontend_root():
         "urbion_championship_ux_v4.js","urbion_championship_ux_v4_runtime.js","urbion_championship_ux_v4_plus.js",
         "urbion_championship_ux_v4_flow.js","urbion_championship_ux_v5.js","urbion_spatial_context_intelligence_bridge.js",
         "urbion_spatial_context_engine_bridge.js","urbion_lot_resolver_ui.js","urbion_championship_ux_v5_integrity.js",
-        "urbion_championship_unified_bridge.js","urbion_championship_final_command_center.js"
+        "urbion_championship_unified_bridge.js","urbion_championship_final_command_center.js","urbion_championship_final_command_center_hotfix.js"
     )
     for asset in assets:
         script = f'<script src="/{asset}"></script>'
@@ -107,7 +107,7 @@ app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_sch
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
-for _path in ("/urbion_championship_unified_bridge.js","/urbion_lot_resolver_ui.js","/urbion_spatial_context_engine_bridge.js","/urbion_spatial_context_intelligence_bridge.js","/urbion_spatial_context_upgrade.js","/urbion_championship_workstation_v2.js","/urbion_championship_visual_cleanup.js","/urbion_championship_visual_overhaul.js","/urbion_championship_ux_v3.js","/urbion_championship_ux_v4.js","/urbion_championship_ux_v4_runtime.js","/urbion_championship_ux_v4_plus.js","/urbion_championship_ux_v4_flow.js","/urbion_championship_ux_v5.js","/urbion_championship_ux_v5_integrity.js","/urbion_championship_final_command_center.js","/urbion_logo_dark.svg","/urbion_logo_light.svg","/championship.html","/index.html","/"):
+for _path in ("/urbion_championship_unified_bridge.js","/urbion_lot_resolver_ui.js","/urbion_spatial_context_engine_bridge.js","/urbion_spatial_context_intelligence_bridge.js","/urbion_spatial_context_upgrade.js","/urbion_championship_workstation_v2.js","/urbion_championship_visual_cleanup.js","/urbion_championship_visual_overhaul.js","/urbion_championship_ux_v3.js","/urbion_championship_ux_v4.js","/urbion_championship_ux_v4_runtime.js","/urbion_championship_ux_v4_plus.js","/urbion_championship_ux_v4_flow.js","/urbion_championship_ux_v5.js","/urbion_championship_ux_v5_integrity.js","/urbion_championship_final_command_center.js","/urbion_championship_final_command_center_hotfix.js","/urbion_logo_dark.svg","/urbion_logo_light.svg","/championship.html","/index.html","/"):
     for _idx, _route in enumerate(app.router.routes):
         if getattr(_route, "path", None) == _path:
             app.router.routes.insert(0, app.router.routes.pop(_idx))
