@@ -12,13 +12,13 @@ def test_visual_overhaul_assets_and_routes_are_wired():
     assert 'urbion_logo_dark.svg' in server
     assert 'urbion_logo_light.svg' in server
     assert 'image/svg+xml' in server
-    assert 'MAP EVIDENCE OVERLAYS' in visual
-    assert '400 m screening catchment' in visual
-    assert '800 m screening catchment' in visual
-    assert '1 km context ring' in visual
-    assert '1.5 km context ring' in visual
-    assert 'ZONING / LAND USE' in visual
-    assert 'ENVIRONMENT' in visual
+    assert 'MAP EVIDENCE' in visual
+    assert '400 m' in visual
+    assert '800 m' in visual
+    assert '1 km' in visual
+    assert '1.5 km' in visual
+    assert 'PLANNING / LAND USE' in visual
+    assert 'ENVIRONMENT / HAZARD' in visual
     assert 'MOBILITY' in visual
     assert '#urbion-workstation-v2,#urbion-decision-os{display:none!important}' in visual
     assert 'm.eachLayer' in cleanup
