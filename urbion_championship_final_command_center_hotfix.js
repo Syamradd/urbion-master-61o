@@ -19,7 +19,7 @@ function boot(){
        const res=await fetch('/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(base)});if(!res.ok)throw Error('Assessment '+res.status);
        const data=await res.json();window.__urbionAssessment=data;window.dispatchEvent(new CustomEvent('urbion:analysis',{detail:data}));
        const sr=await fetch('/spatial/site-context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({site_lat:Number(v('lat')),site_lon:Number(v('lon')),radius_m:800,state:v('state')||'Melaka'})});
-       if(sr.ok){const ctx=await sr.json();window.__URBION_FINAL_CONTEXT=ctx;const ls=ctx.layers||[],find=id=>ls.find(x=>x.id===id),z=find('iplan-zoning'),f=find('iplan-flood')||find('iplan-disaster-risk'),e=find('iplan-ecology')||find('iplan-ksas'),g=find('mygems-faults')||find('mygems-lithology');
+       if(sr.ok){const ctx=await sr.json();window.__URBION_FINAL_CONTEXT=ctx;window.dispatchEvent(new CustomEvent('urbion:spatial-context',{detail:ctx}));const ls=ctx.layers||[],find=id=>ls.find(x=>x.id===id),z=find('iplan-zoning'),f=find('iplan-flood')||find('iplan-disaster-risk'),e=find('iplan-ecology')||find('iplan-ksas'),g=find('mygems-faults')||find('mygems-lithology');
          if($('sig-zoning'))$('sig-zoning').textContent=z?.status==='LIVE_QUERY'?'LIVE':z?.status||'NO DATA';if($('sig-risk'))$('sig-risk').textContent=f?.feature_count?'FEATURES '+f.feature_count:(f?.status||'NO DATA');if($('sig-eco'))$('sig-eco').textContent=e?.feature_count?'FEATURES '+e.feature_count:(e?.status||'NO DATA');if($('sig-geo'))$('sig-geo').textContent=g?.feature_count?'FEATURES '+g.feature_count:(g?.status||'NO DATA');
          const live=ls.filter(x=>x.status==='LIVE_QUERY').length,gaps=ls.filter(x=>x.status==='QUERY_ERROR'||x.status==='EVIDENCE_GAP').length;if($('fcc-evidence-count'))$('fcc-evidence-count').textContent=live+'/'+ls.length;if($('fcc-health-list'))$('fcc-health-list').innerHTML=ls.slice(0,10).map(x=>`<span><i class="${x.status==='LIVE_QUERY'?'ok':x.status==='NO_FEATURE'?'warn':'gap'}"></i>${String(x.name||x.id).replace(/[&<>\"']/g,'')}<small>${String(x.status||'—')}</small></span>`).join('')+(gaps?`<em>${gaps} source/query gaps disclosed — not converted to positive evidence.</em>`:'');
        }
@@ -37,6 +37,17 @@ function boot(){
  const replaceDirect=(el,text)=>{const n=Array.from(el.childNodes).find(x=>x.nodeType===3&&x.nodeValue.trim());if(n)n.nodeValue=' '+text+' ';else if(!el.children.length)el.textContent=text;};
  const translate=()=>{const bm=localStorage.getItem('urbion-lang')==='bm';root.querySelectorAll('label,.fcc-step b,.fcc-map-head b,.fcc-card-head span,.fcc-footer-links button,.fcc-rail .fcc-kicker,.fcc-case>.fcc-kicker,.fcc-commandbar h2,.fcc-chain span,.fcc-decision-list b,.fcc-decision-list span').forEach(el=>{if(!el.dataset.en){const n=Array.from(el.childNodes).find(x=>x.nodeType===3&&x.nodeValue.trim());el.dataset.en=n?n.nodeValue.trim():el.textContent.trim();}replaceDirect(el,bm?(tr[el.dataset.en]||el.dataset.en):el.dataset.en);});};
  translate();$('fcc-lang')?.addEventListener('click',()=>setTimeout(translate,30));
+ const unifiedExport=async(e)=>{
+   e.preventDefault();e.stopImmediatePropagation();
+   const status=$('fcc-case-status');if(status)status.textContent='Packaging unified planner case…';
+   try{
+     const u=window.__URBION_UNIFIED_STATE||{};
+     const lcp=window.__URBION_LCP_INTELLIGENCE||u.lcp||null;
+     const pkg={release:'PHASE-E.8',package_type:'UNIFIED_PLANNER_CASE',exported_at:new Date().toISOString(),case:payload(),assessment:window.__urbionAssessment||u.assessment||null,spatial_context:window.__URBION_FINAL_CONTEXT||u.spatial||null,evidence:(window.__URBION_FINAL_CONTEXT||u.spatial)?.layers||[],policy_guideline:lcp?.guideline_intelligence||null,policy_graph:lcp?.policy_graph||null,recommendations:lcp?.recommendations||null,agency_intelligence:lcp?.agency_intelligence||null,km_readiness:window.__URBION_KM_READINESS||u.km||lcp?.km_readiness||null,what_if:window.__URBION_WHAT_IF||u.whatIf||null,decision:u.decision||null,lcp_intelligence:lcp,evidence_gaps:[...(lcp?.guideline_intelligence?.review_gaps||[]),...(lcp?.policy_graph?.review_gaps||[]),...(lcp?.recommendations?.review_gaps||[])],authority_boundary:'Planner decision support only; cadastral authority remains with JUPEM verification and statutory interpretation/approval remains with the responsible authority/PBT.',next_authority_action:u.decision?.next_action||lcp?.recommendations?.next_action||'Review evidence, applicable controls and authority requirements.'};
+     const blob=new Blob([JSON.stringify(pkg,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='urbion-horizon-unified-case-package.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);if(status)status.textContent='Unified planner case package exported.';
+   }catch(err){if(status)status.textContent='Export error: '+err.message;}
+ };
+ const exportBtn=$('fcc-export');if(exportBtn&&!exportBtn.dataset.unifiedExport){exportBtn.dataset.unifiedExport='1';exportBtn.addEventListener('click',unifiedExport,true);}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,0);
 })();
