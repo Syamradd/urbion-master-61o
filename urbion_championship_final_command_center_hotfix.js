@@ -40,6 +40,7 @@ function boot(){
    e.preventDefault();const card=b.closest('.scenario');const txt=card?.querySelector('strong')?.textContent||'';if(txt.includes('×'))run(Number(txt.replace(/[^0-9.]/g,'')));
  },true);
  window.URBION_FINAL_RUN=run;
+ const polish=document.createElement('script');polish.src='/urbion_championship_final_command_center_polish.js';polish.async=false;document.body.appendChild(polish);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,0);
 })();
