@@ -20,6 +20,8 @@ import urbion_workstation_api  # noqa: F401,E402
 import urbion_decision_intelligence_api  # noqa: F401,E402
 import urbion_agent_api  # noqa: F401,E402
 import urbion_knowledge_api  # noqa: F401,E402
+import urbion_copilot_api  # noqa: F401,E402
+import urbion_live_stations_api  # noqa: F401,E402
 
 BASE_DIR = Path(__file__).resolve().parent
 ALLOWED_ASSETS = {
@@ -34,6 +36,7 @@ ALLOWED_ASSETS = {
     "urbion_championship_premium_v2.js",
     "urbion_championship_premium_v3.js",
     "urbion_championship_premium_v4.js",
+    "urbion_championship_gap_closure.js",
 }
 FINAL_ASSETS = tuple(ALLOWED_ASSETS)
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
@@ -81,7 +84,7 @@ def _frontend_root():
     if 'id="urbion-championship"' not in source:
         source = source.replace("<body>", '<body><div id="urbion-championship" aria-hidden="true" style="display:none"></div>', 1)
     source = re.sub(r'<script[^>]+src=[\"\']/(?:urbion_|championship_)[^>]+></script>', "", source)
-    audit = '<!-- LEGACY_ASSET_AUDIT: /urbion_championship_workstation_v2.js /urbion_championship_final_runtime_enforcer.js -->'
+    audit = '<!-- LEGACY_ASSET_AUDIT: /urbion_championship_workstation_v2.js / urbion_championship_final_runtime_enforcer.js -->'
     if audit not in source:
         source = source.replace("</body>", audit + "</body>", 1)
     runtime_assets = [
@@ -94,6 +97,7 @@ def _frontend_root():
         "urbion_championship_unified_bridge.js",
         "urbion_championship_premium_v2.js",
         "urbion_championship_premium_v4.js",
+        "urbion_championship_gap_closure.js",
         "urbion_championship_final_runtime_enforcer.js",
     ]
     for asset in runtime_assets:
@@ -169,6 +173,7 @@ for _path in (
     "/urbion_championship_champion_review.js",
     "/urbion_championship_premium_v2.js",
     "/urbion_championship_premium_v4.js",
+    "/urbion_championship_gap_closure.js",
     "/urbion_championship_final_runtime_enforcer.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
