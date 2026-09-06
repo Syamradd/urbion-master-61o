@@ -21,7 +21,7 @@ ALLOWED_ASSETS = frozenset(
         "urbion_championship_intelligence_upgrade.js", "urbion_championship_input_sync.js",
         "urbion_championship_workflow.js", "urbion_championship_decision_chain.js", "urbion_what_if_upgrade.js",
         "urbion_spatial_workstation_upgrade.js", "urbion_spatial_implication_bridge.js",
-        "urbion_championship_workstation_v2.js", "urbion_decision_intelligence_ui.js",
+        "urbion_championship_workstation_v2.js", "urbion_decision_intelligence_ui.js", "urbion_decision_os_ui.js",
     }
 )
 
