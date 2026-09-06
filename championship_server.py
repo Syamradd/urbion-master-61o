@@ -33,6 +33,7 @@ ALLOWED_ASSETS = {
     "urbion_championship_unified_bridge.js",
     "urbion_championship_premium_v2.js",
     "urbion_championship_premium_v3.js",
+    "urbion_championship_premium_v4.js",
 }
 FINAL_ASSETS = tuple(ALLOWED_ASSETS)
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
@@ -92,6 +93,7 @@ def _frontend_root():
         "urbion_championship_champion_review.js",
         "urbion_championship_unified_bridge.js",
         "urbion_championship_premium_v2.js",
+        "urbion_championship_premium_v4.js",
         "urbion_championship_final_runtime_enforcer.js",
     ]
     for asset in runtime_assets:
@@ -166,6 +168,7 @@ for _path in (
     "/urbion_championship_final_command_center_policy.js",
     "/urbion_championship_champion_review.js",
     "/urbion_championship_premium_v2.js",
+    "/urbion_championship_premium_v4.js",
     "/urbion_championship_final_runtime_enforcer.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
