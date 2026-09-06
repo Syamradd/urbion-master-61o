@@ -7,7 +7,7 @@
 - Release identity: `MASTER-132`
 - Engine: `PHASE-E.8`
 - Frontend release contract: `MASTER-331`
-- Championship PR: `#111`
+- Championship PR: `#111` (OPEN)
 
 ## Current command-centre architecture
 The public championship root is intentionally a single final Planning Command Centre runtime. Historical browser modules remain available for backend/source audit but are not booted together on the public root.
@@ -19,7 +19,8 @@ Primary root runtime order:
 4. `urbion_championship_unified_bridge.js` — shared state / planning rail bridge
 5. `urbion_championship_premium_v2.js`
 6. `urbion_championship_premium_v4.js` — grouped layers, Site↔TOD line, settings, footer, focus states
-7. inert compatibility runtime enforcer
+7. `urbion_championship_gap_closure.js` — AI explain, station/mobility, judge surface, unified export, input cascade
+8. inert compatibility runtime enforcer
 
 ## Non-negotiable safety/evidence boundary
 - `NO GEOMETRY = NO MAP LAYER`
@@ -53,15 +54,14 @@ Primary root runtime order:
 - fullscreen / print / reset / help / About Us / sources / system status / footer
 - official URBION HORIZON logo lockup
 - responsive / reduced-motion / focus-visible intent
+- unified case package export
+- explicit Judge View surface
+- AI Explain surface backed by `/copilot/run`
+- station/mobility surface backed by `/station-intelligence`
+- real Land Use → Category → Activity → Development cascade
 
-## Known gap register to close before final championship sign-off
-1. Unified export package must expose the full unified contract: case, assessment, spatial context, evidence, policy/guideline, policy graph, recommendations, agency intelligence, KM readiness, what-if, decision, LCP intelligence, evidence gaps, authority boundary, next authority action.
-2. Dedicated Judge View should be surfaced as an explicit premium view, not only backend/release-gate architecture.
-3. AI Explain should be visibly surfaced in the final centre where backed by existing engine contracts.
-4. Station/mobility intelligence should be visible where backed by existing spatial engines.
-5. Land-use → category → activity → development dependency/cascade should be genuinely driven, not merely static option lists.
-6. BM/EN translation should cover detailed command-centre labels, not only top-level controls.
-7. Document validation workflow remains optional scope and must not be represented as complete until actually implemented.
+## Remaining scope boundary
+Document validation workflow is still not implemented and must not be represented as complete. It remains optional championship scope until a real validation engine and regression coverage are added.
 
 ## Auto-repair protocol
 When CI/live QA fails:
