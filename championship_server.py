@@ -84,6 +84,7 @@ def _frontend_root():
     if audit not in source:
         source = source.replace("</body>", audit + "</body>", 1)
     runtime_assets = [
+        "urbion_championship_premium_v3.js",
         "urbion_championship_final_command_center.js",
         "urbion_championship_final_command_center_hotfix.js",
         "urbion_championship_final_command_center_polish.js",
@@ -91,7 +92,6 @@ def _frontend_root():
         "urbion_championship_champion_review.js",
         "urbion_championship_unified_bridge.js",
         "urbion_championship_premium_v2.js",
-        "urbion_championship_premium_v3.js",
         "urbion_championship_final_runtime_enforcer.js",
     ]
     for asset in runtime_assets:
@@ -158,6 +158,7 @@ for _asset in sorted(ALLOWED_ASSETS):
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 for _path in (
+    "/urbion_championship_premium_v3.js",
     "/urbion_championship_unified_bridge.js",
     "/urbion_championship_final_command_center.js",
     "/urbion_championship_final_command_center_hotfix.js",
@@ -165,7 +166,6 @@ for _path in (
     "/urbion_championship_final_command_center_policy.js",
     "/urbion_championship_champion_review.js",
     "/urbion_championship_premium_v2.js",
-    "/urbion_championship_premium_v3.js",
     "/urbion_championship_final_runtime_enforcer.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
