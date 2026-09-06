@@ -21,8 +21,11 @@ def test_champion_review_uses_shared_state_and_canonical_assessment_runner():
     layer = (ROOT / "urbion_championship_champion_review.js").read_text(encoding="utf-8")
     assert "window.__URBION_UNIFIED_STATE" in layer
     assert "window.URBION_FINAL_RUN" in layer
-    assert "canonical assessment path" in layer
+    assert "canonical What-If" in layer
     assert "urbion:unified-state" in layer
+    assert "urbion:what-if" in layer
+    assert "urbion:km-readiness" in layer
+    assert "fetch('/km/readiness?" in layer
 
 
 def test_champion_review_layer_preserves_planning_boundaries():
@@ -31,3 +34,11 @@ def test_champion_review_layer_preserves_planning_boundaries():
     assert "does not grant or predict statutory approval" in layer
     assert "Do not represent it as pedestrian network travel time" in layer
     assert "without inventing geometry" in layer
+
+
+def test_hotfix_routes_controlled_scenarios_to_canonical_what_if_api():
+    hotfix = (ROOT / "urbion_championship_final_command_center_hotfix.js").read_text(encoding="utf-8")
+    assert "fetch('/what-if'" in hotfix
+    assert "variants:[{id:'SELECTED'" in hotfix
+    assert "urbion:what-if" in hotfix
+    assert "fetch('/assess'" in hotfix
