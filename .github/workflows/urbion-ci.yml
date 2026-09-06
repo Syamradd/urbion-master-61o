@@ -36,7 +36,7 @@ jobs:
         run: |
           case "${{ matrix.lane }}" in
             core) python -m pytest -q tests/test_spatial_input_guard.py tests/test_km_endpoint_contract.py tests/test_kebenaran_merancang.py tests/test_master_hardening_scoring.py ;;
-            frontend) python -m pytest -q tests/test_live_frontend_contract.py tests/test_ui_controller_contract.py tests/test_decision_center_contract.py tests/test_master171_evidence_ui.py tests/test_master172_what_if_delta.py tests/test_what_if_frontend_contract.py tests/test_planner_review_contract.py tests/test_master174_planner_actions.py tests/test_master_decision_rendering.py tests/test_master_decision_center_workstation.py tests/test_master308_input_sync.py tests/test_master309_unified_assessment_state.py tests/test_master312_workflow.py tests/test_master313_workflow_engine.py tests/test_master314_intelligence_ui.py tests/test_master322_spatial_workstation.py tests/test_master323_spatial_implications.py tests/test_master324_decision_chain_consolidation.py tests/test_master325_330_final_acceptance.py tests/test_master331_336_night_release.py tests/test_master337_340_spatial_intelligence.py tests/test_master341_345_workstation.py tests/test_master346_350_championship_workstation_ui.py tests/test_master_d8_d9_system_audit.py tests/test_championship_ux_v4_contract.py tests/test_championship_ux_v5_contract.py tests/test_unified_workspace_bridge_contract.py ;;
+            frontend) python -m pytest -q tests/test_live_frontend_contract.py tests/test_ui_controller_contract.py tests/test_decision_center_contract.py tests/test_master171_evidence_ui.py tests/test_master172_what_if_delta.py tests/test_what_if_frontend_contract.py tests/test_planner_review_contract.py tests/test_master174_planner_actions.py tests/test_master_decision_rendering.py tests/test_master_decision_center_workstation.py tests/test_master308_input_sync.py tests/test_master309_unified_assessment_state.py tests/test_master312_workflow.py tests/test_master313_workflow_engine.py tests/test_master314_intelligence_ui.py tests/test_master322_spatial_workstation.py tests/test_master323_spatial_implications.py tests/test_master324_decision_chain_consolidation.py tests/test_master325_330_final_acceptance.py tests/test_master331_336_night_release.py tests/test_master337_340_spatial_intelligence.py tests/test_master341_345_workstation.py tests/test_master346_350_championship_workstation_ui.py tests/test_master_d8_d9_system_audit.py tests/test_championship_ux_v4_contract.py tests/test_championship_ux_v5_contract.py tests/test_unified_workspace_bridge_contract.py tests/test_championship_runtime_integrity.py ;;
             mapping) python -m pytest -q tests/test_map_studio_contract.py tests/test_master170_controls.py tests/test_hydrology_source.py tests/test_master_map_layer_renderability.py ;;
             planning) python -m pytest -q tests/test_master173_km_planner_surface.py tests/test_km_endpoint_contract.py tests/test_master341_345_workstation.py ;;
             judge) python -m pytest -q tests/test_master175_release_gate.py tests/test_decision_center_contract.py tests/test_master171_evidence_ui.py tests/test_master172_what_if_delta.py tests/test_what_if_frontend_contract.py tests/test_master192_judge_run.py tests/test_master308_input_sync.py tests/test_master309_unified_assessment_state.py tests/test_master325_330_final_acceptance.py tests/test_master331_336_night_release.py tests/test_master337_340_spatial_intelligence.py tests/test_master341_345_workstation.py tests/test_master346_350_championship_workstation_ui.py tests/test_master_d8_d9_system_audit.py ;;
@@ -50,8 +50,8 @@ jobs:
             smoke) python -m pytest -q tests/test_master191_deployment_smoke.py ;;
             release) python -m pytest -q tests/test_master193_release_lock.py tests/test_master194_release_candidate.py tests/test_master194_visual_function.py tests/test_master195_release_packet.py tests/test_master325_330_final_acceptance.py tests/test_master331_336_night_release.py tests/test_master337_340_spatial_intelligence.py tests/test_master341_345_workstation.py tests/test_master346_350_championship_workstation_ui.py tests/test_master_d8_d9_system_audit.py ;;
             presentation) python -m pytest -q tests/test_master197_presentation_ready.py ;;
-            contract) python -m pytest -q tests/test_master202_championship_contract.py tests/test_evidence_ledger.py tests/test_validation_api_contract.py tests/test_championship_ux_v4_contract.py tests/test_championship_ux_v5_contract.py ;;
-            final) python -m pytest -q tests/test_master198_final_acceptance.py tests/test_master202_championship_contract.py tests/test_master325_330_final_acceptance.py tests/test_master331_336_night_release.py tests/test_master337_340_spatial_intelligence.py tests/test_master341_345_workstation.py tests/test_master346_350_championship_workstation_ui.py tests/test_master_d8_d9_system_audit.py ;;
+            contract) python -m pytest -q tests/test_master202_championship_contract.py tests/test_evidence_ledger.py tests/test_validation_api_contract.py tests/test_championship_ux_v4_contract.py tests/test_championship_ux_v5_contract.py tests/test_championship_runtime_integrity.py ;;
+            final) python -m pytest -q tests/test_master198_final_acceptance.py tests/test_master202_championship_contract.py tests/test_master325_330_final_acceptance.py tests/test_master331_336_night_release.py tests/test_master337_340_spatial_intelligence.py tests/test_master341_345_workstation.py tests/test_master346_350_championship_workstation_ui.py tests/test_master_d8_d9_system_audit.py tests/test_championship_runtime_integrity.py ;;
           esac
 
   runtime-smoke:
@@ -81,6 +81,14 @@ jobs:
           import json, time, urllib.error, urllib.request
           base = 'http://127.0.0.1:8765'
           endpoints = ['/health', '/metadata', '/championship-gate', '/']
+          critical_assets = [
+              '/urbion_championship_final_command_center.js',
+              '/urbion_championship_final_command_center_hotfix.js',
+              '/urbion_championship_final_command_center_polish.js',
+              '/urbion_championship_final_command_center_policy.js',
+              '/urbion_championship_champion_review.js',
+              '/urbion_championship_final_runtime_enforcer.js',
+          ]
           last_error = None
           for _ in range(30):
               try:
@@ -94,8 +102,17 @@ jobs:
                           if path == '/':
                               html = body.decode('utf-8')
                               assert 'URBION HORIZON — Championship Workstation' in html
+                              assert 'window.__URBION_FRONTEND_BOOT__' in html
+                              assert 'release:"MASTER-331"' in html
                               assert 'id="urbion-championship"' in html
                               assert 'Site + Development Inputs' not in html
+                              assert 'Decision OS' not in html
+                              assert 'Planner Workstation' not in html
+                  for asset in critical_assets:
+                      with urllib.request.urlopen(base + asset, timeout=3) as response:
+                          body = response.read()
+                          if response.status != 200 or not body:
+                              raise RuntimeError(f'{asset}: unexpected HTTP {response.status}')
                   with urllib.request.urlopen(base + '/health', timeout=3) as response:
                       health = json.loads(response.read().decode('utf-8'))
                   assert health['status'] == 'healthy'
