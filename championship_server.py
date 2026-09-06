@@ -1,16 +1,9 @@
-"""Deterministic production entrypoint for the URBION HORIZON championship UI.
-
-The championship root serves a deliberately small final command-centre runtime.
-Historical dashboard/spatial modules remain available to the backend, but their old
-browser boot stack is not executed on the public root because it created duplicate
-map requests and continuous browser work.
-"""
+"""Deterministic production entrypoint for the URBION HORIZON championship UI."""
 from pathlib import Path
 import re
 
 from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
-
 from server import app
 
 import urbion_spatial_api  # noqa: F401,E402
@@ -37,6 +30,7 @@ ALLOWED_ASSETS = {
     "urbion_championship_premium_v3.js",
     "urbion_championship_premium_v4.js",
     "urbion_championship_gap_closure.js",
+    "urbion_championship_validation_surface.js",
 }
 FINAL_ASSETS = tuple(ALLOWED_ASSETS)
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
@@ -98,6 +92,7 @@ def _frontend_root():
         "urbion_championship_premium_v2.js",
         "urbion_championship_premium_v4.js",
         "urbion_championship_gap_closure.js",
+        "urbion_championship_validation_surface.js",
         "urbion_championship_final_runtime_enforcer.js",
     ]
     for asset in runtime_assets:
@@ -174,6 +169,7 @@ for _path in (
     "/urbion_championship_premium_v2.js",
     "/urbion_championship_premium_v4.js",
     "/urbion_championship_gap_closure.js",
+    "/urbion_championship_validation_surface.js",
     "/urbion_championship_final_runtime_enforcer.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
