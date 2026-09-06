@@ -23,12 +23,12 @@ function boot(){
          if($('sig-zoning'))$('sig-zoning').textContent=z?.status==='LIVE_QUERY'?'LIVE':z?.status||'NO DATA';if($('sig-risk'))$('sig-risk').textContent=f?.feature_count?'FEATURES '+f.feature_count:(f?.status||'NO DATA');if($('sig-eco'))$('sig-eco').textContent=e?.feature_count?'FEATURES '+e.feature_count:(e?.status||'NO DATA');if($('sig-geo'))$('sig-geo').textContent=g?.feature_count?'FEATURES '+g.feature_count:(g?.status||'NO DATA');
          const live=ls.filter(x=>x.status==='LIVE_QUERY').length,gaps=ls.filter(x=>x.status==='QUERY_ERROR'||x.status==='EVIDENCE_GAP').length;if($('fcc-evidence-count'))$('fcc-evidence-count').textContent=live+'/'+ls.length;if($('fcc-health-list'))$('fcc-health-list').innerHTML=ls.slice(0,10).map(x=>`<span><i class="${x.status==='LIVE_QUERY'?'ok':x.status==='NO_FEATURE'?'warn':'gap'}"></i>${String(x.name||x.id).replace(/[&<>\"']/g,'')}<small>${String(x.status||'—')}</small></span>`).join('')+(gaps?`<em>${gaps} source/query gaps disclosed — not converted to positive evidence.</em>`:'');
        }
-       if($('fcc-time'))$('fcc-time').textContent=new Date().toLocaleString();if(status)status.textContent='Analysis complete. Evidence chain refreshed.';$('#fcc-tabs')?.querySelector('[data-tab="overview"]')?.click();
+       if($('fcc-time'))$('fcc-time').textContent=new Date().toLocaleString();if(status)status.textContent='Analysis complete. Evidence chain refreshed.';const overview=document.querySelector('#fcc-tabs [data-tab="overview"]');overview?.click();
      }
    }catch(err){if(status)status.textContent='Analysis error: '+err.message;}finally{if(btn)btn.disabled=!['project_name','lat','lon','state','pbt','district','landuse','category','activity','development','ratio'].every(id=>v(id));}
  }
  const runBtn=$('fcc-run');if(runBtn)runBtn.onclick=()=>run();const next=$('fcc-next');if(next)next.onclick=()=>runBtn?.disabled?null:run();
- document.addEventListener('click',e=>{const b=e.target.closest?.('.scenario button');if(!b)return;e.preventDefault();const card=b.closest('.scenario'),txt=card?.querySelector('strong')?.textContent||'';if(txt.includes('×'))run(Number(txt.replace(/[^0-9.]/g,'')));},true);
+ document.addEventListener('click',e=>{const b=e.target.closest?.('.scenario button');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const card=b.closest('.scenario'),txt=card?.querySelector('strong')?.textContent||'';if(txt.includes('×'))run(Number(txt.replace(/[^0-9.]/g,'')));},true);
  window.URBION_FINAL_RUN=run;
  const logo=root.querySelector('.fcc-brand img'),theme=$('fcc-theme'),full=$('fcc-full'),card=root.querySelector('.fcc-map-card');
  const setLogo=()=>{if(logo)logo.src=document.body.classList.contains('fcc-light')?'/urbion_logo_light.svg':'/urbion_logo_dark.svg'};
