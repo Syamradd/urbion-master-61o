@@ -16,7 +16,7 @@ def _site(payload):
 def spatial_intelligence(payload: dict = Body(default_factory=dict)):
     lat, lon = _site(payload)
     try:
-        return {"project":"URBION HORIZON", "version":"PHASE-E.8", **build_spatial_intelligence(lat, lon, payload.get("tod_lat"), payload.get("tod_lon"), tuple(payload.get("radii") or (400,800)), payload.get("constraints")), "statutory_verification":"NOT_CLAIMED"}
+        return {"project":"URBION HORIZON", "version":"PHASE-E.8", **build_spatial_intelligence(lat, lon, payload.get("tod_lat"), payload.get("tod_lon"), tuple(payload.get("radii") or (400,800)), payload.get("constraints"), payload.get("environmental_context")), "statutory_verification":"NOT_CLAIMED"}
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail={"code":"INVALID_SPATIAL_INPUT","message":str(exc)}) from exc
 
