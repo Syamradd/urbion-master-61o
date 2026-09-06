@@ -10,6 +10,7 @@ from urbion_copilot import build_copilot_packet
 from urbion_validation import validation_cases, run_validation_case
 from urbion_planner_handoff import build_planner_handoff_from_copilot
 from urbion_judge_demo import build_judge_demo
+import urbion_frontend_asset_guard
 
 router = APIRouter(tags=["planning-agents"])
 
