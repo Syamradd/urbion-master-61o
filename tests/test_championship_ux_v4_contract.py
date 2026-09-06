@@ -9,17 +9,25 @@ def test_v4_is_wired_and_preserves_release_identity():
     assert 'app.state.frontend_release="MASTER-330"' in server
 
 
-def test_v4_has_case_first_information_architecture():
+def test_v4_has_guided_case_information_architecture():
     text = (ROOT / 'urbion_championship_ux_v4.js').read_text(encoding='utf-8')
-    for label in ('01 · CASE','02 · EVIDENCE','03 · WHAT-IF','04 · DECISION','05 · OUTPUT'):
+    for label in ('01 · GOVERNANCE','02 · LOCAL AUTHORITY','03 · LAND USE','04 · ACTIVITY','05 · PROPOSAL','06 · INTENSITY'):
         assert label in text
-    for control in ('STATE','LOCAL AUTHORITY / PBT','LAND USE CATEGORY','LAND USE ACTIVITY','DEVELOPMENT / PROPOSAL TYPE','PLOT RATIO'):
+    for control in ('state','pbt','landuse','activity','development','ratio'):
         assert control in text
-    assert 'Melaka' in text and 'Selangor' in text and 'Johor' in text
+    assert 'READY TO ANALYSE' in text
+    assert 'COMPLETE CASE TO RUN' in text
 
 
-def test_v4_removes_intrusive_floating_ui_and_site_popup():
+def test_v4_coordinates_navigation_and_button_hierarchy():
     text = (ROOT / 'urbion_championship_ux_v4.js').read_text(encoding='utf-8')
-    assert "['urbion-workstation-v2','urbion-decision-os']" in text
-    assert 'URBION SCREENING SITE' in text
-    assert 'map.closePopup()' in text
+    for tab in ('command','evidence','scenarios','decision','judge'):
+        assert 'data-view="'+tab+'"' in text
+    for colour in ('--tab:#5ee7c2','--tab:#49c8e8','--tab:#f2c45c','--tab:#b08cff','--tab:#7faef8'):
+        assert colour in text
+
+
+def test_v4_keeps_intrusive_panels_out_of_the_main_workspace():
+    text = (ROOT / 'urbion_championship_ux_v4.js').read_text(encoding='utf-8')
+    assert "['urbion-workstation-v2','urbion-decision-os']" not in text
+    assert 'CASE → EVIDENCE → OPTIONS → DECISION' in text
