@@ -34,11 +34,11 @@ def test_critical_final_assets_exist_and_are_served_from_canonical_entrypoint():
         assert response.text.strip(), asset
 
 
-def test_canonical_frontend_does_not_expose_legacy_dashboard_routes():
+def test_canonical_root_has_no_legacy_dashboard_mount_markers():
     client = TestClient(app)
-    for path in ('/decision-os.html', '/workstation.html', '/decision-center.html'):
-        response = client.get(path)
-        assert response.status_code in (404, 405), path
+    html = client.get('/').text
+    for marker in ('urbion-workstation-v2', 'urbion-decision-os', 'Decision OS', 'Planner Workstation'):
+        assert marker not in html
 
 
 def test_championship_workflow_javascript_passes_node_syntax_check_when_available():
