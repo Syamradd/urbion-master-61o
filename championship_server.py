@@ -49,6 +49,7 @@ ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
 # urbion_spatial_implication_bridge.js
 # urbion_championship_ux_v4.js
 # urbion_championship_ux_v4_plus.js
+# urbion_championship_ux_v4_flow.js
 # urbion_championship_ux_v5.js
 # urbion_championship_workstation_v2.js
 # urbion_championship_final_runtime_enforcer.js
