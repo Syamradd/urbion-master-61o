@@ -4,8 +4,7 @@ function reconcile(){
  legacy.forEach(id=>document.getElementById(id)?.remove());
  document.getElementById('urbion-chrome')?.remove();
  document.getElementById('ux-footer')?.remove();
- document.getElementById('ux5-menu')?.remove();
- $$('body *').forEach(el=>{if(el===document.body||el.id==='ux-v5-rail'||el.closest('#ux-v5-rail'))return;const t=(el.textContent||'').trim();if(t==='PLANNER HANDOFF'&&el.children.length===0)el.remove()});
+ $$('body *').forEach(el=>{if(el===document.body||el.id==='ux-v5-rail'||el.id==='ux5-menu'||el.closest('#ux-v5-rail')||el.closest('#ux5-menu'))return;const t=(el.textContent||'').trim();if(t==='PLANNER HANDOFF'&&el.children.length===0)el.remove()});
  const logo=$('.header .logo');
  if(logo){logo.textContent='';logo.setAttribute('aria-label','URBION HORIZON');logo.style.cssText+=';width:190px!important;height:48px!important;border:0!important;border-radius:0!important;background:transparent url(/urbion_logo_dark.svg) left center/contain no-repeat!important;color:transparent!important;';if(!logo.dataset.urbionTheme){logo.dataset.urbionTheme='1';new MutationObserver(()=>{logo.style.backgroundImage=document.body.classList.contains('urbion-light')?'url(/urbion_logo_light.svg)':'url(/urbion_logo_dark.svg)'}).observe(document.body,{attributes:true,attributeFilter:['class']})}}
  if(!document.getElementById('urbion-final-integrity-style')){const s=document.createElement('style');s.id='urbion-final-integrity-style';s.textContent=`
