@@ -67,6 +67,8 @@ def _frontend_root():
         if script not in source:
             source = source.replace('</body>', script + '</body>', 1)
     source = _design_system(source)
+    if 'window.__URBION_FRONTEND_BOOT__' not in source:
+        source = source.replace('</body>', '<script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-330",entrypoint:"championship.html"};</script></body>', 1)
     return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control":"no-store, max-age=0"})
 
 def _what_if_page():
