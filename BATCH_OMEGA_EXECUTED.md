@@ -1,0 +1,1 @@
+Hardening changes committed; CI gate remains authoritative.

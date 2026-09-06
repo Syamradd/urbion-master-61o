@@ -25,12 +25,19 @@ def workstation_analysis(payload: dict = Body(default_factory=dict)):
     spatial = build_spatial_intelligence(site["latitude"], site["longitude"], raw.get("tod_lat"), raw.get("tod_lon"), tuple(payload.get("radii") or (400,800)), payload.get("constraints"))
     steps.append({"id":"SPATIAL","label":"Spatial intelligence","status":"COMPLETE"})
     variants = payload.get("variants") or payload.get("scenario_variants") or []
-    if not isinstance(variants, list) or len(variants) > 12:
+    if not isinstance(variants, list) or len(variants) > 12 or any(not isinstance(v, dict) for v in variants):
         raise HTTPException(status_code=422, detail={"code":"INVALID_SCENARIO_VARIANTS"})
     plans = build_scenario_plan(raw, variants)
     executed = []
     for plan in plans:
-        executed.append({"id":plan["id"],"name":plan["name"],"assessment":assess_core(AssessmentRequest(**plan["inputs"]))})
+        executed.append({
+            "id":plan["id"],
+            "name":plan["name"],
+            "inputs":dict(plan["inputs"]),
+            "baseline_inputs":dict(plan["baseline_inputs"]),
+            "overrides":dict(plan["overrides"]),
+            "assessment":assess_core(AssessmentRequest(**plan["inputs"])),
+        })
     comparison = rank_scenarios(compare_assessments(assessment, executed)) if executed else {"scenarios":[],"ranked_scenarios":[]}
     steps.append({"id":"WHAT_IF","label":"Scenario comparison","status":"COMPLETE" if executed else "SKIPPED","count":len(executed)})
     decision = build_decision_center(assessment=assessment)

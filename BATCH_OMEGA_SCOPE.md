@@ -1,0 +1,1 @@
+Batch Omega: What-If baseline/override integrity, workstation boundary contracts, and deterministic guardrails.
