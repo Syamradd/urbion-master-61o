@@ -42,6 +42,19 @@ def test_canonical_root_has_no_legacy_dashboard_mount_markers():
         assert marker not in html
 
 
+def test_all_critical_final_javascript_assets_pass_node_syntax_check_when_available():
+    node = shutil.which('node')
+    if not node:
+        return
+    for asset in CRITICAL_ASSETS:
+        subprocess.run(
+            [node, '--check', str(ROOT / asset)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+
 def test_championship_workflow_javascript_passes_node_syntax_check_when_available():
     node = shutil.which('node')
     if not node:
