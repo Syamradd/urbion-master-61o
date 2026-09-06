@@ -46,7 +46,9 @@ def test_integrated_release_candidate_contract():
 
     handoff = client.post("/planner/handoff", json={"assessment_inputs": INPUTS})
     assert handoff.status_code == 200
-    assert handoff.json()["guardrails"]["decision_authority"] == "NONE"
+    handoff_body = handoff.json()
+    assert handoff_body["handoff"]["decision_authority"] == "NONE"
+    assert handoff_body["handoff"]["statutory_verification"] == "NOT_CLAIMED"
 
     judge = client.post("/judge/demo", json={"assessment_inputs": INPUTS})
     assert judge.status_code == 200
