@@ -47,6 +47,7 @@ def _frontend_asset(asset:str):
     if not target.is_file(): raise HTTPException(status_code=404,detail="Frontend asset not found")
     return FileResponse(target,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
 def _frontend_logo(asset:str):
+    asset = asset if asset.endswith('.svg') else asset + '.svg'
     if asset not in ALLOWED_LOGOS: raise HTTPException(status_code=404,detail="Unknown logo asset")
     target=BASE_DIR/asset
     if not target.is_file(): raise HTTPException(status_code=404,detail="Logo asset not found")
