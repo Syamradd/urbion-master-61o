@@ -1,8 +1,9 @@
-"""UI compatibility routes for genuinely optional TOD context.
+"""Canonical UI compatibility for genuinely optional TOD context.
 
-The deterministic planning engines remain unchanged. These routes only adapt the
-request orchestration so a planner may run a site assessment without supplying a
-TOD reference; missing TOD is represented as unavailable and never fabricated.
+The existing deterministic engines remain the source of truth. This module only
+adapts the request boundary so the main planning workstation can assess a site
+without inventing a TOD reference. When TOD is absent, transit scoring is
+excluded and the evidence state stays explicit.
 """
 from __future__ import annotations
 
@@ -12,8 +13,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+import server
 from server import (
-    assess_core as _legacy_assess_core,
     build_planning_value,
     classify,
     distance_m,
@@ -29,11 +30,11 @@ from server import (
     urbion_calculate_overall_status,
     build_site_analysis,
 )
-
 from urbion_scenario_ranking import rank_scenarios
 from urbion_what_if import build_scenario_plan, compare_assessments
 
 router = APIRouter(tags=["championship-ui-compat"])
+_original_assess_core = server.assess_core
 
 
 def _payload_namespace(data: dict[str, Any]) -> SimpleNamespace:
@@ -111,65 +112,53 @@ def assess_optional(data: dict[str, Any]) -> dict[str, Any]:
     else:
         cr = [{"rule_id": None, "applicability": "NOT_LOADED", "status": "REQUIRES REVIEW", "reason": "Local statutory rule set is not loaded into the verified decision engine."}]
     sa = build_site_analysis(
-        state=r.state,
-        district=r.district,
-        pbt=r.pbt,
-        lot_no=r.lot_no,
-        latitude=r.site_lat,
-        longitude=r.site_lon,
-        tod_distance_m=d,
-        development_class=dc,
-        development_type=r.development_type,
-        policy_status=fs,
-        final_status=fs,
-        retrieved_rules=len(rr),
+        state=r.state, district=r.district, pbt=r.pbt, lot_no=r.lot_no,
+        latitude=r.site_lat, longitude=r.site_lon, tod_distance_m=d,
+        development_class=dc, development_type=r.development_type,
+        policy_status=fs, final_status=fs, retrieved_rules=len(rr),
     )
     reg = source_registry_snapshot()
     ei = summarise_sources(reg)
     trace = decision_trace(fs, rr, ar, cr)
-    site = {
-        "latitude": r.site_lat,
-        "longitude": r.site_lon,
-        "state": r.state,
-        "district": r.district,
-        "pbt": r.pbt,
-        "lot_no": r.lot_no or "Not specified",
-        "tod_distance_m": d,
-    }
+    site = {"latitude": r.site_lat, "longitude": r.site_lon, "state": r.state, "district": r.district, "pbt": r.pbt, "lot_no": r.lot_no or "Not specified", "tod_distance_m": d}
     pv = build_planning_value(site=site, final_status=fs, policy_coverage=cov, retrieved_rules=rr, compliance_results=cr, site_analysis=sa, evidence_intelligence=ei)
     return {
-        "project": "URBION",
-        "version": "PHASE-E.8",
-        "site": site,
-        "tod": {"latitude": r.tod_lat, "longitude": r.tod_lon},
-        "precinct": r.precinct,
-        "development_class": dc,
-        "development_type": r.development_type,
-        "proposal": prop,
-        "tod_distance_m": d,
-        "classification": cl,
-        "policy_coverage": cov,
-        "retrieved_rules": rr,
-        "applicability_results": ar,
-        "compliance_results": cr,
-        "final_rule": fr,
-        "final_status": fs,
-        "site_analysis": sa,
-        "recommendation": sa["recommendation"],
-        "decision_confidence": sa["decision_confidence"],
-        "planning_value": pv,
-        "source_registry": reg,
-        "evidence_intelligence": ei,
-        "decision_trace": trace,
+        "project": "URBION", "version": "PHASE-E.8", "site": site,
+        "tod": {"latitude": r.tod_lat, "longitude": r.tod_lon}, "precinct": r.precinct,
+        "development_class": dc, "development_type": r.development_type, "proposal": prop,
+        "tod_distance_m": d, "classification": cl, "policy_coverage": cov,
+        "retrieved_rules": rr, "applicability_results": ar, "compliance_results": cr,
+        "final_rule": fr, "final_status": fs, "site_analysis": sa,
+        "recommendation": sa["recommendation"], "decision_confidence": sa["decision_confidence"],
+        "planning_value": pv, "source_registry": reg, "evidence_intelligence": ei, "decision_trace": trace,
         "evidence_state": {
             "site_coordinates": "USER_PROVIDED",
             "tod_distance": "CALCULATED" if d is not None else "UNVERIFIED",
             "planning_rules": "SOURCE_CONTEXT" if rr else "UNVERIFIED",
-            "final_decision": "CALCULATED",
-            "statutory_verification": "NOT_CLAIMED",
+            "final_decision": "CALCULATED", "statutory_verification": "NOT_CLAIMED",
         },
         "gis_provenance": "URBION GIS decision pipeline + official-source registry; missing TOD is disclosed and excluded from transit scoring.",
     }
+
+
+def _assess_core_compat(r: Any) -> dict[str, Any]:
+    if getattr(r, "tod_lat", None) is None and getattr(r, "tod_lon", None) is None:
+        data = r.model_dump() if hasattr(r, "model_dump") else vars(r)
+        return assess_optional(data)
+    return _original_assess_core(r)
+
+
+# Make every existing server route that resolves the global `assess_core` use the
+# optional-TOD adapter without changing the original deterministic engine itself.
+server.assess_core = _assess_core_compat
+try:
+    server.AssessmentRequest.model_fields["tod_lat"].annotation = float | None
+    server.AssessmentRequest.model_fields["tod_lat"].default = None
+    server.AssessmentRequest.model_fields["tod_lon"].annotation = float | None
+    server.AssessmentRequest.model_fields["tod_lon"].default = None
+    server.AssessmentRequest.model_rebuild(force=True)
+except Exception as exc:  # fail-safe: compatibility route still remains available
+    raise RuntimeError(f"Unable to rebuild optional TOD request contract: {exc}") from exc
 
 
 @router.post("/assess-ui")
@@ -182,11 +171,8 @@ def what_if_ui(data: dict[str, Any]):
     baseline_data = dict(data.get("baseline") or {})
     baseline = assess_optional(baseline_data)
     plans = build_scenario_plan(baseline_data, list(data.get("variants") or []))
-    executed = []
-    for plan in plans:
-        executed.append({"id": plan["id"], "name": plan["name"], "assessment": assess_optional(plan["inputs"])})
+    executed = [{"id": p["id"], "name": p["name"], "assessment": assess_optional(p["inputs"])} for p in plans]
     return rank_scenarios(compare_assessments(baseline, executed))
 
 
-from server import app
-app.include_router(router)
+server.app.include_router(router)
