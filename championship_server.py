@@ -32,6 +32,7 @@ ALLOWED_ASSETS = {
     "urbion_championship_gap_closure.js",
     "urbion_championship_validation_surface.js",
     "urbion_championship_ui_repair.js",
+    "urbion_championship_ui_repair_v2.js",
 }
 FINAL_ASSETS = tuple(ALLOWED_ASSETS)
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
@@ -95,6 +96,7 @@ def _frontend_root():
         "urbion_championship_gap_closure.js",
         "urbion_championship_validation_surface.js",
         "urbion_championship_ui_repair.js",
+        "urbion_championship_ui_repair_v2.js",
         "urbion_championship_final_runtime_enforcer.js",
     ]
     for asset in runtime_assets:
@@ -103,7 +105,7 @@ def _frontend_root():
             source = source.replace("</body>", script + "</body>", 1)
     source = _design_system(source)
     source = re.sub(r'<script>\s*window\.__URBION_FRONTEND_BOOT__=.*?</script>', "", source, count=1, flags=re.DOTALL)
-    source = source.replace("</body>", '<script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script></body>', 1)
+    source = source.replace("</body>", '<script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-332",entrypoint:"championship.html"};</script></body>', 1)
     return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
@@ -173,6 +175,7 @@ for _path in (
     "/urbion_championship_gap_closure.js",
     "/urbion_championship_validation_surface.js",
     "/urbion_championship_ui_repair.js",
+    "/urbion_championship_ui_repair_v2.js",
     "/urbion_championship_final_runtime_enforcer.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
@@ -185,4 +188,4 @@ for _path in (
             app.router.routes.insert(0, app.router.routes.pop(_idx))
             break
 app.state.frontend_entrypoint="championship.html"
-app.state.frontend_release="MASTER-331"
+app.state.frontend_release="MASTER-332"
