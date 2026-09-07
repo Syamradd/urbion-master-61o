@@ -404,6 +404,8 @@ def main() -> None:
 
         page.locator("#cs-judge").click()
         expect(page.locator("#cs-judge-result")).to_contain_text("Judge snapshot ready", timeout=30_000)
+        page.locator("#cs-overlay-close").click()
+        expect(page.locator("#cs-overlay")).not_to_have_class("open")
 
         with page.expect_navigation(wait_until="networkidle"):
             page.locator('button[data-tool="about"]').click()
