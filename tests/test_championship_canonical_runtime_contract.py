@@ -48,7 +48,7 @@ def test_canonical_shell_has_no_global_mutation_or_polling_loops():
         "/copilot/run",
         "/copilot/explain",
         "/station-intelligence",
-        "/judge-mode",
+        "/judge/demo",
     ):
         assert endpoint in js
 
