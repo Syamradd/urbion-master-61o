@@ -80,6 +80,10 @@ def main() -> None:
         expect(page.locator("#cs-run")).to_be_enabled()
 
         # TOD is genuinely optional: leave TOD blank and run once.
+        tod_section = page.locator("#cs-todlat").locator("xpath=ancestor::details[1]")
+        if not tod_section.get_attribute("open"):
+            tod_section.locator("summary").click()
+        expect(page.locator("#cs-todlat")).to_be_visible()
         assert page.locator("#cs-todlat").input_value() == ""
         assert page.locator("#cs-todlon").input_value() == ""
         page.locator("#cs-run").click()
@@ -90,6 +94,8 @@ def main() -> None:
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
 
         # Optional TOD contract: whitespace is still blank.
+        if not tod_section.get_attribute("open"):
+            tod_section.locator("summary").click()
         page.locator("#cs-todlat").fill("   ")
         page.locator("#cs-todlon").fill("   ")
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
