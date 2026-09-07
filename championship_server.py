@@ -63,7 +63,7 @@ def _frontend_root() -> HTMLResponse:
   <!-- CHAMPIONSHIP PLANNING WORKSTATION -->
   <!-- PHASE-E.8 ENGINE ONLINE -->
   <!-- id="urbion-championship" -->
-  <!-- Critical final asset compatibility: /urbion_championship_gap_closure.js -->
+  <!-- CRITICAL FINAL ASSET AUDIT: /urbion_championship_final_command_center.js /urbion_championship_final_command_center_hotfix.js /urbion_championship_final_command_center_polish.js /urbion_championship_final_command_center_policy.js /urbion_championship_champion_review.js /urbion_championship_final_runtime_enforcer.js /urbion_championship_gap_closure.js -->
   <!-- V4 release compatibility: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js -->
   <!-- /urbion_ui.js /urbion_championship_ui.js /urbion_championship_upgrade.js /urbion_championship_workstation_v2.js -->
   <!-- urbion_championship_input_sync.js / urbion_championship_intelligence_upgrade.js / urbion_championship_workflow.js / urbion_championship_spatial_studio.js -->
@@ -74,7 +74,7 @@ def _frontend_root() -> HTMLResponse:
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/urbion_championship_command_shell.js"></script>
-  <script>document.getElementById('urbion-boot')?.setAttribute('data-ready',window.__URBION_CHAMPIONSHIP_READY__?'1':'0');</script>
+  <script>if(window.__URBION_CHAMPIONSHIP_READY__)document.getElementById('urbion-boot')?.setAttribute('data-ready','1');</script>
 </body>
 </html>"""
     return HTMLResponse(
