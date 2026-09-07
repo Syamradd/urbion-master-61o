@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from fastapi import HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from server import app
 
 import urbion_spatial_api  # noqa: F401,E402
@@ -17,8 +17,10 @@ import urbion_live_stations_api  # noqa: F401,E402
 
 BASE_DIR = Path(__file__).resolve().parent
 CANONICAL_ASSET = "urbion_championship_command_shell.js"
+PREMIUM_V6_ASSET = "urbion_championship_premium_v6.js"
 ALLOWED_ASSETS = {
     CANONICAL_ASSET,
+    PREMIUM_V6_ASSET,
     "urbion_ui.js",
     "urbion_championship_ui.js",
     "urbion_championship_upgrade.js",
@@ -138,6 +140,14 @@ def _frontend_asset(asset: str):
     target = BASE_DIR / asset
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Frontend asset not found")
+    if asset == CANONICAL_ASSET:
+        # Keep the HTML root on one canonical script while shipping the premium
+        # presentation layer as part of that same runtime asset.
+        companion = BASE_DIR / PREMIUM_V6_ASSET
+        payload = target.read_text(encoding="utf-8")
+        if companion.is_file():
+            payload += "\n" + companion.read_text(encoding="utf-8")
+        return Response(payload, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
     return FileResponse(target, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
@@ -180,6 +190,7 @@ app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_sc
 # assets first so compatibility resources resolve deterministically.
 _PRIORITY_PATHS = (
     "/urbion_championship_command_shell.js",
+    "/urbion_championship_premium_v6.js",
     "/urbion_ui.js",
     "/urbion_championship_ui.js",
     "/urbion_championship_upgrade.js",
