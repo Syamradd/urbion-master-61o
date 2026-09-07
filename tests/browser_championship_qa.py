@@ -87,6 +87,38 @@ def main() -> None:
         expect(page.locator("#cs-score")).not_to_have_text("—")
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
         expect(page.locator("#stat-tod")).to_have_text("—")
+        assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
+
+        # Optional TOD contract: whitespace is still blank.
+        page.locator("#cs-todlat").fill("   ")
+        page.locator("#cs-todlon").fill("   ")
+        expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
+        expect(page.locator("#stat-tod")).to_have_text("—")
+        assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
+
+        # Invalid numeric TOD values are unavailable, never coerced into a distance.
+        page.locator("#cs-todlat").fill("not-a-coordinate")
+        page.locator("#cs-todlon").fill("also-invalid")
+        expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
+        expect(page.locator("#stat-tod")).to_have_text("—")
+        assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
+
+        # Valid TOD coordinates must reactivate the existing calculation and visuals.
+        page.locator("#cs-todlat").fill("2.290")
+        page.locator("#cs-todlon").fill("102.200")
+        tod_signal = page.locator("#sig-tod").inner_text().strip()
+        tod_stat = page.locator("#stat-tod").inner_text().strip()
+        assert tod_signal.endswith(" m") and int(tod_signal.split()[0]) > 0, tod_signal
+        assert tod_stat.endswith(" m") and int(tod_stat.split()[0]) > 0, tod_stat
+        assert page.locator("#cs-map .leaflet-marker-pane img").count() == 1
+        assert page.locator("#cs-map .leaflet-overlay-pane .leaflet-interactive").count() >= 3
+
+        # Clearing a previously valid TOD must remove stale distance and map state.
+        page.locator("#cs-todlat").fill("")
+        page.locator("#cs-todlon").fill("")
+        expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
+        expect(page.locator("#stat-tod")).to_have_text("—")
+        assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
 
         # Browser-visible spatial evidence after analysis.
         assert page.locator("#cs-map .leaflet-marker-pane").count() == 1
