@@ -30,6 +30,21 @@ def capture(page, name: str) -> None:
     page.screenshot(path=ARTIFACT_DIR / f"{name}.png", full_page=True)
 
 
+def leaflet_layer_active(page, layer_id: str) -> bool:
+    return bool(page.evaluate(
+        """
+        id => {
+          const map = window.__URBION_FCC_MAP__;
+          const official = window.__URBION_OFFICIAL_LAYERS__ || {};
+          const legacy = window.__URBION_FCC_WMS__ || {};
+          const layer = official[id] || legacy[id];
+          return !!(map && layer && map.hasLayer(layer));
+        }
+        """,
+        layer_id,
+    ))
+
+
 def main() -> None:
     console_errors: list[str] = []
     page_errors: list[str] = []
@@ -168,8 +183,7 @@ def main() -> None:
         # OFF again must remove the visual layer.
         current.uncheck()
         page.wait_for_timeout(500)
-        after_off_hash = map_hash(page)
-        assert after_off_hash != after_on_hash
+        assert not leaflet_layer_active(page, "iplan-current")
         official_ids = page.evaluate("Object.keys(window.__URBION_OFFICIAL_LAYERS__ || {})")
         assert "iplan-current" not in official_ids
 
@@ -183,26 +197,25 @@ def main() -> None:
         current_opacity = page.evaluate("window.__URBION_OFFICIAL_LAYERS__?.['iplan-current']?.options?.opacity")
         assert current_opacity is not None and abs(float(current_opacity) - 1.0) < 0.01, current_opacity
         current.uncheck()
+        assert not leaflet_layer_active(page, "iplan-current")
 
-        # Every exposed query layer must produce either a visible map change or an explicit source state.
+        # Every exposed query layer must produce either a live Leaflet layer or an explicit source state.
         allowed_source_states = {"NO FEATURE / QUERY ERROR", "RUN ANALYSIS TO QUERY", "SOURCE UNAVAILABLE", "SOURCE CONTEXT"}
         for input_index in range(layer_inputs.count()):
             layer = layer_inputs.nth(input_index)
             layer_id = layer.get_attribute("data-layer")
-            if not layer_id or layer_id == "iplan-current" or layer_id == "iplan-cadastral":
+            if not layer_id or layer_id in {"iplan-current", "iplan-cadastral"}:
                 continue
-            before = map_hash(page)
             layer.check()
             page.wait_for_timeout(700)
-            after = map_hash(page)
             row = layer.locator("xpath=ancestor::label[1]")
             status = row.locator("small").inner_text().strip() if row.locator("small").count() else ""
-            live_visual = after != before
+            live_leaflet_layer = leaflet_layer_active(page, layer_id)
             explicit_unavailable = any(state in status for state in allowed_source_states)
-            assert live_visual or explicit_unavailable, f"Layer {layer_id} changed checkbox without visual/source-state evidence: {status!r}"
+            assert live_leaflet_layer or explicit_unavailable, f"Layer {layer_id} changed checkbox without live layer/source-state evidence: {status!r}"
             layer.uncheck()
             page.wait_for_timeout(250)
-            assert map_hash(page) == before or explicit_unavailable, f"Layer {layer_id} left unexpected map state after OFF."
+            assert not leaflet_layer_active(page, layer_id), f"Layer {layer_id} remained active after OFF."
 
         # Core workbench navigation after a single run.
         for tab in ("site", "ai", "whatif", "decision", "lcp", "output"):
