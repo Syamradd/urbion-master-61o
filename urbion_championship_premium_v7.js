@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__URBION_CANONICAL_INTEGRATION_V5__)return;
-window.__URBION_CANONICAL_INTEGRATION_V5__=true;
+if(window.__URBION_PREMIUM_V7_INTEGRATION__)return;
+window.__URBION_PREMIUM_V7_INTEGRATION__=true;
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const root=()=>$('#urbion-championship-shell');
 const labels={'New Development':'Pembangunan Baharu','Redevelopment':'Pembangunan Semula','Extension / Addition':'Tambahan / Peluasan','Change of Use':'Pertukaran Kegunaan','Subdivision':'Pecah Bahagian','Land Consolidation':'Penyatuan Tanah','Mixed-Use Development':'Pembangunan Penggunaan Bercampur','Temporary Use':'Kegunaan Sementara'};
