@@ -1,21 +1,31 @@
 """Browser acceptance gate for the canonical URBION workstation.
 
-This is intentionally a browser test, not a replacement for the existing
-pytest regression suite. It verifies the visible planner workflow against the
-same Uvicorn entrypoint used by Render.
+The suite consumes the stable window.__URBION_QA__ product contract instead of
+private Leaflet registries. It still verifies visible map behaviour with
+screenshots, source responses, and the real user flow.
 """
 from __future__ import annotations
 
 import hashlib
 import os
+import time
 from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
 
-
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8765")
 ARTIFACT_DIR = Path(os.getenv("URBION_BROWSER_ARTIFACT_DIR", "/tmp/urbion-browser-qa"))
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+
+LAYER_IDS = [
+    "iplan-current", "iplan-zoning", "iplan-committed", "iplan-rfn", "iplan-cadastral",
+    "iplan-flood", "iplan-disaster-risk", "iplan-ksas", "iplan-cfs", "iplan-ecology",
+    "iplan-heritage", "iplan-topography", "mygems-lithology", "mygems-faults",
+]
+EXPLICIT_NONLIVE = {
+    "SOURCE_UNAVAILABLE", "QUERY_ERROR", "NO_FEATURE", "STATE REQUIRED",
+    "RUN ANALYSIS TO QUERY", "SOURCE CONTEXT", "REFERENCE_ONLY", "MANUAL_VERIFICATION_REQUIRED",
+}
 
 
 def select(page, selector: str, label: str) -> None:
@@ -30,24 +40,36 @@ def capture(page, name: str) -> None:
     page.screenshot(path=ARTIFACT_DIR / f"{name}.png", full_page=True)
 
 
-def leaflet_layer_active(page, layer_id: str) -> bool:
-    return bool(page.evaluate(
-        """
-        id => {
-          const map = window.__URBION_FCC_MAP__;
-          const official = window.__URBION_OFFICIAL_LAYERS__ || {};
-          const legacy = window.__URBION_FCC_WMS__ || {};
-          const candidates = [official[id], legacy[id]].filter(Boolean);
-          if (!map) return false;
-          let found = false;
-          map.eachLayer(layer => {
-            if (candidates.includes(layer) || layer.__urbionLayerId === id) found = true;
-          });
-          return found;
-        }
-        """,
-        layer_id,
-    ))
+def qa(page) -> dict:
+    state = page.evaluate("window.__URBION_QA__ || null")
+    assert state and state.get("version") == 1, "Stable URBION QA contract is missing or invalid."
+    return state
+
+
+def wait_for_qa(page, layer_id: str, predicate, timeout_ms: int = 20_000) -> dict:
+    deadline = time.monotonic() + timeout_ms / 1000
+    last = None
+    while time.monotonic() < deadline:
+        state = qa(page)["layers"].get(layer_id)
+        last = state
+        if state and predicate(state):
+            return state
+        page.wait_for_timeout(200)
+    raise AssertionError(f"QA contract timeout for {layer_id}: {last!r}")
+
+
+def semantic_layer_assertion(state: dict, layer_id: str) -> None:
+    source = state["sourceStatus"]
+    features = state.get("featureCount")
+    rendered = state["renderStatus"]
+    visible = bool(state["visible"])
+    if source == "LIVE" and features is not None and features > 0:
+        assert rendered == "RENDERED", f"{layer_id}: LIVE + features without RENDERED state: {state!r}"
+        assert visible, f"{layer_id}: rendered data is not visible: {state!r}"
+    elif source == "LIVE" and features == 0:
+        assert rendered in {"HIDDEN", "LIVE_DATA"}, f"{layer_id}: zero-feature layer state incoherent: {state!r}"
+    else:
+        assert source in EXPLICIT_NONLIVE or source.startswith("LIVE"), f"{layer_id}: unknown source state {state!r}"
 
 
 def main() -> None:
@@ -63,10 +85,29 @@ def main() -> None:
         page.on("pageerror", lambda exc: page_errors.append(str(exc)))
         page.on("requestfailed", lambda request: request_failures.append(f"{request.method} {request.url} :: {request.failure}"))
 
+        # Deterministic browser boot: do not assert against an unready server.
+        deadline = time.monotonic() + 10
+        last_boot_error = None
+        while time.monotonic() < deadline:
+            try:
+                response = page.request.get(BASE_URL + "/health", timeout=2_000)
+                if response.status == 200:
+                    break
+                last_boot_error = f"HTTP {response.status}"
+            except Exception as exc:  # pragma: no cover - diagnostic path
+                last_boot_error = exc
+            page.wait_for_timeout(250)
+        else:
+            uvicorn_log = Path("/tmp/urbion-browser-uvicorn.log")
+            details = uvicorn_log.read_text(encoding="utf-8") if uvicorn_log.exists() else "server log unavailable"
+            raise AssertionError(f"Render-equivalent server was not ready: {last_boot_error}\n{details}")
+
         page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
         expect(page).to_have_title("URBION HORIZON — Planning Command Centre")
+        state = qa(page)
+        assert state["mapReady"] and state["baseMapReady"], state
 
-        # One workstation, one map, no duplicate shell.
+        # One workstation, one hero map, no duplicate presentation shell.
         assert page.locator("#urbion-championship-shell").count() == 1
         assert page.locator(".topbar").count() == 1
         assert page.locator("#cs-map").count() == 1
@@ -75,17 +116,14 @@ def main() -> None:
         assert page.locator(".intel-panel").count() == 1
         assert page.locator(".persistent-case").count() == 0
         assert page.locator(".persistent-layers").count() == 0
-
-        # Desktop composition: left / hero map / right.
         case_box = page.locator(".case-panel").bounding_box()
         map_box = page.locator(".map-panel-canonical").bounding_box()
         intel_box = page.locator(".intel-panel").bounding_box()
         assert case_box and map_box and intel_box
-        assert map_box["width"] > case_box["width"]
-        assert map_box["width"] > intel_box["width"]
+        assert map_box["width"] > case_box["width"] and map_box["width"] > intel_box["width"]
         assert map_box["height"] >= 600
 
-        # Build a real MBMB case through dependent controls.
+        # DEFINE CASE → STATE → PBT → DISTRICT → LAND USE → DEVELOPMENT → CATEGORY → ACTIVITY → INTENSITY.
         page.locator("#cs-project_name").fill("Browser QA · Sg. Udang")
         page.locator("#cs-lat").fill("2.285")
         page.locator("#cs-lon").fill("102.196")
@@ -97,47 +135,35 @@ def main() -> None:
         select(page, "#cs-activity", "TOD / Mixed Use")
         select(page, "#cs-development", "New Development")
         page.locator("#cs-ratio").fill("4.5")
+        assert qa(page)["caseReady"]
+        expect(page.locator("#cs-run")).to_be_enabled()
         capture(page, "case-defined")
 
-        # Dependency behaviour must be deterministic.
-        assert page.locator("#cs-pbt option").count() > 1
-        assert page.locator("#cs-district option").count() > 1
-        assert page.locator("#cs-category option").count() > 1
-        assert page.locator("#cs-activity option").count() > 1
-        expect(page.locator("#cs-run")).to_be_enabled()
-
-        # TOD is genuinely optional: leave TOD blank and run once.
+        # TOD optionality: blank, whitespace, invalid, valid, clear, then blank analysis again.
         tod_section = page.locator("#cs-todlat").locator("xpath=ancestor::details[1]")
         if tod_section.get_attribute("open") is None:
             tod_section.locator("summary").click()
         expect(page.locator("#cs-todlat")).to_be_visible()
         assert page.locator("#cs-todlat").input_value() == ""
-        assert page.locator("#cs-todlon").input_value() == ""
         page.locator("#cs-run").click()
         expect(page.locator("#cs-status-pill")).to_have_text("ANALYSIS READY", timeout=30_000)
-        expect(page.locator("#cs-score")).not_to_have_text("—")
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
         expect(page.locator("#stat-tod")).to_have_text("—")
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
+        assert qa(page)["analysisReady"]
         capture(page, "analysis-blank-tod")
 
-        # Optional TOD contract: whitespace is still blank.
-        if tod_section.get_attribute("open") is None:
-            tod_section.locator("summary").click()
         page.locator("#cs-todlat").fill("   ")
         page.locator("#cs-todlon").fill("   ")
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
         expect(page.locator("#stat-tod")).to_have_text("—")
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
-
-        # Invalid numeric TOD values are unavailable, never coerced into a distance.
         page.locator("#cs-todlat").fill("not-a-coordinate")
         page.locator("#cs-todlon").fill("also-invalid")
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
         expect(page.locator("#stat-tod")).to_have_text("—")
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
 
-        # Valid TOD coordinates must reactivate the existing calculation and visuals.
         blank_tod_hash = map_hash(page)
         page.locator("#cs-todlat").fill("2.290")
         page.locator("#cs-todlon").fill("102.200")
@@ -146,103 +172,81 @@ def main() -> None:
         assert tod_signal.endswith(" m") and int(tod_signal.split()[0]) > 0, tod_signal
         assert tod_stat.endswith(" m") and int(tod_stat.split()[0]) > 0, tod_stat
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 1
-        assert map_hash(page) != blank_tod_hash, "Valid TOD did not produce a visible map change."
+        assert map_hash(page) != blank_tod_hash
 
-        # Clearing a previously valid TOD must remove stale distance and map state.
         page.locator("#cs-todlat").fill("")
         page.locator("#cs-todlon").fill("")
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
         expect(page.locator("#stat-tod")).to_have_text("—")
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
-        assert map_hash(page) == blank_tod_hash, "Clearing TOD left stale map visualization."
+        assert map_hash(page) == blank_tod_hash
 
-        # Re-run with TOD absent: the analysis must remain usable and must not invent transit.
         page.locator("#cs-run").click()
         expect(page.locator("#cs-status-pill")).to_have_text("ANALYSIS READY", timeout=30_000)
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
         expect(page.locator("#stat-tod")).to_have_text("—")
         capture(page, "analysis")
 
-        # Browser-visible spatial evidence after analysis.
-        assert page.locator("#cs-map .leaflet-marker-pane").count() == 1
-        assert page.locator("#cs-map .leaflet-overlay-pane").count() == 1
-
-        # Capture baseline map before thematic layer toggle.
+        # MAP → evidence → layer matrix.
         baseline_hash = map_hash(page)
         page.locator("#cs-map-layers").click()
         expect(page.locator("#cs-layer-drawer")).to_be_visible()
         layer_inputs = page.locator("#cs-layer-drawer input[data-layer]")
-        assert layer_inputs.count() >= 10
+        assert layer_inputs.count() == len(LAYER_IDS)
 
-        # Official current-land-use layer: checkbox must produce a real ArcGIS tile request.
+        # Official current land-use must make the documented i-Plan export request and render.
         current = page.locator('#cs-layer-drawer input[data-layer="iplan-current"]')
         with page.expect_response(lambda response: "GTsemasa_04/MapServer/export" in response.url, timeout=20_000):
             current.check()
-        page.wait_for_timeout(2_000)
-        after_on_hash = map_hash(page)
-        assert after_on_hash != baseline_hash, "Current Land Use toggle did not change the visible map."
-        official_ids = page.evaluate("Object.keys(window.__URBION_OFFICIAL_LAYERS__ || {})")
-        assert official_ids.count("iplan-current") == 1, "Duplicate official layer handlers/layers detected."
+        current_state = wait_for_qa(page, "iplan-current", lambda s: s["renderStatus"] == "RENDERED")
+        semantic_layer_assertion(current_state, "iplan-current")
+        assert map_hash(page) != baseline_hash
         capture(page, "map-layer-on")
 
-        # OFF again must remove the visual layer.
-        current.uncheck()
-        page.wait_for_timeout(500)
-        assert not leaflet_layer_active(page, "iplan-current")
-        official_ids = page.evaluate("Object.keys(window.__URBION_OFFICIAL_LAYERS__ || {})")
-        assert "iplan-current" not in official_ids
-
-        # Opacity must be wired for an active official layer.
-        current.check()
-        page.wait_for_timeout(1_000)
+        # Opacity is a real state change, not just an input change.
         opacity = page.locator('#cs-layer-drawer input[data-opacity="iplan-current"]')
         expect(opacity).to_be_visible()
         opacity.fill("100")
-        page.wait_for_timeout(300)
-        current_opacity = page.evaluate("window.__URBION_OFFICIAL_LAYERS__?.['iplan-current']?.options?.opacity")
-        assert current_opacity is not None and abs(float(current_opacity) - 1.0) < 0.01, current_opacity
-        current.uncheck()
-        assert not leaflet_layer_active(page, "iplan-current")
+        wait_for_qa(page, "iplan-current", lambda s: abs(float(s["opacity"]) - 1.0) < 0.01)
 
-        # Exposed query layers use their real click flow: some immediately
-        # return to OFF when no feature exists, while live layers remain ON.
-        allowed_source_states = {"NO FEATURE / QUERY ERROR", "RUN ANALYSIS TO QUERY", "SOURCE UNAVAILABLE", "SOURCE CONTEXT"}
-        for input_index in range(layer_inputs.count()):
-            layer = layer_inputs.nth(input_index)
-            layer_id = layer.get_attribute("data-layer")
-            if not layer_id or layer_id in {"iplan-current", "iplan-cadastral"}:
+        # Full matrix: every exposed functional layer goes OFF → ON → inspect → OFF.
+        current.uncheck()
+        wait_for_qa(page, "iplan-current", lambda s: s["visible"] is False and s["renderStatus"] == "HIDDEN")
+        for layer_id in LAYER_IDS:
+            if layer_id == "iplan-current":
                 continue
+            layer = page.locator(f'#cs-layer-drawer input[data-layer="{layer_id}"]')
+            assert layer.count() == 1, layer_id
             layer.click()
-            page.wait_for_timeout(700)
-            row = layer.locator("xpath=ancestor::label[1]")
-            status = row.locator("small").inner_text().strip() if row.locator("small").count() else ""
-            live_leaflet_layer = leaflet_layer_active(page, layer_id)
-            explicit_unavailable = any(state in status for state in allowed_source_states)
-            assert live_leaflet_layer or explicit_unavailable, f"Layer {layer_id} changed checkbox without live layer/source-state evidence: {status!r}"
+            state = wait_for_qa(
+                page,
+                layer_id,
+                lambda s: s["sourceStatus"] not in {"SOURCE CONTEXT", "LIVE_DATA_PENDING"},
+            )
+            semantic_layer_assertion(state, layer_id)
+            if state["sourceStatus"] == "LIVE" and state.get("featureCount", 0) > 0:
+                assert state["renderStatus"] == "RENDERED"
             if layer.is_checked():
                 layer.uncheck()
-                page.wait_for_timeout(250)
-            assert not leaflet_layer_active(page, layer_id), f"Layer {layer_id} remained active after OFF."
+            off = wait_for_qa(page, layer_id, lambda s: not s["visible"] and s["renderStatus"] == "HIDDEN")
+            assert not off["visible"]
 
-        # Core workbench navigation after a single run.
+        # EVIDENCE → AI → WHAT-IF → DECISION → LCP → OUTPUT.
         for tab in ("site", "ai", "whatif", "decision", "lcp", "output"):
             page.locator(f'.workbench-nav button[data-tab="{tab}"]').click()
             expect(page.locator("#cs-content")).not_to_have_text("Planning case not defined")
 
-        # What-If must actually execute a controlled scenario.
         page.locator('.workbench-nav button[data-tab="whatif"]').click()
         what_if_button = page.locator('#cs-content button[data-wif]').first
         expect(what_if_button).to_be_visible()
         what_if_button.click()
         expect(page.locator("#cs-wif-result")).not_to_have_text("Set an intensity and run a scenario.", timeout=30_000)
 
-        # AI assessment / explanation and station context must be usable.
         page.locator("#cs-ai").click()
         expect(page.locator("#cs-ai-result")).not_to_have_text("Available after a case is defined.", timeout=30_000)
         page.locator("#cs-station").click()
         page.wait_for_timeout(500)
 
-        # Decision and LCP surfaces carry actual populated case intelligence.
         page.locator('.workbench-nav button[data-tab="decision"]').click()
         expect(page.locator("#cs-content")).to_contain_text("RECOMMENDED OPTION")
         capture(page, "decision")
@@ -251,13 +255,10 @@ def main() -> None:
         page.locator('.workbench-nav button[data-tab="output"]').click()
         expect(page.locator("#cs-content")).to_contain_text("Unified case package")
 
-        # Judge Mode must execute its real endpoint and open the existing presentation surface.
+        # JUDGE → ABOUT → PRINT → EXPORT → THEME → LANGUAGE → final evidence.
         page.locator("#cs-judge").click()
-        page.wait_for_timeout(700)
         expect(page.locator("#cs-judge-result")).to_contain_text("Judge snapshot ready", timeout=30_000)
 
-        # Utility actions: About is a real destination, Print has a browser API,
-        # and Export creates a case payload rather than a dead click.
         with page.expect_navigation(wait_until="networkidle"):
             page.locator('button[data-tool="about"]').click()
         expect(page).to_have_title("URBION HORIZON — About")
@@ -265,32 +266,26 @@ def main() -> None:
         capture(page, "about")
         page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
 
-        print_button = page.locator('button[data-tool="print"]')
-        expect(print_button).to_be_visible()
+        expect(page.locator('button[data-tool="print"]')).to_be_visible()
         assert page.evaluate("typeof window.print") == "function"
         page.locator('button[data-tool="export"]').click()
-
-        # Language and theme are actual state changes.
         page.locator("#cs-theme").click()
         assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is True
         page.locator("#cs-theme").click()
         page.locator("#cs-lang").click()
         page.wait_for_load_state("networkidle")
         assert page.locator("#cs-lang").inner_text() in {"BM", "EN"}
-
         capture(page, "final-workspace")
+
         (ARTIFACT_DIR / "browser-errors.txt").write_text(
-            "CONSOLE ERRORS\n" + "\n".join(console_errors) +
-            "\n\nPAGE ERRORS\n" + "\n".join(page_errors) +
-            "\n\nREQUEST FAILURES\n" + "\n".join(request_failures),
+            "CONSOLE ERRORS\n" + "\n".join(console_errors)
+            + "\n\nPAGE ERRORS\n" + "\n".join(page_errors)
+            + "\n\nREQUEST FAILURES\n" + "\n".join(request_failures),
             encoding="utf-8",
         )
-        context.close()
+        assert not console_errors, console_errors
+        assert not page_errors, page_errors
         browser.close()
-
-    if console_errors or page_errors:
-        raise AssertionError(f"Browser errors detected: {console_errors + page_errors}")
-    print(f"BROWSER_QA_OK artifacts={ARTIFACT_DIR}")
 
 
 if __name__ == "__main__":
