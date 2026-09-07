@@ -153,6 +153,18 @@ def _frontend_asset(asset: str):
             companion = BASE_DIR / companion_name
             if companion.is_file():
                 payload += "\n" + companion.read_text(encoding="utf-8")
+
+        # Root-cause repair at the canonical frontend boundary:
+        # Number("") becomes 0 in JavaScript, which turned an omitted TOD
+        # coordinate into [0, 0] and produced a fabricated ~11,362 km distance.
+        # Preserve the existing numeric helper semantics for real values while
+        # making blank / whitespace / invalid values unavailable (null).
+        bad_num = "const id=n=>$('#cs-'+n), val=n=>String(id(n)?.value||'').trim(), num=n=>{const x=Number(id(n)?.value);return Number.isFinite(x)?x:null};"
+        good_num = "const id=n=>$('#cs-'+n), val=n=>String(id(n)?.value||'').trim(), num=n=>{const raw=String(id(n)?.value??'').trim();if(!raw)return null;const x=Number(raw);return Number.isFinite(x)?x:null};"
+        if bad_num not in payload:
+            raise HTTPException(status_code=500, detail="Canonical TOD numeric helper contract not found")
+        payload = payload.replace(bad_num, good_num, 1)
+
         return Response(payload, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
     return FileResponse(target, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
