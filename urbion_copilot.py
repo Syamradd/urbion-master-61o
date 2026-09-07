@@ -4,6 +4,7 @@ The copilot composes existing deterministic planning services into one
 traceable packet. It does not call an LLM, grant statutory approval, or
 upgrade source context into verified evidence.
 """
+import server
 from urbion_knowledge_orchestrator import build_knowledge_pack
 from urbion_spatial_intelligence import build_spatial_intelligence
 from urbion_impact_intelligence import build_impact_intelligence
@@ -13,13 +14,13 @@ from urbion_what_if import execute_what_if
 from urbion_scenario_ranking import rank_scenarios
 from urbion_evidence_ledger import build_evidence_ledger
 from urbion_evidence_quality import build_evidence_quality
-from server import assess_core, AssessmentRequest
+from server import AssessmentRequest
 from urbion_network_intelligence import network_distance_m
 
 
 def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constraints=None, environmental_context=None):
     raw = dict(inputs or {})
-    assessment = assess_core(AssessmentRequest(**raw))
+    assessment = server.assess_core(AssessmentRequest(**raw))
     site = assessment["site"]
     spatial = build_spatial_intelligence(site["latitude"], site["longitude"], raw.get("tod_lat"), raw.get("tod_lon"), tuple(radii or (400, 800)), constraints, environmental_context)
     if environmental_context:
@@ -35,7 +36,7 @@ def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constrai
     if not isinstance(variant_list, list) or len(variant_list) > 12:
         raise ValueError("variants must be a list with at most 12 items")
     if variant_list:
-        scenario_intelligence = execute_what_if(raw, variant_list, lambda scenario_inputs: assess_core(AssessmentRequest(**scenario_inputs)))
+        scenario_intelligence = execute_what_if(raw, variant_list, lambda scenario_inputs: server.assess_core(AssessmentRequest(**scenario_inputs)))
         scenario_intelligence = rank_scenarios(scenario_intelligence)
         scenario_intelligence["status"] = "COMPLETE"
         scenario_intelligence["count"] = len(scenario_intelligence.get("scenarios", []))

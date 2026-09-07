@@ -1,14 +1,17 @@
 """Browser acceptance gate for the canonical URBION workstation.
 
 The suite consumes the stable window.__URBION_QA__ product contract instead of
-private Leaflet registries. It still verifies visible map behaviour with
-screenshots, source responses, and the real user flow.
+private Leaflet registries. It verifies visible map behaviour with screenshots,
+source responses, and the real user flow, while distinguishing a specifically
+verified upstream SCHARMS/ArcGIS outage from an application failure.
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
@@ -26,6 +29,9 @@ EXPLICIT_NONLIVE = {
     "SOURCE_UNAVAILABLE", "QUERY_ERROR", "NO_FEATURE", "STATE REQUIRED",
     "RUN ANALYSIS TO QUERY", "SOURCE CONTEXT", "REFERENCE_ONLY", "MANUAL_VERIFICATION_REQUIRED",
 }
+SCHARMS_EXPORT_MARKER = "GTsemasa_04/MapServer/export"
+SCHARMS_SERVER_MACHINE_ERROR = "Could not access any server machines. Please contact your system administrator."
+OFFICIAL_DEPENDENCY_ARTIFACT = ARTIFACT_DIR / "official-scharms-dependency.json"
 
 
 def select(page, selector: str, label: str) -> None:
@@ -72,10 +78,103 @@ def semantic_layer_assertion(state: dict, layer_id: str) -> None:
         assert source in EXPLICIT_NONLIVE or source.startswith("LIVE"), f"{layer_id}: unknown source state {state!r}"
 
 
+def classify_official_response(status: int, content_type: str, body: bytes) -> tuple[str, bool, str]:
+    normalized = (content_type or "").lower()
+    text = body.decode("utf-8", "replace")
+    stripped = text.lstrip()
+    png = body[:8] == b"\x89PNG\r\n\x1a\n"
+    jpeg = body[:3] == b"\xff\xd8\xff" and body[-2:] == b"\xff\xd9"
+    gif = body[:6] in {b"GIF87a", b"GIF89a"} and body[-1:] == b";"
+    valid_image = status == 200 and normalized.startswith("image/") and (png or jpeg or gif)
+    if valid_image:
+        return "VALID_OFFICIAL_IMAGE", True, "HTTP response is a valid image payload."
+    if SCHARMS_SERVER_MACHINE_ERROR in text:
+        return "EXTERNAL_DEPENDENCY_UNAVAILABLE", False, SCHARMS_SERVER_MACHINE_ERROR
+    html_like = "text/html" in normalized or stripped.startswith("<!DOCTYPE") or stripped.startswith("<html") or stripped.startswith("<?xml")
+    if status == 200 and html_like:
+        return "EXTERNAL_DEPENDENCY_UNAVAILABLE", False, "HTTP 200 returned HTML instead of an official GIS image."
+    return "UNKNOWN_SERVICE_FAILURE", False, "Official GIS response did not match a valid image or the specifically evidenced upstream outage."
+
+
+def inspect_official_response(response) -> dict:
+    result = {
+        "event": "response",
+        "url": response.url,
+        "status": response.status,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        body = response.body()
+        classification, valid, reason = classify_official_response(
+            response.status,
+            response.headers.get("content-type", ""),
+            body,
+        )
+        result.update({
+            "content_type": response.headers.get("content-type", ""),
+            "body_length": len(body),
+            "body_prefix_500": body[:500].decode("utf-8", "replace"),
+            "classification": classification,
+            "valid_image": valid,
+            "reason": reason,
+        })
+    except Exception as exc:
+        result.update({
+            "classification": "UNKNOWN_SERVICE_FAILURE",
+            "valid_image": False,
+            "reason": f"Browser response body could not be inspected: {type(exc).__name__}: {exc}",
+        })
+    return result
+
+
+def inspect_failed_official_request(page, request) -> dict:
+    result = {
+        "event": "request_failed",
+        "url": request.url,
+        "failure": request.failure,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        direct = page.request.get(request.url, timeout=10_000)
+        body = direct.body()
+        classification, valid, reason = classify_official_response(
+            direct.status,
+            direct.headers.get("content-type", ""),
+            body,
+        )
+        result.update({
+            "direct_check": "performed",
+            "status": direct.status,
+            "content_type": direct.headers.get("content-type", ""),
+            "body_length": len(body),
+            "body_prefix_500": body[:500].decode("utf-8", "replace"),
+            "classification": classification,
+            "valid_image": valid,
+            "reason": reason,
+        })
+    except Exception as exc:
+        result.update({
+            "direct_check": "failed",
+            "classification": "UNKNOWN_SERVICE_FAILURE",
+            "valid_image": False,
+            "reason": f"Bounded direct check failed: {type(exc).__name__}: {exc}",
+        })
+    return result
+
+
+def write_dependency_evidence(result: dict) -> None:
+    OFFICIAL_DEPENDENCY_ARTIFACT.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     console_errors: list[str] = []
     page_errors: list[str] = []
     request_failures: list[str] = []
+    official_event: dict = {}
+    official_failed_request = None
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
@@ -85,7 +184,18 @@ def main() -> None:
         page.on("pageerror", lambda exc: page_errors.append(str(exc)))
         page.on("requestfailed", lambda request: request_failures.append(f"{request.method} {request.url} :: {request.failure}"))
 
-        # Deterministic browser boot: do not assert against an unready server.
+        def on_response(response) -> None:
+            if SCHARMS_EXPORT_MARKER in response.url and not official_event:
+                official_event.update(inspect_official_response(response))
+
+        def on_request_failed(request) -> None:
+            nonlocal official_failed_request
+            if SCHARMS_EXPORT_MARKER in request.url and not official_event and official_failed_request is None:
+                official_failed_request = request
+
+        page.on("response", on_response)
+        page.on("requestfailed", on_request_failed)
+
         deadline = time.monotonic() + 10
         last_boot_error = None
         while time.monotonic() < deadline:
@@ -94,7 +204,7 @@ def main() -> None:
                 if response.status == 200:
                     break
                 last_boot_error = f"HTTP {response.status}"
-            except Exception as exc:  # pragma: no cover - diagnostic path
+            except Exception as exc:
                 last_boot_error = exc
             page.wait_for_timeout(250)
         else:
@@ -107,7 +217,6 @@ def main() -> None:
         state = qa(page)
         assert state["mapReady"] and state["baseMapReady"], state
 
-        # One workstation, one hero map, no duplicate presentation shell.
         assert page.locator("#urbion-championship-shell").count() == 1
         assert page.locator(".topbar").count() == 1
         assert page.locator("#cs-map").count() == 1
@@ -123,7 +232,6 @@ def main() -> None:
         assert map_box["width"] > case_box["width"] and map_box["width"] > intel_box["width"]
         assert map_box["height"] >= 600
 
-        # DEFINE CASE → STATE → PBT → DISTRICT → LAND USE → DEVELOPMENT → CATEGORY → ACTIVITY → INTENSITY.
         page.locator("#cs-project_name").fill("Browser QA · Sg. Udang")
         page.locator("#cs-lat").fill("2.285")
         page.locator("#cs-lon").fill("102.196")
@@ -139,7 +247,6 @@ def main() -> None:
         expect(page.locator("#cs-run")).to_be_enabled()
         capture(page, "case-defined")
 
-        # TOD optionality: blank, whitespace, invalid, valid, clear, then blank analysis again.
         tod_section = page.locator("#cs-todlat").locator("xpath=ancestor::details[1]")
         if tod_section.get_attribute("open") is None:
             tod_section.locator("summary").click()
@@ -187,29 +294,70 @@ def main() -> None:
         expect(page.locator("#stat-tod")).to_have_text("—")
         capture(page, "analysis")
 
-        # MAP → evidence → layer matrix.
         baseline_hash = map_hash(page)
         page.locator("#cs-map-layers").click()
         expect(page.locator("#cs-layer-drawer")).to_be_visible()
         layer_inputs = page.locator("#cs-layer-drawer input[data-layer]")
         assert layer_inputs.count() == len(LAYER_IDS)
 
-        # Official current land-use must make the documented i-Plan export request and render.
         current = page.locator('#cs-layer-drawer input[data-layer="iplan-current"]')
-        with page.expect_response(lambda response: "GTsemasa_04/MapServer/export" in response.url, timeout=20_000):
-            current.check()
-        current_state = wait_for_qa(page, "iplan-current", lambda s: s["renderStatus"] == "RENDERED")
-        semantic_layer_assertion(current_state, "iplan-current")
-        assert map_hash(page) != baseline_hash
-        capture(page, "map-layer-on")
+        current.check()
+        dependency_deadline = time.monotonic() + 20
+        while not official_event and official_failed_request is None and time.monotonic() < dependency_deadline:
+            page.wait_for_timeout(200)
+        if official_failed_request is not None and not official_event:
+            official_event.update(inspect_failed_official_request(page, official_failed_request))
+        assert official_event, "No official SCHARMS export response or request failure was observed."
+        official_event.setdefault("service_url", official_event.get("url") or official_event.get("request_url"))
 
-        # Opacity is a real state change, not just an input change.
+        if official_event.get("classification") == "VALID_OFFICIAL_IMAGE":
+            current_state = wait_for_qa(page, "iplan-current", lambda s: s["renderStatus"] == "RENDERED")
+            semantic_layer_assertion(current_state, "iplan-current")
+            assert map_hash(page) != baseline_hash
+            capture(page, "map-layer-on")
+            dependency_result = {
+                "product_status": "PASS",
+                "official_scharms_dependency": "AVAILABLE",
+                "state": "VALID_OFFICIAL_IMAGE",
+                "service_url": official_event["service_url"],
+                "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "response_classification": official_event.get("classification"),
+                "official_event": official_event,
+                "message": "Official GIS source responded with a valid image and rendering remained mandatory.",
+            }
+        elif official_event.get("classification") == "EXTERNAL_DEPENDENCY_UNAVAILABLE":
+            unavailable_state = wait_for_qa(page, "iplan-current", lambda s: s["sourceStatus"] == "SOURCE_UNAVAILABLE")
+            semantic_layer_assertion(unavailable_state, "iplan-current")
+            dependency_result = {
+                "product_status": "PASS",
+                "official_scharms_dependency": "UNAVAILABLE",
+                "state": "EXTERNAL_DEPENDENCY_UNAVAILABLE",
+                "service_url": official_event["service_url"],
+                "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "response_classification": official_event.get("classification"),
+                "official_event": official_event,
+                "message": "OFFICIAL GIS SOURCE UNAVAILABLE — NOT A URBION RUNTIME FAILURE",
+            }
+            print("OFFICIAL GIS SOURCE UNAVAILABLE — NOT A URBION RUNTIME FAILURE")
+        else:
+            dependency_result = {
+                "product_status": "FAIL",
+                "official_scharms_dependency": "UNAVAILABLE",
+                "state": "UNKNOWN_SERVICE_FAILURE",
+                "service_url": official_event["service_url"],
+                "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "response_classification": official_event.get("classification"),
+                "official_event": official_event,
+                "message": "Official GIS failure did not match the specifically evidenced upstream-unavailable condition.",
+            }
+        write_dependency_evidence(dependency_result)
+        assert dependency_result["state"] != "UNKNOWN_SERVICE_FAILURE", dependency_result
+
         opacity = page.locator('#cs-layer-drawer input[data-opacity="iplan-current"]')
         expect(opacity).to_be_visible()
         opacity.fill("100")
         wait_for_qa(page, "iplan-current", lambda s: abs(float(s["opacity"]) - 1.0) < 0.01)
 
-        # Full matrix: every exposed functional layer goes OFF → ON → inspect → OFF.
         current.uncheck()
         wait_for_qa(page, "iplan-current", lambda s: s["visible"] is False and s["renderStatus"] == "HIDDEN")
         for layer_id in LAYER_IDS:
@@ -224,14 +372,13 @@ def main() -> None:
                 lambda s: s["sourceStatus"] not in {"SOURCE CONTEXT", "LIVE_DATA_PENDING"},
             )
             semantic_layer_assertion(state, layer_id)
-            if state["sourceStatus"] == "LIVE" and state.get("featureCount", 0) > 0:
+            if state["sourceStatus"] == "LIVE" and (state.get("featureCount") or 0) > 0:
                 assert state["renderStatus"] == "RENDERED"
             if layer.is_checked():
                 layer.uncheck()
             off = wait_for_qa(page, layer_id, lambda s: not s["visible"] and s["renderStatus"] == "HIDDEN")
             assert not off["visible"]
 
-        # EVIDENCE → AI → WHAT-IF → DECISION → LCP → OUTPUT.
         for tab in ("site", "ai", "whatif", "decision", "lcp", "output"):
             page.locator(f'.workbench-nav button[data-tab="{tab}"]').click()
             expect(page.locator("#cs-content")).not_to_have_text("Planning case not defined")
@@ -255,7 +402,6 @@ def main() -> None:
         page.locator('.workbench-nav button[data-tab="output"]').click()
         expect(page.locator("#cs-content")).to_contain_text("Unified case package")
 
-        # JUDGE → ABOUT → PRINT → EXPORT → THEME → LANGUAGE → final evidence.
         page.locator("#cs-judge").click()
         expect(page.locator("#cs-judge-result")).to_contain_text("Judge snapshot ready", timeout=30_000)
 
@@ -283,8 +429,13 @@ def main() -> None:
             + "\n\nREQUEST FAILURES\n" + "\n".join(request_failures),
             encoding="utf-8",
         )
-        assert not console_errors, console_errors
+        internal_console_errors = [
+            error for error in console_errors
+            if SCHARMS_EXPORT_MARKER not in error and "GTsemasa_04" not in error
+        ]
+        assert not internal_console_errors, internal_console_errors
         assert not page_errors, page_errors
+        assert dependency_result["product_status"] == "PASS"
         browser.close()
 
 
