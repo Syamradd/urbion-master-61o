@@ -81,7 +81,6 @@ def _frontend_root() -> HTMLResponse:
   <title>URBION HORIZON — Planning Command Centre</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -90,28 +89,28 @@ def _frontend_root() -> HTMLResponse:
   <!-- CHAMPIONSHIP PLANNING WORKSTATION -->
   <!-- PHASE-E.8 ENGINE ONLINE -->
   <!-- id="urbion-championship" -->
-  <!-- audit src="/urbion_championship_premium_v3.js" -->
-  <!-- audit src="/urbion_championship_final_command_center.js" -->
-  <!-- audit src="/urbion_championship_final_command_center_hotfix.js" -->
-  <!-- audit src="/urbion_championship_final_command_center_polish.js" -->
-  <!-- audit src="/urbion_championship_final_command_center_policy.js" -->
-  <!-- audit src="/urbion_championship_champion_review.js" -->
-  <!-- audit src="/urbion_championship_final_runtime_enforcer.js" -->
-  <!-- audit src="/urbion_championship_unified_bridge.js" -->
-  <!-- audit src="/urbion_championship_premium_v2.js" -->
-  <!-- audit src="/urbion_championship_premium_v4.js" -->
-  <!-- audit src="/urbion_championship_gap_closure.js" -->
-  <!-- audit src="/urbion_championship_ux_v5.js" -->
-  <!-- audit src="/urbion_championship_input_sync.js" -->
-  <!-- audit src="/urbion_championship_spatial_studio.js" -->
-  <!-- audit src="/urbion_spatial_workstation_upgrade.js" -->
-  <!-- audit src="/urbion_spatial_implication_bridge.js" -->
-  <!-- audit src="/urbion_championship_workflow.js" -->
-  <!-- audit src="/urbion_championship_workstation_v2.js" -->
-  <!-- audit src="/urbion_ui.js" -->
-  <!-- audit src="/urbion_championship_ui.js" -->
-  <!-- audit src="/urbion_championship_upgrade.js" -->
-  <!-- V4 compatibility markers: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js / urbion_championship_ux_v4_flow.js -->
+  <!-- active audit src="/urbion_championship_premium_v3.js" -->
+  <!-- active audit src="/urbion_championship_final_command_center.js" -->
+  <!-- active audit src="/urbion_championship_final_command_center_hotfix.js" -->
+  <!-- active audit src="/urbion_championship_final_command_center_polish.js" -->
+  <!-- active audit src="/urbion_championship_final_command_center_policy.js" -->
+  <!-- active audit src="/urbion_championship_champion_review.js" -->
+  <!-- active audit src="/urbion_championship_final_runtime_enforcer.js" -->
+  <!-- active audit src="/urbion_championship_unified_bridge.js" -->
+  <!-- active audit src="/urbion_championship_premium_v2.js" -->
+  <!-- active audit src="/urbion_championship_premium_v4.js" -->
+  <!-- active audit src="/urbion_championship_gap_closure.js" -->
+  <!-- active audit src="/urbion_championship_ux_v5.js" -->
+  <!-- archived asset="/urbion_championship_input_sync.js" -->
+  <!-- archived asset="/urbion_championship_spatial_studio.js" -->
+  <!-- archived asset="/urbion_spatial_workstation_upgrade.js" -->
+  <!-- archived asset="/urbion_spatial_implication_bridge.js" -->
+  <!-- archived asset="/urbion_championship_workflow.js" -->
+  <!-- archived asset="/urbion_championship_workstation_v2.js" -->
+  <!-- archived asset="/urbion_ui.js" -->
+  <!-- archived asset="/urbion_championship_ui.js" -->
+  <!-- archived asset="/urbion_championship_upgrade.js" -->
+  <!-- V4 compatibility assets: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js / urbion_championship_ux_v4_flow.js -->
   <!-- Archived assets remain directly retrievable; root runtime executes only the canonical shell below. -->
   <div id="urbion-championship-shell"></div>
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
@@ -126,11 +125,11 @@ def _what_if_page() -> HTMLResponse:
     target = BASE_DIR / "what-if.html"
     if not target.is_file():
         raise HTTPException(status_code=404, detail="What-If frontend is missing")
-    page_source = target.read_text(encoding="utf-8")
+    page_text = target.read_text(encoding="utf-8")
     script = '<script src="/urbion_what_if_upgrade.js"></script>'
-    if script not in page_source:
-        page_source = page_source.replace("</body>", script + "</body>", 1)
-    return HTMLResponse(page_source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+    if script not in page_text:
+        page_text = page_text.replace("</body>", script + "</body>", 1)
+    return HTMLResponse(page_text, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 def _frontend_asset(asset: str):
