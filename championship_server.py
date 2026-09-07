@@ -100,7 +100,6 @@ def _frontend_root():
         "urbion_championship_premium_v4.js",
         "urbion_championship_gap_closure.js",
         "urbion_championship_validation_surface.js",
-        "urbion_championship_ui_repair.js",
         "urbion_championship_ui_repair_v2.js",
         "urbion_championship_final_runtime_enforcer.js",
     ]
