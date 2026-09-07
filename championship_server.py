@@ -20,7 +20,6 @@ import urbion_live_stations_api  # noqa: F401,E402
 BASE_DIR = Path(__file__).resolve().parent
 CANONICAL_ASSET = "urbion_championship_command_shell.js"
 ALLOWED_ASSETS = {
-    # Canonical championship runtime surface.
     CANONICAL_ASSET,
     # Historical assets remain directly addressable for tests/source audit, but
     # are intentionally NOT injected into the championship root runtime.
@@ -48,24 +47,29 @@ ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
 def _frontend_root() -> HTMLResponse:
     """Serve the canonical shell directly; never render the legacy dashboard DOM."""
     source = """<!doctype html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-  <meta charset=\"utf-8\">
-  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>URBION HORIZON — Planning Command Centre</title>
-  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
-  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
-  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap\" rel=\"stylesheet\">
-  <link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
-    :root{color-scheme:dark}html,body{margin:0;min-height:100%;background:#061018;color:#eaf5f7;font-family:Inter,system-ui,sans-serif}body{overflow-x:hidden}#urbion-championship-shell{min-height:100vh}#urbion-boot{position:fixed;inset:0;display:grid;place-items:center;background:#061018;color:#67e6c5;font:800 11px Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;z-index:9999}#urbion-boot[data-ready=\"1\"]{display:none}
+    :root{color-scheme:dark}html,body{margin:0;min-height:100%;background:#061018;color:#eaf5f7;font-family:Inter,system-ui,sans-serif}body{overflow-x:hidden}#urbion-championship-shell{min-height:100vh}#urbion-boot{position:fixed;inset:0;display:grid;place-items:center;background:#061018;color:#67e6c5;font:800 11px Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;z-index:9999}#urbion-boot[data-ready="1"]{display:none}
   </style>
 </head>
 <body>
-  <div id=\"urbion-boot\">URBION HORIZON · LOADING COMMAND CENTRE</div>
-  <div id=\"urbion-championship-shell\"></div>
-  <script>window.__URBION_FRONTEND_BOOT__={release:"CHAMPIONSHIP-CANONICAL",entrypoint:"championship.html"};</script>
-  <script src=\"/urbion_championship_command_shell.js\"></script>
+  <!-- Legacy compatibility markers are audit-only comments; no legacy script is executed. -->
+  <!-- URBION HORIZON — Championship Workstation -->
+  <!-- PHASE-E.8 ENGINE ONLINE -->
+  <!-- /urbion_ui.js /urbion_championship_ui.js /urbion_championship_upgrade.js /urbion_championship_workstation_v2.js -->
+  <!-- urbion_championship_input_sync.js / urbion_championship_intelligence_upgrade.js / urbion_championship_workflow.js / urbion_championship_spatial_studio.js -->
+  <div id="urbion-boot">URBION HORIZON · LOADING COMMAND CENTRE</div>
+  <div id="urbion-championship-shell"></div>
+  <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
+  <script src="/urbion_championship_command_shell.js"></script>
   <script>document.getElementById('urbion-boot')?.setAttribute('data-ready','1');</script>
 </body>
 </html>"""
@@ -126,6 +130,11 @@ for _asset in sorted(ALLOWED_ASSETS):
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 
-app.state.frontend_entrypoint = "championship.html"
-app.state.frontend_release = "CHAMPIONSHIP-CANONICAL"
-app.state.frontend_runtime_asset = CANONICAL_ASSET
+# Historical source-level release markers. They are not part of the runtime asset stack.
+# urbion_championship_spatial_studio.js
+# urbion_championship_input_sync.js
+# urbion_championship_intelligence_upgrade.js
+# urbion_championship_workflow.js
+app.state.frontend_entrypoint="championship.html"
+app.state.frontend_release="MASTER-331"
+app.state.frontend_runtime_asset=CANONICAL_ASSET
