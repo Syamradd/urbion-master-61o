@@ -37,8 +37,13 @@ def leaflet_layer_active(page, layer_id: str) -> bool:
           const map = window.__URBION_FCC_MAP__;
           const official = window.__URBION_OFFICIAL_LAYERS__ || {};
           const legacy = window.__URBION_FCC_WMS__ || {};
-          const layer = official[id] || legacy[id];
-          return !!(map && layer && map.hasLayer(layer));
+          const candidates = [official[id], legacy[id]].filter(Boolean);
+          if (!map) return false;
+          let found = false;
+          map.eachLayer(layer => {
+            if (candidates.includes(layer) || layer.__urbionLayerId === id) found = true;
+          });
+          return found;
         }
         """,
         layer_id,
