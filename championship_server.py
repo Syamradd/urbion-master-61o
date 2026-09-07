@@ -96,6 +96,7 @@ def _frontend_root() -> HTMLResponse:
   <!-- audit src="/urbion_championship_final_command_center_polish.js" -->
   <!-- audit src="/urbion_championship_final_command_center_policy.js" -->
   <!-- audit src="/urbion_championship_champion_review.js" -->
+  <!-- audit src="/urbion_championship_final_runtime_enforcer.js" -->
   <!-- audit src="/urbion_championship_unified_bridge.js" -->
   <!-- audit src="/urbion_championship_premium_v2.js" -->
   <!-- audit src="/urbion_championship_premium_v4.js" -->
