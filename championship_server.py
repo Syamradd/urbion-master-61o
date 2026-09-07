@@ -58,8 +58,6 @@ ALLOWED_ASSETS = {
     "urbion_championship_input_neutralizer.js",
 }
 
-# Historical compatibility stack: source-order contract only. These assets remain
-# individually reachable, but they are NOT booted by the championship root page.
 COMPATIBILITY_STACK = (
     "urbion_championship_input_sync.js",
     "urbion_championship_spatial_studio.js",
@@ -125,6 +123,13 @@ def _frontend_root() -> HTMLResponse:
     return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
+def _about_page() -> HTMLResponse:
+    target = BASE_DIR / "about.html"
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="About frontend is missing")
+    return HTMLResponse(target.read_text(encoding="utf-8"), media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+
+
 def _what_if_page() -> HTMLResponse:
     target = BASE_DIR / "what-if.html"
     if not target.is_file():
@@ -173,6 +178,8 @@ def _exact_asset_handler(asset_name: str):
 async def _championship_frontend_override(request: Request, call_next):
     if request.url.path in {"/", "/index.html", "/championship.html"}:
         return _frontend_root()
+    if request.url.path == "/about.html":
+        return _about_page()
     if request.url.path == "/what-if.html":
         return _what_if_page()
     return await call_next(request)
@@ -181,6 +188,7 @@ async def _championship_frontend_override(request: Request, call_next):
 app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/about.html", _about_page, methods=["GET"], include_in_schema=False)
 app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
 for _asset in sorted(ALLOWED_ASSETS):
     app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
@@ -227,6 +235,7 @@ _PRIORITY_PATHS = (
     "/urbion_what_if_upgrade.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
+    "/about.html",
     "/what-if.html",
     "/championship.html",
     "/index.html",
