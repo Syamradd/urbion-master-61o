@@ -2,8 +2,9 @@
   const ids=['lat','lon','todlat','todlon','state','pbt','devtype','devclass','ratio','lot'];
   const $=id=>document.getElementById(id);
   const finite=v=>Number.isFinite(parseFloat(v));
+  const optionalCoord=v=>finite(v)?parseFloat(v):null;
   const snapshot=()=>Object.fromEntries(ids.map(id=>[id,$(id)?.value??'']));
-  const basePayload=()=>{const s=snapshot();return {site_lat:+s.lat,site_lon:+s.lon,tod_lat:+s.todlat,tod_lon:+s.todlon,plot_ratio:+s.ratio||4.5,precinct:$('precinct')?.value||'Terminal Sg. Udang',development_type:s.devtype||'TOD Development / Mixed Use',development_class:s.devclass||'Mixed Use',state:s.state||'Melaka',district:$('district')?.value||'Melaka Tengah',pbt:s.pbt||'Majlis Bandaraya Melaka Bersejarah',lot_no:s.lot||'',building_height:null,perimeter_planting:null,landscaped_pedestrian_walkway:null,shop_frontage_verified:false,shop_office_verified:false};};
+  const basePayload=()=>{const s=snapshot();const todLat=optionalCoord(s.todlat),todLon=optionalCoord(s.todlon);const todReady=todLat!==null&&todLon!==null;return {site_lat:+s.lat,site_lon:+s.lon,tod_lat:todReady?todLat:null,tod_lon:todReady?todLon:null,plot_ratio:+s.ratio||4.5,precinct:$('precinct')?.value||'Terminal Sg. Udang',development_type:s.devtype||'TOD Development / Mixed Use',development_class:s.devclass||'Mixed Use',state:s.state||'Melaka',district:$('district')?.value||'Melaka Tengah',pbt:s.pbt||'Majlis Bandaraya Melaka Bersejarah',lot_no:s.lot||'',building_height:null,perimeter_planting:null,landscaped_pedestrian_walkway:null,shop_frontage_verified:false,shop_office_verified:false};};
   const payloadKey=payload=>JSON.stringify(payload);
   const nativeFetch=window.fetch.bind(window);
   let timer,version=0,cachedVersion=-1,cachedKey='',cached=null,inflight=null,assessCount=0;
@@ -46,11 +47,13 @@
   }
   function publish(source){
     const s=snapshot();
-    const coords=['lat','lon','todlat','todlon'];
-    if(!coords.every(id=>finite(s[id]))) return;
+    const coreCoords=['lat','lon'];
+    if(!coreCoords.every(id=>finite(s[id]))) return;
     persistInputs();
     invalidate(source);
-    window.dispatchEvent(new CustomEvent('urbion:site-change',{detail:{latitude:parseFloat(s.lat),longitude:parseFloat(s.lon),tod_latitude:parseFloat(s.todlat),tod_longitude:parseFloat(s.todlon),source,inputs:s}}));
+    const todLat=optionalCoord(s.todlat),todLon=optionalCoord(s.todlon);
+    const todReady=todLat!==null&&todLon!==null;
+    window.dispatchEvent(new CustomEvent('urbion:site-change',{detail:{latitude:parseFloat(s.lat),longitude:parseFloat(s.lon),tod_latitude:todReady?todLat:null,tod_longitude:todReady?todLon:null,source,inputs:s}}));
     window.dispatchEvent(new CustomEvent('urbion:inputs-change',{detail:{source,inputs:s}}));
     status('Site inputs changed. Run analysis to refresh the decision chain.');
   }
