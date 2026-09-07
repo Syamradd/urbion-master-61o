@@ -165,6 +165,30 @@ def _frontend_asset(asset: str):
             raise HTTPException(status_code=500, detail="Canonical TOD numeric helper contract not found")
         payload = payload.replace(bad_num, good_num, 1)
 
+        # Stable browser-facing product QA contract. This is diagnostic only:
+        # it reports source/data/render/visibility state without adding UI or
+        # changing planning semantics. Tests must consume this contract rather
+        # than private Leaflet registries or object identity.
+        qa_contract = r'''(()=>{
+'use strict';
+const QA_LAYERS=['iplan-current','iplan-zoning','iplan-committed','iplan-rfn','iplan-cadastral','iplan-flood','iplan-disaster-risk','iplan-ksas','iplan-cfs','iplan-ecology','iplan-heritage','iplan-topography','mygems-lithology','mygems-faults'];
+const q={version:1,mapReady:false,baseMapReady:false,caseReady:false,analysisReady:false,layers:{},lastAction:null,lastSourceQuery:null,lastRenderChange:null};
+const defaults=()=>{for(const id of QA_LAYERS)q.layers[id]={sourceStatus:'SOURCE UNAVAILABLE',featureCount:null,renderStatus:'HIDDEN',visible:false,opacity:1,error:null};};
+defaults();
+window.__URBION_QA__=q;
+let pending=null;
+const getRow=id=>document.querySelector(`#cs-layer-drawer [data-layer="${id}"]`)?.closest('.fcc-layer-row');
+const parseStatus=(id,row)=>{const text=row?.querySelector('small')?.textContent?.trim()||'';let sourceStatus='SOURCE CONTEXT',featureCount=null,error=null;if(!text)return{sourceStatus,featureCount,error};if(/^LIVE · (\d+) features$/.test(text)){sourceStatus='LIVE';featureCount=Number(RegExp.$1);}else if(/^LIVE ·/.test(text))sourceStatus='LIVE';else if(text.includes('SOURCE UNAVAILABLE')){sourceStatus='SOURCE UNAVAILABLE';error=text;}else if(text.includes('QUERY ERROR')){sourceStatus='QUERY_ERROR';error=text;}else if(text.includes('STATE REQUIRED')){sourceStatus='STATE REQUIRED';error=text;}else if(text.includes('RUN ANALYSIS TO QUERY'))sourceStatus='RUN ANALYSIS TO QUERY';return{sourceStatus,featureCount,error};};
+function sync(){q.mapReady=!!window.__URBION_FCC_MAP__;q.baseMapReady=!!window.__URBION_FCC_BASE_TILE__;const ready=['project_name','lat','lon','state','pbt','district','landuse','category','activity','development','ratio'].every(k=>{const e=document.querySelector(`#cs-${k}`);return !!e&&String(e.value||'').trim()!==''});q.caseReady=ready;q.analysisReady=(document.querySelector('#cs-status-pill')?.textContent||'').trim()==='ANALYSIS READY';for(const id of QA_LAYERS){const input=document.querySelector(`#cs-layer-drawer [data-layer="${id}"]`);const row=input?.closest('.fcc-layer-row');const p=parseStatus(id,row);const state=q.layers[id]||{sourceStatus:'SOURCE CONTEXT',featureCount:null,renderStatus:'HIDDEN',visible:false,opacity:1,error:null};state.sourceStatus=p.sourceStatus;state.featureCount=p.featureCount;state.error=p.error;state.visible=!!input?.checked;if(!state.visible&&state.renderStatus!=='HIDDEN')state.renderStatus='HIDDEN';const opacityInput=document.querySelector(`#cs-layer-drawer [data-opacity="${id}"]`);if(opacityInput)state.opacity=Math.max(0,Math.min(100,Number(opacityInput.value)||0))/100;q.layers[id]=state;}}
+function mark(id,patch){if(!id||!q.layers[id])return;Object.assign(q.layers[id],patch);q.lastRenderChange=Date.now();}
+const drawer=document.querySelector('#cs-layer-drawer');
+if(drawer){drawer.addEventListener('change',e=>{const input=e.target?.closest?.('input[data-layer]');if(!input)return;const id=input.dataset.layer;pending={id,checked:input.checked,at:Date.now()};q.lastAction=input.checked?'LAYER_ON':'LAYER_OFF';if(input.checked)mark(id,{visible:true,renderStatus:'LIVE_DATA_PENDING'});else mark(id,{visible:false,renderStatus:'HIDDEN'});setTimeout(sync,0);},true);}
+function wrapCtor(ctorName){const C=window.L?.[ctorName];if(!C||!C.prototype)return;const proto=C.prototype;if(proto.__urbionQaWrapped)return;const original=proto.onAdd;if(typeof original==='function'){proto.onAdd=function(map){const out=original.apply(this,arguments);let id=this.__urbionLayerId||this.__urbionSource||null;if(!id&&pending&&Date.now()-pending.at<5000)id=pending.id;if(id&&q.layers[id]){this.__urbionQaId=id;if(this.__urbionOfficial){mark(id,{renderStatus:'LIVE_DATA_PENDING',visible:true});this.once?.('tileload',()=>mark(id,{sourceStatus:'LIVE',renderStatus:'RENDERED',visible:true,error:null}));this.once?.('tileerror',()=>mark(id,{sourceStatus:'SOURCE_UNAVAILABLE',renderStatus:'HIDDEN',visible:false,error:'Tile source unavailable'}));}else{mark(id,{sourceStatus:'LIVE',renderStatus:'RENDERED',visible:true});}}return out;};proto.__urbionQaWrapped=true;}}
+wrapCtor('GridLayer');wrapCtor('GeoJSON');wrapCtor('FeatureGroup');
+setInterval(sync,250);
+setTimeout(sync,0);setTimeout(sync,250);setTimeout(sync,750);
+})();'''
+        payload += "\n" + qa_contract
         return Response(payload, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
     return FileResponse(target, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
