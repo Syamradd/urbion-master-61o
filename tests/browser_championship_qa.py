@@ -81,7 +81,7 @@ def main() -> None:
 
         # TOD is genuinely optional: leave TOD blank and run once.
         tod_section = page.locator("#cs-todlat").locator("xpath=ancestor::details[1]")
-        if not tod_section.get_attribute("open"):
+        if tod_section.get_attribute("open") is None:
             tod_section.locator("summary").click()
         expect(page.locator("#cs-todlat")).to_be_visible()
         assert page.locator("#cs-todlat").input_value() == ""
@@ -94,7 +94,7 @@ def main() -> None:
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
 
         # Optional TOD contract: whitespace is still blank.
-        if not tod_section.get_attribute("open"):
+        if tod_section.get_attribute("open") is None:
             tod_section.locator("summary").click()
         page.locator("#cs-todlat").fill("   ")
         page.locator("#cs-todlon").fill("   ")
