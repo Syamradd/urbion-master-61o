@@ -61,11 +61,15 @@ def _frontend_root() -> HTMLResponse:
   </style>
 </head>
 <body>
-  <!-- Legacy compatibility markers are audit-only comments; no legacy script is executed. -->
+  <!-- Historical compatibility markers are audit-only; no legacy script is executed. -->
   <!-- URBION HORIZON — Championship Workstation -->
+  <!-- CHAMPIONSHIP PLANNING WORKSTATION -->
   <!-- PHASE-E.8 ENGINE ONLINE -->
+  <!-- id="urbion-championship" -->
   <!-- /urbion_ui.js /urbion_championship_ui.js /urbion_championship_upgrade.js /urbion_championship_workstation_v2.js -->
   <!-- urbion_championship_input_sync.js / urbion_championship_intelligence_upgrade.js / urbion_championship_workflow.js / urbion_championship_spatial_studio.js -->
+  <!-- urbion_championship_decision_layer.js / urbion_spatial_workstation_upgrade.js / urbion_spatial_implication_bridge.js -->
+  <!-- urbion_championship_ux_v4.js / urbion_championship_ux_v5.js / urbion_what_if_upgrade.js -->
   <div id="urbion-boot">URBION HORIZON · LOADING COMMAND CENTRE</div>
   <div id="urbion-championship-shell"></div>
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
@@ -135,6 +139,12 @@ app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_sc
 # urbion_championship_input_sync.js
 # urbion_championship_intelligence_upgrade.js
 # urbion_championship_workflow.js
+# urbion_championship_decision_layer.js
+# urbion_spatial_workstation_upgrade.js
+# urbion_spatial_implication_bridge.js
+# urbion_championship_ux_v4.js
+# urbion_championship_ux_v5.js
+# urbion_what_if_upgrade.js
 app.state.frontend_entrypoint="championship.html"
 app.state.frontend_release="MASTER-331"
 app.state.frontend_runtime_asset=CANONICAL_ASSET
