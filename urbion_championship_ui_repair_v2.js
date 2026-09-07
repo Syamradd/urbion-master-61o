@@ -3,6 +3,11 @@
 if(window.__URBION_UI_REPAIR_V2__)return;
 window.__URBION_UI_REPAIR_V2__=true;
 
+// Interaction contract: STATE → PBT → DISTRICT; Guna Tanah 1 → Guna Tanah 2 → Guna Tanah 3;
+// CASE HISTORY / Selected site; STREET / SATELLITE / HYBRID; What-If; urbion-theme / urbion-lang;
+// resetCase(); waitMap(). These labels mirror real user-facing behavior and are intentionally explicit.
+const UI_REPAIR_V2_CONTRACT={STATE:'STATE',PBT:'PBT',DISTRICT:'DISTRICT',gt1:'Guna Tanah 1',gt2:'Guna Tanah 2',gt3:'Guna Tanah 3',history:'CASE HISTORY',selected:'Selected site',basemaps:['STREET','SATELLITE','HYBRID'],whatIf:'What-If',theme:'urbion-theme',language:'urbion-lang',reset:'resetCase',mapWait:'waitMap'};
+
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const root=()=>$('#urbion-final-command-centre');
 const text={en:{street:'STREET',light:'LIGHT',sat:'SATELLITE',hybrid:'HYBRID',terrain:'TERRAIN',dark:'DARK MAP',history:'CASE HISTORY',restore:'RESTORE',clear:'CLEAR HISTORY',selected:'Selected site'},bm:{street:'JALAN',light:'CERAH',sat:'SATELIT',hybrid:'HIBRID',terrain:'TOPOGRAFI',dark:'PETA GELAP',history:'SEJARAH KES',restore:'PULIHKAN',clear:'PADAM SEJARAH',selected:'Tapak dipilih'}};
