@@ -18,9 +18,11 @@ import urbion_live_stations_api  # noqa: F401,E402
 BASE_DIR = Path(__file__).resolve().parent
 CANONICAL_ASSET = "urbion_championship_command_shell.js"
 PREMIUM_V6_ASSET = "urbion_championship_premium_v6.js"
+PREMIUM_V7_ASSET = "urbion_championship_premium_v7.js"
 ALLOWED_ASSETS = {
     CANONICAL_ASSET,
     PREMIUM_V6_ASSET,
+    PREMIUM_V7_ASSET,
     "urbion_ui.js",
     "urbion_championship_ui.js",
     "urbion_championship_upgrade.js",
@@ -56,8 +58,6 @@ ALLOWED_ASSETS = {
     "urbion_championship_input_neutralizer.js",
 }
 
-# Historical compatibility stack: source-order contract only. These assets remain
-# individually reachable, but they are NOT booted by the championship root page.
 COMPATIBILITY_STACK = (
     "urbion_championship_input_sync.js",
     "urbion_championship_spatial_studio.js",
@@ -141,12 +141,11 @@ def _frontend_asset(asset: str):
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Frontend asset not found")
     if asset == CANONICAL_ASSET:
-        # Keep the HTML root on one canonical script while shipping the premium
-        # presentation layer as part of that same runtime asset.
-        companion = BASE_DIR / PREMIUM_V6_ASSET
         payload = target.read_text(encoding="utf-8")
-        if companion.is_file():
-            payload += "\n" + companion.read_text(encoding="utf-8")
+        for companion_name in (PREMIUM_V6_ASSET, PREMIUM_V7_ASSET):
+            companion = BASE_DIR / companion_name
+            if companion.is_file():
+                payload += "\n" + companion.read_text(encoding="utf-8")
         return Response(payload, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
     return FileResponse(target, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
@@ -186,10 +185,9 @@ for _asset in sorted(ALLOWED_ASSETS):
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 
-# Base app may already contain broad dynamic/static routes. Put exact championship
-# assets first so compatibility resources resolve deterministically.
 _PRIORITY_PATHS = (
     "/urbion_championship_command_shell.js",
+    "/urbion_championship_premium_v7.js",
     "/urbion_championship_premium_v6.js",
     "/urbion_ui.js",
     "/urbion_championship_ui.js",
@@ -224,9 +222,6 @@ _PRIORITY_PATHS = (
     "/urbion_championship_ui_repair_v2.js",
     "/urbion_championship_map_bridge.js",
     "/urbion_championship_input_neutralizer.js",
-    "/urbion_championship_ux_v4.js",
-    "/urbion_championship_ux_v4_plus.js",
-    "/urbion_championship_ux_v4_flow.js",
     "/urbion_what_if_upgrade.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
