@@ -110,6 +110,7 @@ def main() -> None:
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
 
         # Valid TOD coordinates must reactivate the existing calculation and visuals.
+        blank_tod_hash = map_hash(page)
         page.locator("#cs-todlat").fill("2.290")
         page.locator("#cs-todlon").fill("102.200")
         tod_signal = page.locator("#sig-tod").inner_text().strip()
@@ -117,7 +118,7 @@ def main() -> None:
         assert tod_signal.endswith(" m") and int(tod_signal.split()[0]) > 0, tod_signal
         assert tod_stat.endswith(" m") and int(tod_stat.split()[0]) > 0, tod_stat
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 1
-        assert page.locator("#cs-map .leaflet-overlay-pane .leaflet-interactive").count() >= 3
+        assert map_hash(page) != blank_tod_hash, "Valid TOD did not produce a visible map change."
 
         # Clearing a previously valid TOD must remove stale distance and map state.
         page.locator("#cs-todlat").fill("")
@@ -125,6 +126,7 @@ def main() -> None:
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
         expect(page.locator("#stat-tod")).to_have_text("—")
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
+        assert map_hash(page) == blank_tod_hash, "Clearing TOD left stale map visualization."
 
         # Browser-visible spatial evidence after analysis.
         assert page.locator("#cs-map .leaflet-marker-pane").count() == 1
