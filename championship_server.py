@@ -105,7 +105,7 @@ def _frontend_root():
             source = source.replace("</body>", script + "</body>", 1)
     source = _design_system(source)
     source = re.sub(r'<script>\s*window\.__URBION_FRONTEND_BOOT__=.*?</script>', "", source, count=1, flags=re.DOTALL)
-    source = source.replace("</body>", '<script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-332",entrypoint:"championship.html"};</script></body>', 1)
+    source = source.replace("</body>", '<script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script></body>', 1)
     return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
@@ -188,4 +188,4 @@ for _path in (
             app.router.routes.insert(0, app.router.routes.pop(_idx))
             break
 app.state.frontend_entrypoint="championship.html"
-app.state.frontend_release="MASTER-332"
+app.state.frontend_release="MASTER-331"
