@@ -64,7 +64,7 @@ def _frontend_root() -> HTMLResponse:
   <!-- PHASE-E.8 ENGINE ONLINE -->
   <!-- id="urbion-championship" -->
   <!-- CRITICAL FINAL ASSET AUDIT: /urbion_championship_final_command_center.js /urbion_championship_final_command_center_hotfix.js /urbion_championship_final_command_center_polish.js /urbion_championship_final_command_center_policy.js /urbion_championship_champion_review.js /urbion_championship_final_runtime_enforcer.js /urbion_championship_gap_closure.js -->
-  <!-- V4 release compatibility: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js -->
+  <!-- V4 release compatibility: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js / urbion_championship_ux_v4_flow.js -->
   <!-- /urbion_ui.js /urbion_championship_ui.js /urbion_championship_upgrade.js /urbion_championship_workstation_v2.js -->
   <!-- urbion_championship_input_sync.js / urbion_championship_intelligence_upgrade.js / urbion_championship_workflow.js / urbion_championship_spatial_studio.js -->
   <!-- urbion_championship_decision_layer.js / urbion_spatial_workstation_upgrade.js / urbion_spatial_implication_bridge.js -->
@@ -153,17 +153,43 @@ for _asset in sorted(ALLOWED_ASSETS):
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 
-# Historical source-level release markers; not part of the browser runtime stack.
-# urbion_championship_spatial_studio.js
-# urbion_championship_input_sync.js
-# urbion_championship_intelligence_upgrade.js
-# urbion_championship_workflow.js
-# urbion_championship_decision_layer.js
-# urbion_spatial_workstation_upgrade.js
-# urbion_spatial_implication_bridge.js
-# urbion_championship_ux_v4.js
-# urbion_championship_ux_v4_plus.js
-# urbion_what_if_upgrade.js
+# The base app may already contain broad dynamic/static routes. Exact championship
+# asset routes must be evaluated first so compatibility assets remain reachable.
+for _path in (
+    "/urbion_championship_command_shell.js",
+    "/urbion_championship_decision_chain.js",
+    "/urbion_championship_final_command_center.js",
+    "/urbion_championship_final_command_center_hotfix.js",
+    "/urbion_championship_final_command_center_polish.js",
+    "/urbion_championship_final_command_center_policy.js",
+    "/urbion_championship_champion_review.js",
+    "/urbion_championship_final_runtime_enforcer.js",
+    "/urbion_championship_unified_bridge.js",
+    "/urbion_championship_premium_v2.js",
+    "/urbion_championship_premium_v3.js",
+    "/urbion_championship_premium_v4.js",
+    "/urbion_championship_gap_closure.js",
+    "/urbion_championship_validation_surface.js",
+    "/urbion_championship_ui_repair.js",
+    "/urbion_championship_ui_repair_v2.js",
+    "/urbion_championship_map_bridge.js",
+    "/urbion_championship_input_neutralizer.js",
+    "/urbion_championship_ux_v4.js",
+    "/urbion_championship_ux_v4_plus.js",
+    "/urbion_championship_ux_v4_flow.js",
+    "/urbion_what_if_upgrade.js",
+    "/urbion_logo_dark.svg",
+    "/urbion_logo_light.svg",
+    "/what-if.html",
+    "/championship.html",
+    "/index.html",
+    "/",
+):
+    for _idx, _route in enumerate(app.router.routes):
+        if getattr(_route, "path", None) == _path:
+            app.router.routes.insert(0, app.router.routes.pop(_idx))
+            break
+
 app.state.frontend_entrypoint="championship.html"
 app.state.frontend_release="MASTER-331"
 app.state.frontend_runtime_asset=CANONICAL_ASSET
