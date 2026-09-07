@@ -19,11 +19,11 @@ def _recommendation(final_status:str,suitability:float,pbt:str,development_type:
  if final_status=="NOT APPLICABLE":return {"text":"RECONSIDER DEVELOPMENT POSITION","headline":"RECONSIDER DEVELOPMENT POSITION","level":"CAUTION","reason":"The selected policy pathway is not applicable to this spatial position."}
  if pbt!="Majlis Bandaraya Melaka Bersejarah":return {"text":"EVIDENCE REQUIRED BEFORE DECISION","headline":"EVIDENCE REQUIRED BEFORE DECISION","level":"REVIEW","reason":"Local statutory rules are not loaded for this PBT."}
  return {"text":"PROCEED WITH PLANNER REVIEW","headline":"PROCEED WITH PLANNER REVIEW","level":"REVIEW","reason":"Screening is not a substitute for planner verification."}
-def _decision_confidence(final_status:str,pbt:str,lot_no:str,tod_distance_m:float,retrieved_rules:int)->dict[str,Any]:
+def _decision_confidence(final_status:str,pbt:str,lot_no:str,tod_distance_m:float|None,retrieved_rules:int)->dict[str,Any]:
  score=55
  if pbt=="Majlis Bandaraya Melaka Bersejarah":score+=22
  if lot_no:score+=10
- score+=8 if tod_distance_m<=800 else 3
+ if tod_distance_m is not None:score+=8 if tod_distance_m<=800 else 3
  if retrieved_rules:score+=5
  score=int(_clamp(score));return {"score":score,"band":"HIGH" if score>=80 else("MEDIUM" if score>=65 else "LOW"),"note":"Confidence reflects evidence and rule coverage, not approval probability."}
 def source_registry_snapshot()->list[dict[str,Any]]:return [dict(x) for x in SOURCE_REGISTRY]
@@ -34,16 +34,16 @@ def _evidence_aware_score(dimensions:list[tuple[str,float|None,float]])->tuple[f
     weight_total=sum(weight for _,_,weight in assessed)
     score=sum(value*weight for _,value,weight in assessed)/weight_total
     return round(_clamp(score),1),len(assessed)
-def build_site_analysis(state:str,district:str,pbt:str,lot_no:str,latitude:float,longitude:float,tod_distance_m:float,development_class:str,development_type:str,policy_status:str,final_status:str,retrieved_rules:int=0)->dict[str,Any]:
+def build_site_analysis(state:str,district:str,pbt:str,lot_no:str,latitude:float,longitude:float,tod_distance_m:float|None,development_class:str,development_type:str,policy_status:str,final_status:str,retrieved_rules:int=0)->dict[str,Any]:
     planning=100 if final_status=="COMPLY" else(0 if final_status=="NON-COMPLIANCE" else 55)
-    access=100 if tod_distance_m<=400 else(80 if tod_distance_m<=800 else 45)
+    access=None if tod_distance_m is None else (100 if tod_distance_m<=400 else(80 if tod_distance_m<=800 else 45))
     confidence=100 if pbt=="Majlis Bandaraya Melaka Bersejarah" else 55
     complete=100 if lot_no else 65
-    # No fabricated environmental score: the current pipeline has no site-specific environmental observation.
     environment=None
-    score,assessed_count=_evidence_aware_score([("Planning Fit",planning,.30),("Transit Access",access,.25),("Data Confidence",confidence,.20),("Site Completeness",complete,.10),("Environment Evidence",environment,.15)])
+    dims=[("Planning Fit",planning,.30),("Transit Access",access,.25),("Data Confidence",confidence,.20),("Site Completeness",complete,.10),("Environment Evidence",environment,.15)]
+    score,assessed_count=_evidence_aware_score(dims)
     band="HIGH POTENTIAL" if score>=80 else("MODERATE POTENTIAL" if score>=65 else "REQUIRES FURTHER STUDY")
     rec=_recommendation(final_status,score,pbt,development_type)
     dc=_decision_confidence(final_status,pbt,lot_no,tod_distance_m,retrieved_rules)
-    indicators=[{"name":"Planning Fit","score":planning,"status":"CALCULATED"},{"name":"Transit Access","score":access,"status":"CALCULATED","method":"straight-line TOD distance threshold"},{"name":"Data Confidence","score":confidence,"status":"SOURCE_CONTEXT"},{"name":"Site Completeness","score":complete,"status":"USER_PROVIDED"},{"name":"Environment Evidence","score":None,"status":"UNVERIFIED","note":"No site-specific environmental evidence supplied; excluded from suitability score."}]
-    return {"title":"Preliminary Site Suitability","score":score,"score_coverage":{"assessed_dimensions":assessed_count,"total_dimensions":len(indicators),"excluded_unverified":["Environment Evidence"]},"band":band,"disclaimer":"Preliminary decision-support only; not statutory approval.","recommendation":rec,"decision_confidence":dc,"indicators":indicators,"spatial_summary":{"state":state,"district":district,"pbt":pbt,"lot_no":lot_no or "Not specified","latitude":latitude,"longitude":longitude,"tod_distance_m":tod_distance_m,"tod_distance_method":"Haversine straight-line geodesic; not pedestrian/network distance","development_class":development_class}}
+    indicators=[{"name":"Planning Fit","score":planning,"status":"CALCULATED"},{"name":"Transit Access","score":access,"status":"CALCULATED" if access is not None else "UNVERIFIED","note":"Calculated from provided TOD reference using straight-line distance." if access is not None else "No TOD reference supplied; transit access is excluded from suitability score."},{"name":"Data Confidence","score":confidence,"status":"SOURCE_CONTEXT"},{"name":"Site Completeness","score":complete,"status":"USER_PROVIDED"},{"name":"Environment Evidence","score":None,"status":"UNVERIFIED","note":"No site-specific environmental evidence supplied; excluded from suitability score."}]
+    return {"title":"Preliminary Site Suitability","score":score,"score_coverage":{"assessed_dimensions":assessed_count,"total_dimensions":len(indicators),"excluded_unverified":[x["name"] for x in indicators if x.get("score") is None]},"band":band,"disclaimer":"Preliminary decision-support only; not statutory approval.","recommendation":rec,"decision_confidence":dc,"indicators":indicators,"spatial_summary":{"state":state,"district":district,"pbt":pbt,"lot_no":lot_no or "Not specified","latitude":latitude,"longitude":longitude,"tod_distance_m":tod_distance_m,"tod_distance_method":"Haversine straight-line geodesic; not pedestrian/network distance" if tod_distance_m is not None else "NOT_AVAILABLE","development_class":development_class}}
