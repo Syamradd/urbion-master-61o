@@ -5,8 +5,6 @@ from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from server import app
 
-# Backend capability modules remain imported exactly as before so the canonical
-# presentation shell can use the existing planning engines and API surfaces.
 import urbion_spatial_api  # noqa: F401,E402
 import urbion_spatial_context_api  # noqa: F401,E402
 import urbion_lot_resolver_api  # noqa: F401,E402
@@ -83,7 +81,6 @@ def _frontend_root() -> HTMLResponse:
 
 
 def _what_if_page() -> HTMLResponse:
-    """Keep the historical What-If page addressable without loading it in the root shell."""
     target = BASE_DIR / "what-if.html"
     if not target.is_file():
         raise HTTPException(status_code=404, detail="What-If frontend is missing")
@@ -128,7 +125,6 @@ def _frontend_logo(asset: str):
 def _exact_asset_handler(asset_name: str):
     def handler():
         return _frontend_asset(asset_name)
-
     handler.__name__ = f"frontend_asset_{asset_name.replace('.', '_').replace('-', '_')}"
     return handler
 
@@ -142,10 +138,10 @@ async def _championship_frontend_override(request: Request, call_next):
     return await call_next(request)
 
 
-@app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
-@app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
-@app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
-@app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
+app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
 for _asset in sorted(ALLOWED_ASSETS):
     app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
