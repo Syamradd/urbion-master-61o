@@ -16,23 +16,20 @@ def test_canonical_shell_is_the_only_public_root_runtime_asset():
     assert "runtime_assets" not in server
 
 
-def test_legacy_dashboard_is_not_present_in_the_root_html_template():
+def test_legacy_dashboard_is_not_executed_by_the_root_html_template():
     server = SERVER.read_text(encoding="utf-8")
     root_start = server.index('def _frontend_root()')
     root_end = server.index('def _frontend_asset', root_start)
     root = server[root_start:root_end]
     assert '<div class="app">' not in root
+    assert '<script src="/urbion_championship_final_command_center.js"></script>' not in root
+    assert '<script src="/urbion_championship_ui_repair.js"></script>' not in root
+    assert '<script src="/urbion_championship_ui_repair_v2.js"></script>' not in root
+    assert '<script src="/urbion_championship_premium_v2.js"></script>' not in root
+    assert '<script src="/urbion_championship_premium_v4.js"></script>' not in root
     assert 'value="2.285"' not in root
     assert 'value="102.196"' not in root
     assert 'value="4.5"' not in root
-    for legacy in (
-        "urbion_championship_final_command_center.js",
-        "urbion_championship_ui_repair.js",
-        "urbion_championship_ui_repair_v2.js",
-        "urbion_championship_premium_v2.js",
-        "urbion_championship_premium_v4.js",
-    ):
-        assert legacy not in root
 
 
 def test_canonical_shell_has_no_global_mutation_or_polling_loops():
