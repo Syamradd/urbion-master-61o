@@ -34,6 +34,7 @@ ALLOWED_ASSETS = {
     "urbion_championship_ui_repair.js",
     "urbion_championship_ui_repair_v2.js",
     "urbion_championship_map_bridge.js",
+    "urbion_championship_input_neutralizer.js",
 }
 FINAL_ASSETS = tuple(ALLOWED_ASSETS)
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
@@ -87,6 +88,7 @@ def _frontend_root():
         source = source.replace("</body>", audit + "</body>", 1)
     runtime_assets = [
         "urbion_championship_premium_v3.js",
+        "urbion_championship_input_neutralizer.js",
         "urbion_championship_map_bridge.js",
         "urbion_championship_final_command_center.js",
         "urbion_championship_final_command_center_hotfix.js",
@@ -166,6 +168,7 @@ for _asset in sorted(ALLOWED_ASSETS):
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 for _path in (
+    "/urbion_championship_input_neutralizer.js",
     "/urbion_championship_map_bridge.js",
     "/urbion_championship_premium_v3.js",
     "/urbion_championship_unified_bridge.js",
