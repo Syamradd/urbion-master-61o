@@ -1,4 +1,6 @@
 from pathlib import Path
+import shutil
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER = ROOT / "championship_server.py"
@@ -44,6 +46,7 @@ def test_canonical_shell_has_no_global_mutation_or_polling_loops():
         "/what-if",
         "/lcp/intelligence",
         "/copilot/run",
+        "/copilot/explain",
         "/station-intelligence",
         "/judge-mode",
     ):
@@ -72,3 +75,10 @@ def test_canonical_shell_exposes_single_map_and_required_case_flow():
         "OUTPUT",
     ):
         assert token in js
+
+
+def test_canonical_shell_passes_node_syntax_check_when_available():
+    node = shutil.which("node")
+    if not node:
+        return
+    subprocess.run([node, "--check", str(SHELL)], check=True, capture_output=True, text=True)
