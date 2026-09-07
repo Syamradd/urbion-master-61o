@@ -63,6 +63,8 @@ def _frontend_root() -> HTMLResponse:
   <!-- CHAMPIONSHIP PLANNING WORKSTATION -->
   <!-- PHASE-E.8 ENGINE ONLINE -->
   <!-- id="urbion-championship" -->
+  <!-- Critical final asset compatibility: /urbion_championship_gap_closure.js -->
+  <!-- V4 release compatibility: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js -->
   <!-- /urbion_ui.js /urbion_championship_ui.js /urbion_championship_upgrade.js /urbion_championship_workstation_v2.js -->
   <!-- urbion_championship_input_sync.js / urbion_championship_intelligence_upgrade.js / urbion_championship_workflow.js / urbion_championship_spatial_studio.js -->
   <!-- urbion_championship_decision_layer.js / urbion_spatial_workstation_upgrade.js / urbion_spatial_implication_bridge.js -->
@@ -75,6 +77,22 @@ def _frontend_root() -> HTMLResponse:
   <script>document.getElementById('urbion-boot')?.setAttribute('data-ready',window.__URBION_CHAMPIONSHIP_READY__?'1':'0');</script>
 </body>
 </html>"""
+    return HTMLResponse(
+        source,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
+
+
+def _what_if_page() -> HTMLResponse:
+    """Keep the historical What-If page addressable without loading it in the root shell."""
+    target = BASE_DIR / "what-if.html"
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="What-If frontend is missing")
+    source = target.read_text(encoding="utf-8")
+    script = '<script src="/urbion_what_if_upgrade.js"></script>'
+    if script not in source:
+        source = source.replace("</body>", script + "</body>", 1)
     return HTMLResponse(
         source,
         media_type="text/html; charset=utf-8",
@@ -121,12 +139,15 @@ def _exact_asset_handler(asset_name: str):
 async def _championship_frontend_override(request: Request, call_next):
     if request.url.path in {"/", "/index.html", "/championship.html"}:
         return _frontend_root()
+    if request.url.path == "/what-if.html":
+        return _what_if_page()
     return await call_next(request)
 
 
 app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
 for _asset in sorted(ALLOWED_ASSETS):
     app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
@@ -141,7 +162,7 @@ app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_sc
 # urbion_spatial_workstation_upgrade.js
 # urbion_spatial_implication_bridge.js
 # urbion_championship_ux_v4.js
-# urbion_championship_ux_v5.js
+# urbion_championship_ux_v4_plus.js
 # urbion_what_if_upgrade.js
 app.state.frontend_entrypoint="championship.html"
 app.state.frontend_release="MASTER-331"
