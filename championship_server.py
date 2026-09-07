@@ -1,11 +1,12 @@
 """Deterministic production entrypoint for the URBION HORIZON championship UI."""
 from pathlib import Path
-import re
 
 from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from server import app
 
+# Backend capability modules remain imported exactly as before so the canonical
+# presentation shell can use the existing planning engines and API surfaces.
 import urbion_spatial_api  # noqa: F401,E402
 import urbion_spatial_context_api  # noqa: F401,E402
 import urbion_lot_resolver_api  # noqa: F401,E402
@@ -17,7 +18,12 @@ import urbion_copilot_api  # noqa: F401,E402
 import urbion_live_stations_api  # noqa: F401,E402
 
 BASE_DIR = Path(__file__).resolve().parent
+CANONICAL_ASSET = "urbion_championship_command_shell.js"
 ALLOWED_ASSETS = {
+    # Canonical championship runtime surface.
+    CANONICAL_ASSET,
+    # Historical assets remain directly addressable for tests/source audit, but
+    # are intentionally NOT injected into the championship root runtime.
     "urbion_championship_decision_chain.js",
     "urbion_championship_final_command_center.js",
     "urbion_championship_final_command_center_hotfix.js",
@@ -36,92 +42,38 @@ ALLOWED_ASSETS = {
     "urbion_championship_map_bridge.js",
     "urbion_championship_input_neutralizer.js",
 }
-FINAL_ASSETS = tuple(ALLOWED_ASSETS)
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
 
-# Historical browser wiring markers are retained only for source-level audit/compatibility.
-# They are deliberately not injected into the public root runtime.
-# urbion_championship_workstation_v2.js
-# urbion_championship_input_sync.js
-# urbion_championship_spatial_studio.js
-# urbion_championship_intelligence_upgrade.js
-# urbion_championship_decision_layer.js
-# urbion_championship_workflow.js
-# urbion_championship_ux_v4.js
-# urbion_championship_ux_v4_plus.js
-# urbion_championship_ux_v4_flow.js
-# urbion_championship_ux_v5.js
-# urbion_championship_workstation_v2.js
-# urbion_spatial_workstation_upgrade.js
-# urbion_spatial_implication_bridge.js
 
-
-def _remove_routes(*paths: str) -> None:
-    targets = set(paths)
-    app.router.routes[:] = [r for r in app.router.routes if getattr(r, "path", None) not in targets]
-
-
-_remove_routes("/", "/index.html", "/championship.html")
-
-
-def _design_system(source: str) -> str:
-    css = """<style id=\"urbion-premium-system\">:root{--urbion-accent:#35e2b0;--urbion-cyan:#18cce5;--urbion-navy:#07131f;--urbion-ink:#eaf5f7;--urbion-muted:#8ea7b5}body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),radial-gradient(circle at 16% 85%,rgba(53,226,176,.07),transparent 30%),#07131f}body:before{content:\"\";position:fixed;inset:0;pointer-events:none;opacity:.14;background-image:linear-gradient(rgba(53,226,176,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(53,226,176,.035) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 88%);z-index:0}</style>"""
-    if 'id=\"urbion-premium-system\"' not in source:
-        source = source.replace("</head>", css + "</head>", 1)
-    return source
-
-
-def _frontend_root():
-    target = BASE_DIR / "championship.html"
-    if not target.is_file():
-        raise HTTPException(status_code=500, detail="Championship frontend is missing")
-    source = target.read_text(encoding="utf-8")
-    source = source.replace(
-        '<div class="health"><i></i> ENGINE ONLINE</div>',
-        '<div class="health"><i></i> PHASE-E.8 ENGINE ONLINE</div>',
+def _frontend_root() -> HTMLResponse:
+    """Serve the canonical shell directly; never render the legacy dashboard DOM."""
+    source = """<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\">
+  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
+  <title>URBION HORIZON — Planning Command Centre</title>
+  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
+  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
+  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap\" rel=\"stylesheet\">
+  <link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">
+  <style>
+    :root{color-scheme:dark}html,body{margin:0;min-height:100%;background:#061018;color:#eaf5f7;font-family:Inter,system-ui,sans-serif}body{overflow-x:hidden}#urbion-championship-shell{min-height:100vh}#urbion-boot{position:fixed;inset:0;display:grid;place-items:center;background:#061018;color:#67e6c5;font:800 11px Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;z-index:9999}#urbion-boot[data-ready=\"1\"]{display:none}
+  </style>
+</head>
+<body>
+  <div id=\"urbion-boot\">URBION HORIZON · LOADING COMMAND CENTRE</div>
+  <div id=\"urbion-championship-shell\"></div>
+  <script>window.__URBION_FRONTEND_BOOT__={release:"CHAMPIONSHIP-CANONICAL",entrypoint:"championship.html"};</script>
+  <script src=\"/urbion_championship_command_shell.js\"></script>
+  <script>document.getElementById('urbion-boot')?.setAttribute('data-ready','1');</script>
+</body>
+</html>"""
+    return HTMLResponse(
+        source,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-store, max-age=0"},
     )
-    if 'id="urbion-championship"' not in source:
-        source = source.replace("<body>", '<body><div id="urbion-championship" aria-hidden="true" style="display:none"></div>', 1)
-    source = re.sub(r'<script[^>]+src=[\"\']/(?:urbion_|championship_)[^>]+></script>', "", source)
-    audit = '<!-- LEGACY_ASSET_AUDIT: /urbion_championship_workstation_v2.js / urbion_championship_final_runtime_enforcer.js -->'
-    if audit not in source:
-        source = source.replace("</body>", audit + "</body>", 1)
-    runtime_assets = [
-        "urbion_championship_premium_v3.js",
-        "urbion_championship_input_neutralizer.js",
-        "urbion_championship_map_bridge.js",
-        "urbion_championship_final_command_center.js",
-        "urbion_championship_final_command_center_hotfix.js",
-        "urbion_championship_final_command_center_polish.js",
-        "urbion_championship_final_command_center_policy.js",
-        "urbion_championship_champion_review.js",
-        "urbion_championship_unified_bridge.js",
-        "urbion_championship_premium_v2.js",
-        "urbion_championship_premium_v4.js",
-        "urbion_championship_gap_closure.js",
-        "urbion_championship_validation_surface.js",
-        "urbion_championship_ui_repair_v2.js",
-        "urbion_championship_final_runtime_enforcer.js",
-    ]
-    for asset in runtime_assets:
-        script = f'<script src="/{asset}"></script>'
-        if script not in source:
-            source = source.replace("</body>", script + "</body>", 1)
-    source = _design_system(source)
-    source = re.sub(r'<script>\s*window\.__URBION_FRONTEND_BOOT__=.*?</script>', "", source, count=1, flags=re.DOTALL)
-    source = source.replace("</body>", '<script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script></body>', 1)
-    return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
-
-
-def _what_if_page():
-    target = BASE_DIR / "what-if.html"
-    if not target.is_file():
-        raise HTTPException(status_code=404, detail="What-If frontend is missing")
-    source = target.read_text(encoding="utf-8")
-    script = '<script src="/urbion_what_if_upgrade.js"></script>'
-    if script not in source:
-        source = source.replace("</body>", script + "</body>", 1)
-    return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 def _frontend_asset(asset: str):
@@ -130,7 +82,11 @@ def _frontend_asset(asset: str):
     target = BASE_DIR / asset
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Frontend asset not found")
-    return FileResponse(target, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+    return FileResponse(
+        target,
+        media_type="application/javascript; charset=utf-8",
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 def _frontend_logo(asset: str):
@@ -140,12 +96,17 @@ def _frontend_logo(asset: str):
     target = BASE_DIR / asset
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Frontend logo not found")
-    return FileResponse(target, media_type="image/svg+xml; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+    return FileResponse(
+        target,
+        media_type="image/svg+xml; charset=utf-8",
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 def _exact_asset_handler(asset_name: str):
     def handler():
         return _frontend_asset(asset_name)
+
     handler.__name__ = f"frontend_asset_{asset_name.replace('.', '_').replace('-', '_')}"
     return handler
 
@@ -154,8 +115,6 @@ def _exact_asset_handler(asset_name: str):
 async def _championship_frontend_override(request: Request, call_next):
     if request.url.path in {"/", "/index.html", "/championship.html"}:
         return _frontend_root()
-    if request.url.path == "/what-if.html":
-        return _what_if_page()
     return await call_next(request)
 
 
@@ -166,32 +125,7 @@ for _asset in sorted(ALLOWED_ASSETS):
     app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
-for _path in (
-    "/urbion_championship_input_neutralizer.js",
-    "/urbion_championship_map_bridge.js",
-    "/urbion_championship_premium_v3.js",
-    "/urbion_championship_unified_bridge.js",
-    "/urbion_championship_final_command_center.js",
-    "/urbion_championship_final_command_center_hotfix.js",
-    "/urbion_championship_final_command_center_polish.js",
-    "/urbion_championship_final_command_center_policy.js",
-    "/urbion_championship_champion_review.js",
-    "/urbion_championship_premium_v2.js",
-    "/urbion_championship_premium_v4.js",
-    "/urbion_championship_gap_closure.js",
-    "/urbion_championship_validation_surface.js",
-    "/urbion_championship_ui_repair.js",
-    "/urbion_championship_ui_repair_v2.js",
-    "/urbion_championship_final_runtime_enforcer.js",
-    "/urbion_logo_dark.svg",
-    "/urbion_logo_light.svg",
-    "/championship.html",
-    "/index.html",
-    "/",
-):
-    for _idx, _route in enumerate(app.router.routes):
-        if getattr(_route, "path", None) == _path:
-            app.router.routes.insert(0, app.router.routes.pop(_idx))
-            break
-app.state.frontend_entrypoint="championship.html"
-app.state.frontend_release="MASTER-331"
+
+app.state.frontend_entrypoint = "championship.html"
+app.state.frontend_release = "CHAMPIONSHIP-CANONICAL"
+app.state.frontend_runtime_asset = CANONICAL_ASSET
