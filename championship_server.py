@@ -21,8 +21,8 @@ BASE_DIR = Path(__file__).resolve().parent
 CANONICAL_ASSET = "urbion_championship_command_shell.js"
 ALLOWED_ASSETS = {
     CANONICAL_ASSET,
-    # Historical assets remain directly addressable for tests/source audit, but
-    # are intentionally NOT injected into the championship root runtime.
+    # Historical assets remain addressable for source-level audit/compatibility,
+    # but none of them are executed by the championship root page.
     "urbion_championship_decision_chain.js",
     "urbion_championship_final_command_center.js",
     "urbion_championship_final_command_center_hotfix.js",
@@ -45,7 +45,7 @@ ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
 
 
 def _frontend_root() -> HTMLResponse:
-    """Serve the canonical shell directly; never render the legacy dashboard DOM."""
+    """Serve only the canonical shell; never render the legacy dashboard DOM."""
     source = """<!doctype html>
 <html lang="en">
 <head>
@@ -56,9 +56,6 @@ def _frontend_root() -> HTMLResponse:
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <style>
-    :root{color-scheme:dark}html,body{margin:0;min-height:100%;background:#061018;color:#eaf5f7;font-family:Inter,system-ui,sans-serif}body{overflow-x:hidden}#urbion-championship-shell{min-height:100vh}#urbion-boot{position:fixed;inset:0;display:grid;place-items:center;background:#061018;color:#67e6c5;font:800 11px Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;z-index:9999}#urbion-boot[data-ready="1"]{display:none}
-  </style>
 </head>
 <body>
   <!-- Historical compatibility markers are audit-only; no legacy script is executed. -->
@@ -73,8 +70,9 @@ def _frontend_root() -> HTMLResponse:
   <div id="urbion-boot">URBION HORIZON · LOADING COMMAND CENTRE</div>
   <div id="urbion-championship-shell"></div>
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/urbion_championship_command_shell.js"></script>
-  <script>document.getElementById('urbion-boot')?.setAttribute('data-ready','1');</script>
+  <script>document.getElementById('urbion-boot')?.setAttribute('data-ready',window.__URBION_CHAMPIONSHIP_READY__?'1':'0');</script>
 </body>
 </html>"""
     return HTMLResponse(
@@ -134,7 +132,7 @@ for _asset in sorted(ALLOWED_ASSETS):
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 
-# Historical source-level release markers. They are not part of the runtime asset stack.
+# Historical source-level release markers; not part of the browser runtime stack.
 # urbion_championship_spatial_studio.js
 # urbion_championship_input_sync.js
 # urbion_championship_intelligence_upgrade.js
