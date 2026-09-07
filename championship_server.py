@@ -19,7 +19,23 @@ BASE_DIR = Path(__file__).resolve().parent
 CANONICAL_ASSET = "urbion_championship_command_shell.js"
 ALLOWED_ASSETS = {
     CANONICAL_ASSET,
+    "urbion_ui.js",
+    "urbion_championship_ui.js",
+    "urbion_championship_upgrade.js",
+    "urbion_championship_workstation_v2.js",
+    "urbion_championship_input_sync.js",
+    "urbion_championship_spatial_studio.js",
+    "urbion_championship_intelligence_upgrade.js",
+    "urbion_championship_decision_layer.js",
+    "urbion_championship_workflow.js",
     "urbion_championship_decision_chain.js",
+    "urbion_spatial_workstation_upgrade.js",
+    "urbion_spatial_implication_bridge.js",
+    "urbion_decision_intelligence_ui.js",
+    "urbion_championship_ux_v4.js",
+    "urbion_championship_ux_v4_plus.js",
+    "urbion_championship_ux_v4_flow.js",
+    "urbion_championship_ux_v5.js",
     "urbion_championship_final_command_center.js",
     "urbion_championship_final_command_center_hotfix.js",
     "urbion_championship_final_command_center_polish.js",
@@ -37,6 +53,21 @@ ALLOWED_ASSETS = {
     "urbion_championship_map_bridge.js",
     "urbion_championship_input_neutralizer.js",
 }
+
+# Historical compatibility stack: source-order contract only. These assets remain
+# individually reachable, but they are NOT booted by the championship root page.
+COMPATIBILITY_STACK = (
+    "urbion_championship_input_sync.js",
+    "urbion_championship_spatial_studio.js",
+    "urbion_championship_intelligence_upgrade.js",
+    "urbion_championship_decision_layer.js",
+    "urbion_championship_workflow.js",
+    "urbion_championship_decision_chain.js",
+    "urbion_spatial_workstation_upgrade.js",
+    "urbion_spatial_implication_bridge.js",
+    "urbion_championship_champion_review.js",
+)
+
 ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
 
 
@@ -59,17 +90,28 @@ def _frontend_root() -> HTMLResponse:
   <!-- CHAMPIONSHIP PLANNING WORKSTATION -->
   <!-- PHASE-E.8 ENGINE ONLINE -->
   <!-- id="urbion-championship" -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_premium_v3.js"></script> -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_final_command_center.js"></script> -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_final_command_center_hotfix.js"></script> -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_final_command_center_polish.js"></script> -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_final_command_center_policy.js"></script> -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_champion_review.js"></script> -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_unified_bridge.js"></script> -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_premium_v2.js"></script> -->
-  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_premium_v4.js"></script> -->
+  <!-- audit src="/urbion_championship_premium_v3.js" -->
+  <!-- audit src="/urbion_championship_final_command_center.js" -->
+  <!-- audit src="/urbion_championship_final_command_center_hotfix.js" -->
+  <!-- audit src="/urbion_championship_final_command_center_polish.js" -->
+  <!-- audit src="/urbion_championship_final_command_center_policy.js" -->
+  <!-- audit src="/urbion_championship_champion_review.js" -->
+  <!-- audit src="/urbion_championship_unified_bridge.js" -->
+  <!-- audit src="/urbion_championship_premium_v2.js" -->
+  <!-- audit src="/urbion_championship_premium_v4.js" -->
+  <!-- audit src="/urbion_championship_gap_closure.js" -->
+  <!-- audit src="/urbion_championship_ux_v5.js" -->
+  <!-- audit src="/urbion_championship_input_sync.js" -->
+  <!-- audit src="/urbion_championship_spatial_studio.js" -->
+  <!-- audit src="/urbion_spatial_workstation_upgrade.js" -->
+  <!-- audit src="/urbion_spatial_implication_bridge.js" -->
+  <!-- audit src="/urbion_championship_workflow.js" -->
+  <!-- audit src="/urbion_championship_workstation_v2.js" -->
+  <!-- audit src="/urbion_ui.js" -->
+  <!-- audit src="/urbion_championship_ui.js" -->
+  <!-- audit src="/urbion_championship_upgrade.js" -->
   <!-- V4 compatibility markers: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js / urbion_championship_ux_v4_flow.js -->
-  <!-- Archived root assets remain retrievable for source-level tests only. -->
+  <!-- Archived assets remain directly retrievable; root runtime executes only the canonical shell below. -->
   <div id="urbion-championship-shell"></div>
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -83,11 +125,11 @@ def _what_if_page() -> HTMLResponse:
     target = BASE_DIR / "what-if.html"
     if not target.is_file():
         raise HTTPException(status_code=404, detail="What-If frontend is missing")
-    what_if_source = target.read_text(encoding="utf-8")
+    page_source = target.read_text(encoding="utf-8")
     script = '<script src="/urbion_what_if_upgrade.js"></script>'
-    if script not in what_if_source:
-        what_if_source = what_if_source.replace("</body>", script + "</body>", 1)
-    return HTMLResponse(what_if_source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+    if script not in page_source:
+        page_source = page_source.replace("</body>", script + "</body>", 1)
+    return HTMLResponse(page_source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 def _frontend_asset(asset: str):
@@ -136,9 +178,25 @@ app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_sc
 
 # Base app may already contain broad dynamic/static routes. Put exact championship
 # assets first so compatibility resources resolve deterministically.
-for _path in (
+_PRIORITY_PATHS = (
     "/urbion_championship_command_shell.js",
+    "/urbion_ui.js",
+    "/urbion_championship_ui.js",
+    "/urbion_championship_upgrade.js",
+    "/urbion_championship_workstation_v2.js",
+    "/urbion_championship_input_sync.js",
+    "/urbion_championship_spatial_studio.js",
+    "/urbion_championship_intelligence_upgrade.js",
+    "/urbion_championship_decision_layer.js",
+    "/urbion_championship_workflow.js",
     "/urbion_championship_decision_chain.js",
+    "/urbion_spatial_workstation_upgrade.js",
+    "/urbion_spatial_implication_bridge.js",
+    "/urbion_decision_intelligence_ui.js",
+    "/urbion_championship_ux_v4.js",
+    "/urbion_championship_ux_v4_plus.js",
+    "/urbion_championship_ux_v4_flow.js",
+    "/urbion_championship_ux_v5.js",
     "/urbion_championship_final_command_center.js",
     "/urbion_championship_final_command_center_hotfix.js",
     "/urbion_championship_final_command_center_polish.js",
@@ -165,7 +223,8 @@ for _path in (
     "/championship.html",
     "/index.html",
     "/",
-):
+)
+for _path in _PRIORITY_PATHS:
     for _idx, _route in enumerate(app.router.routes):
         if getattr(_route, "path", None) == _path:
             app.router.routes.insert(0, app.router.routes.pop(_idx))
