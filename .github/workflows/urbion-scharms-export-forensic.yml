@@ -1,0 +1,50 @@
+name: URBION SCHARMS Export Forensic
+
+on:
+  push:
+    branches: [feature/champion-command-center-consolidation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scharms-forensic:
+    name: scharms-export-forensic
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install diagnostic dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install playwright requests pillow
+          python -m playwright install --with-deps chromium
+
+      - name: Run raw SCHARMS HTTP forensic
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/urbion-scharms-forensic
+          python tests/scharms_export_forensic.py 2>&1 | tee /tmp/urbion-scharms-forensic/run.log
+
+      - name: Upload SCHARMS forensic artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urbion-scharms-forensic
+          path: /tmp/urbion-scharms-forensic/
+          if-no-files-found: warn
+
+      - name: Assert diagnostic report exists
+        if: always()
+        run: |
+          test -s /tmp/urbion-scharms-forensic/scharms_forensic.json
+          test -s /tmp/urbion-scharms-forensic/scharms_forensic.txt
+          test -s /tmp/urbion-scharms-forensic/raw_response_png32.bin
+          test -s /tmp/urbion-scharms-forensic/response_headers.txt
