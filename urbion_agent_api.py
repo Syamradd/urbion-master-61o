@@ -1,5 +1,8 @@
 """Production API surfaces for URBION's bounded planning-agent synthesis and copilot."""
-from fastapi import APIRouter, Body, HTTPException
+import json
+
+from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi.responses import JSONResponse
 from server import app, AssessmentRequest, assess_core
 from urbion_spatial_intelligence import build_spatial_intelligence
 from urbion_what_if import build_scenario_plan, compare_assessments
@@ -12,9 +15,48 @@ from urbion_planner_handoff import build_planner_handoff_from_copilot
 from urbion_judge_demo import build_judge_demo
 from urbion_llm_provider import generate_planner_explanation
 from urbion_decision_os import build_decision_os
+from urbion_championship_optional_assessment_api import assess_optional, what_if_ui
 import urbion_frontend_asset_guard
 
 router = APIRouter(tags=["planning-agents"])
+
+
+@app.middleware("http")
+async def _optional_tod_compat(request: Request, call_next):
+    """Route only TOD-optional UI payloads through the existing optional adapter.
+
+    Complete TOD payloads continue through the original production endpoints, so
+    deterministic planning behaviour is unchanged unless the caller actually
+    exercises the optional-TOD contract.
+    """
+    if request.method != "POST" or request.url.path not in {"/assess", "/what-if"}:
+        return await call_next(request)
+
+    body = await request.body()
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return await call_next(request)
+
+    target = payload.get("baseline") if request.url.path == "/what-if" and isinstance(payload, dict) else payload
+    if not isinstance(target, dict):
+        return await call_next(request)
+
+    tod_keys = ("tod_lat", "tod_lon")
+    missing_tod = all(target.get(key) in (None, "") for key in tod_keys)
+    partial_tod = (target.get("tod_lat") in (None, "")) != (target.get("tod_lon") in (None, ""))
+    if not (missing_tod or partial_tod):
+        return await call_next(request)
+
+    try:
+        if request.url.path == "/assess":
+            return JSONResponse(content=assess_optional(payload))
+        return JSONResponse(content=what_if_ui(payload))
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    except Exception as exc:
+        return JSONResponse(status_code=422, content={"detail": {"code": "OPTIONAL_TOD_INPUT_ERROR", "message": str(exc)}})
+
 
 def _run(payload: dict):
     raw = payload.get("assessment") or payload.get("assessment_inputs")
