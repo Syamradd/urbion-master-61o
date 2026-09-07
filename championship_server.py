@@ -58,6 +58,8 @@ ALLOWED_ASSETS = {
     "urbion_championship_input_neutralizer.js",
 }
 
+# Historical compatibility stack: source-order contract only. These assets remain
+# individually reachable, but they are NOT booted by the championship root page.
 COMPATIBILITY_STACK = (
     "urbion_championship_input_sync.js",
     "urbion_championship_spatial_studio.js",
