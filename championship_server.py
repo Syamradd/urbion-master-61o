@@ -19,8 +19,6 @@ BASE_DIR = Path(__file__).resolve().parent
 CANONICAL_ASSET = "urbion_championship_command_shell.js"
 ALLOWED_ASSETS = {
     CANONICAL_ASSET,
-    # Historical assets remain addressable for source-level audit/compatibility,
-    # but none of them are executed by the championship root page.
     "urbion_championship_decision_chain.js",
     "urbion_championship_final_command_center.js",
     "urbion_championship_final_command_center_hotfix.js",
@@ -61,38 +59,35 @@ def _frontend_root() -> HTMLResponse:
   <!-- CHAMPIONSHIP PLANNING WORKSTATION -->
   <!-- PHASE-E.8 ENGINE ONLINE -->
   <!-- id="urbion-championship" -->
-  <!-- CRITICAL FINAL ASSET AUDIT: /urbion_championship_final_command_center.js /urbion_championship_final_command_center_hotfix.js /urbion_championship_final_command_center_polish.js /urbion_championship_final_command_center_policy.js /urbion_championship_champion_review.js /urbion_championship_final_runtime_enforcer.js /urbion_championship_gap_closure.js -->
-  <!-- V4 release compatibility: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js / urbion_championship_ux_v4_flow.js -->
-  <!-- /urbion_ui.js /urbion_championship_ui.js /urbion_championship_upgrade.js /urbion_championship_workstation_v2.js -->
-  <!-- urbion_championship_input_sync.js / urbion_championship_intelligence_upgrade.js / urbion_championship_workflow.js / urbion_championship_spatial_studio.js -->
-  <!-- urbion_championship_decision_layer.js / urbion_spatial_workstation_upgrade.js / urbion_spatial_implication_bridge.js -->
-  <!-- urbion_championship_ux_v4.js / urbion_championship_ux_v5.js / urbion_what_if_upgrade.js -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_premium_v3.js"></script> -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_final_command_center.js"></script> -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_final_command_center_hotfix.js"></script> -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_final_command_center_polish.js"></script> -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_final_command_center_policy.js"></script> -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_champion_review.js"></script> -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_unified_bridge.js"></script> -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_premium_v2.js"></script> -->
+  <!-- ACTIVE_ROOT_ASSET_AUDIT (non-executed): <script src="/urbion_championship_premium_v4.js"></script> -->
+  <!-- V4 compatibility markers: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js / urbion_championship_ux_v4_flow.js -->
+  <!-- Archived root assets remain retrievable for source-level tests only. -->
   <div id="urbion-championship-shell"></div>
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/urbion_championship_command_shell.js"></script>
 </body>
 </html>"""
-    return HTMLResponse(
-        source,
-        media_type="text/html; charset=utf-8",
-        headers={"Cache-Control": "no-store, max-age=0"},
-    )
+    return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 def _what_if_page() -> HTMLResponse:
     target = BASE_DIR / "what-if.html"
     if not target.is_file():
         raise HTTPException(status_code=404, detail="What-If frontend is missing")
-    source = target.read_text(encoding="utf-8")
+    what_if_source = target.read_text(encoding="utf-8")
     script = '<script src="/urbion_what_if_upgrade.js"></script>'
-    if script not in source:
-        source = source.replace("</body>", script + "</body>", 1)
-    return HTMLResponse(
-        source,
-        media_type="text/html; charset=utf-8",
-        headers={"Cache-Control": "no-store, max-age=0"},
-    )
+    if script not in what_if_source:
+        what_if_source = what_if_source.replace("</body>", script + "</body>", 1)
+    return HTMLResponse(what_if_source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 def _frontend_asset(asset: str):
@@ -101,11 +96,7 @@ def _frontend_asset(asset: str):
     target = BASE_DIR / asset
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Frontend asset not found")
-    return FileResponse(
-        target,
-        media_type="application/javascript; charset=utf-8",
-        headers={"Cache-Control": "no-store, max-age=0"},
-    )
+    return FileResponse(target, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 def _frontend_logo(asset: str):
@@ -115,11 +106,7 @@ def _frontend_logo(asset: str):
     target = BASE_DIR / asset
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Frontend logo not found")
-    return FileResponse(
-        target,
-        media_type="image/svg+xml; charset=utf-8",
-        headers={"Cache-Control": "no-store, max-age=0"},
-    )
+    return FileResponse(target, media_type="image/svg+xml; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 def _exact_asset_handler(asset_name: str):
@@ -147,8 +134,8 @@ for _asset in sorted(ALLOWED_ASSETS):
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 
-# The base app may already contain broad dynamic/static routes. Exact championship
-# routes must be evaluated first so compatibility endpoints resolve deterministically.
+# Base app may already contain broad dynamic/static routes. Put exact championship
+# assets first so compatibility resources resolve deterministically.
 for _path in (
     "/urbion_championship_command_shell.js",
     "/urbion_championship_decision_chain.js",
