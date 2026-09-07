@@ -69,12 +69,10 @@ def _frontend_root() -> HTMLResponse:
   <!-- urbion_championship_input_sync.js / urbion_championship_intelligence_upgrade.js / urbion_championship_workflow.js / urbion_championship_spatial_studio.js -->
   <!-- urbion_championship_decision_layer.js / urbion_spatial_workstation_upgrade.js / urbion_spatial_implication_bridge.js -->
   <!-- urbion_championship_ux_v4.js / urbion_championship_ux_v5.js / urbion_what_if_upgrade.js -->
-  <div id="urbion-boot">URBION HORIZON · LOADING COMMAND CENTRE</div>
   <div id="urbion-championship-shell"></div>
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/urbion_championship_command_shell.js"></script>
-  <script>if(window.__URBION_CHAMPIONSHIP_READY__)document.getElementById('urbion-boot')?.setAttribute('data-ready','1');</script>
 </body>
 </html>"""
     return HTMLResponse(
@@ -144,17 +142,17 @@ async def _championship_frontend_override(request: Request, call_next):
     return await call_next(request)
 
 
-app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
-app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
-app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
-app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
+@app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
+@app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
+@app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
+@app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
 for _asset in sorted(ALLOWED_ASSETS):
     app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 
 # The base app may already contain broad dynamic/static routes. Exact championship
-# asset routes must be evaluated first so compatibility assets remain reachable.
+# routes must be evaluated first so compatibility endpoints resolve deterministically.
 for _path in (
     "/urbion_championship_command_shell.js",
     "/urbion_championship_decision_chain.js",
