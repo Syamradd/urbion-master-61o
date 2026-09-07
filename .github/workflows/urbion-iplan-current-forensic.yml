@@ -17,8 +17,7 @@ jobs:
       - name: Preserve diagnostic probe files
         run: |
           set -euo pipefail
-          git show HEAD:tests/browser_forensic_iplan_current.py > /tmp/browser_forensic_iplan_current.py
-          git show HEAD:.github/workflows/urbion-iplan-current-forensic.yml > /tmp/forensic-workflow.yml
+          git show HEAD:tests/browser_forensic_iplan_current_v2.py > /tmp/browser_forensic_iplan_current.py
           test -s /tmp/browser_forensic_iplan_current.py
       - name: Checkout exact production baseline
         run: |
