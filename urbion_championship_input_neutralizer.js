@@ -2,7 +2,7 @@
 'use strict';
 if(window.__URBION_INPUT_NEUTRALIZER__)return;
 window.__URBION_INPUT_NEUTRALIZER__=true;
-const DEFAULTS={lat:'2.285',lon:'102.196',todlat:'2.286',todlon:'2.286',ratio:'4.5',district:'Melaka Tengah'};
+const DEFAULTS={lat:'2.285',lon:'102.196',todlat:'2.286',todlon:'102.197',ratio:'4.5',district:'Melaka Tengah'};
 function clean(){
   const root=document.querySelector('#urbion-final-command-centre');
   if(!root||localStorage.getItem('urbion-case-active'))return !!root;
