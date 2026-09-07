@@ -1,4 +1,4 @@
-"""Minimal browser acceptance gate for the canonical URBION workstation.
+"""Browser acceptance gate for the canonical URBION workstation.
 
 This is intentionally a browser test, not a replacement for the existing
 pytest regression suite. It verifies the visible planner workflow against the
@@ -26,9 +26,14 @@ def map_hash(page) -> str:
     return hashlib.sha256(page.locator("#cs-map").screenshot()).hexdigest()
 
 
+def capture(page, name: str) -> None:
+    page.screenshot(path=ARTIFACT_DIR / f"{name}.png", full_page=True)
+
+
 def main() -> None:
     console_errors: list[str] = []
     page_errors: list[str] = []
+    request_failures: list[str] = []
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
@@ -36,6 +41,7 @@ def main() -> None:
         page = context.new_page()
         page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
         page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+        page.on("requestfailed", lambda request: request_failures.append(f"{request.method} {request.url} :: {request.failure}"))
 
         page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
         expect(page).to_have_title("URBION HORIZON — Planning Command Centre")
@@ -71,6 +77,7 @@ def main() -> None:
         select(page, "#cs-activity", "TOD / Mixed Use")
         select(page, "#cs-development", "New Development")
         page.locator("#cs-ratio").fill("4.5")
+        capture(page, "case-defined")
 
         # Dependency behaviour must be deterministic.
         assert page.locator("#cs-pbt option").count() > 1
@@ -92,6 +99,7 @@ def main() -> None:
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
         expect(page.locator("#stat-tod")).to_have_text("—")
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
+        capture(page, "analysis-blank-tod")
 
         # Optional TOD contract: whitespace is still blank.
         if tod_section.get_attribute("open") is None:
@@ -128,6 +136,13 @@ def main() -> None:
         assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
         assert map_hash(page) == blank_tod_hash, "Clearing TOD left stale map visualization."
 
+        # Re-run with TOD absent: the analysis must remain usable and must not invent transit.
+        page.locator("#cs-run").click()
+        expect(page.locator("#cs-status-pill")).to_have_text("ANALYSIS READY", timeout=30_000)
+        expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
+        expect(page.locator("#stat-tod")).to_have_text("—")
+        capture(page, "analysis")
+
         # Browser-visible spatial evidence after analysis.
         assert page.locator("#cs-map .leaflet-marker-pane").count() == 1
         assert page.locator("#cs-map .leaflet-overlay-pane").count() == 1
@@ -148,6 +163,7 @@ def main() -> None:
         assert after_on_hash != baseline_hash, "Current Land Use toggle did not change the visible map."
         official_ids = page.evaluate("Object.keys(window.__URBION_OFFICIAL_LAYERS__ || {})")
         assert official_ids.count("iplan-current") == 1, "Duplicate official layer handlers/layers detected."
+        capture(page, "map-layer-on")
 
         # OFF again must remove the visual layer.
         current.uncheck()
@@ -168,25 +184,65 @@ def main() -> None:
         assert current_opacity is not None and abs(float(current_opacity) - 1.0) < 0.01, current_opacity
         current.uncheck()
 
+        # Every exposed query layer must produce either a visible map change or an explicit source state.
+        allowed_source_states = {"NO FEATURE / QUERY ERROR", "RUN ANALYSIS TO QUERY", "SOURCE UNAVAILABLE", "SOURCE CONTEXT"}
+        for input_index in range(layer_inputs.count()):
+            layer = layer_inputs.nth(input_index)
+            layer_id = layer.get_attribute("data-layer")
+            if not layer_id or layer_id == "iplan-current" or layer_id == "iplan-cadastral":
+                continue
+            before = map_hash(page)
+            layer.check()
+            page.wait_for_timeout(700)
+            after = map_hash(page)
+            row = layer.locator("xpath=ancestor::label[1]")
+            status = row.locator("small").inner_text().strip() if row.locator("small").count() else ""
+            live_visual = after != before
+            explicit_unavailable = any(state in status for state in allowed_source_states)
+            assert live_visual or explicit_unavailable, f"Layer {layer_id} changed checkbox without visual/source-state evidence: {status!r}"
+            layer.uncheck()
+            page.wait_for_timeout(250)
+            assert map_hash(page) == before or explicit_unavailable, f"Layer {layer_id} left unexpected map state after OFF."
+
         # Core workbench navigation after a single run.
         for tab in ("site", "ai", "whatif", "decision", "lcp", "output"):
             page.locator(f'.workbench-nav button[data-tab="{tab}"]').click()
             expect(page.locator("#cs-content")).not_to_have_text("Planning case not defined")
 
-        # Decision tools should be usable after a case exists.
+        # What-If must actually execute a controlled scenario.
+        page.locator('.workbench-nav button[data-tab="whatif"]').click()
+        what_if_button = page.locator('#cs-content button[data-wif]').first
+        expect(what_if_button).to_be_visible()
+        what_if_button.click()
+        expect(page.locator("#cs-wif-result")).not_to_have_text("Set an intensity and run a scenario.", timeout=30_000)
+
+        # AI assessment / explanation and station context must be usable.
         page.locator("#cs-ai").click()
         expect(page.locator("#cs-ai-result")).not_to_have_text("Available after a case is defined.", timeout=30_000)
         page.locator("#cs-station").click()
         page.wait_for_timeout(500)
+
+        # Decision and LCP surfaces carry actual populated case intelligence.
+        page.locator('.workbench-nav button[data-tab="decision"]').click()
+        expect(page.locator("#cs-content")).to_contain_text("RECOMMENDED OPTION")
+        capture(page, "decision")
+        page.locator('.workbench-nav button[data-tab="lcp"]').click()
+        expect(page.locator("#cs-content")).to_contain_text("Clean planner handoff")
+        page.locator('.workbench-nav button[data-tab="output"]').click()
+        expect(page.locator("#cs-content")).to_contain_text("Unified case package")
+
+        # Judge Mode must execute its real endpoint and open the existing presentation surface.
         page.locator("#cs-judge").click()
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(700)
+        expect(page.locator("#cs-judge-result")).to_contain_text("Judge snapshot ready", timeout=30_000)
 
         # Utility actions: About is a real destination, Print has a browser API,
         # and Export creates a case payload rather than a dead click.
         with page.expect_navigation(wait_until="networkidle"):
             page.locator('button[data-tool="about"]').click()
         expect(page).to_have_title("URBION HORIZON — About")
-        expect(page.locator("body")).to_contain_text("What is URBION?")
+        expect(page.locator("body")).to_contain_text("Turning spatial evidence into")
+        capture(page, "about")
         page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
 
         print_button = page.locator('button[data-tool="print"]')
@@ -202,15 +258,19 @@ def main() -> None:
         page.wait_for_load_state("networkidle")
         assert page.locator("#cs-lang").inner_text() in {"BM", "EN"}
 
-        screenshot_path = ARTIFACT_DIR / "championship-qa.png"
-        page.screenshot(path=screenshot_path, full_page=True)
-        (ARTIFACT_DIR / "browser-errors.txt").write_text("\n".join(console_errors + page_errors), encoding="utf-8")
+        capture(page, "final-workspace")
+        (ARTIFACT_DIR / "browser-errors.txt").write_text(
+            "CONSOLE ERRORS\n" + "\n".join(console_errors) +
+            "\n\nPAGE ERRORS\n" + "\n".join(page_errors) +
+            "\n\nREQUEST FAILURES\n" + "\n".join(request_failures),
+            encoding="utf-8",
+        )
         context.close()
         browser.close()
 
     if console_errors or page_errors:
         raise AssertionError(f"Browser errors detected: {console_errors + page_errors}")
-    print(f"BROWSER_QA_OK screenshot={screenshot_path}")
+    print(f"BROWSER_QA_OK artifacts={ARTIFACT_DIR}")
 
 
 if __name__ == "__main__":
