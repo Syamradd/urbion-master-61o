@@ -35,3 +35,8 @@ def station_intelligence(
 
 
 app.include_router(router)
+
+# Imported last so championship_server has already completed `from server import app`
+# and all original API routes exist before the optional-TOD UI compatibility routes
+# register. The compatibility module reuses the same deterministic planning engines.
+import urbion_championship_optional_assessment_api  # noqa: E402,F401
