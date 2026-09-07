@@ -1,0 +1,50 @@
+name: URBION iPlan Current Forensic
+
+on:
+  push:
+    branches: [forensic-iplan-current-19b630a]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forensic:
+    name: forensic-iplan-current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install Playwright
+        run: python -m pip install playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Launch exact HEAD server
+        env:
+          PYTHONPATH: .
+          PORT: 8765
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "19b630a1ef845e8b0293bb236d1997672c3f27a9"
+          python -m uvicorn championship_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-forensic-uvicorn.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/health >/dev/null; then break; fi
+            sleep 1
+          done
+          python tests/browser_forensic_iplan_current.py
+      - name: Upload forensic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urbion-iplan-current-forensic
+          path: |
+            /tmp/urbion-iplan-forensic/
+            /tmp/urbion-forensic-uvicorn.log
+          if-no-files-found: warn
