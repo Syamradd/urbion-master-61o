@@ -199,22 +199,24 @@ def main() -> None:
         current.uncheck()
         assert not leaflet_layer_active(page, "iplan-current")
 
-        # Every exposed query layer must produce either a live Leaflet layer or an explicit source state.
+        # Exposed query layers use their real click flow: some immediately
+        # return to OFF when no feature exists, while live layers remain ON.
         allowed_source_states = {"NO FEATURE / QUERY ERROR", "RUN ANALYSIS TO QUERY", "SOURCE UNAVAILABLE", "SOURCE CONTEXT"}
         for input_index in range(layer_inputs.count()):
             layer = layer_inputs.nth(input_index)
             layer_id = layer.get_attribute("data-layer")
             if not layer_id or layer_id in {"iplan-current", "iplan-cadastral"}:
                 continue
-            layer.check()
+            layer.click()
             page.wait_for_timeout(700)
             row = layer.locator("xpath=ancestor::label[1]")
             status = row.locator("small").inner_text().strip() if row.locator("small").count() else ""
             live_leaflet_layer = leaflet_layer_active(page, layer_id)
             explicit_unavailable = any(state in status for state in allowed_source_states)
             assert live_leaflet_layer or explicit_unavailable, f"Layer {layer_id} changed checkbox without live layer/source-state evidence: {status!r}"
-            layer.uncheck()
-            page.wait_for_timeout(250)
+            if layer.is_checked():
+                layer.uncheck()
+                page.wait_for_timeout(250)
             assert not leaflet_layer_active(page, layer_id), f"Layer {layer_id} remained active after OFF."
 
         # Core workbench navigation after a single run.
