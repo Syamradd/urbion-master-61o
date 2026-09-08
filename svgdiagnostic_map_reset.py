@@ -48,7 +48,6 @@ INSTRUMENTATION = r"""
   };
   const push = (type, data={}) => d.events.push({t: performance.now(), type, ...data});
 
-  // Instrument ResizeObserver without changing callback behaviour.
   const NativeRO = window.ResizeObserver;
   if (NativeRO) {
     window.ResizeObserver = class DiagnosticResizeObserver {
@@ -172,52 +171,65 @@ def image_diff(a: Path, b: Path) -> dict[str, Any]:
 
 def metrics(page) -> dict[str, Any]:
     return page.evaluate(r"""
-    () => {
-      const map = window.__URBION_FCC_MAP__;
-      const el = document.querySelector('#cs-map');
-      const rect = el?.getBoundingClientRect();
-      const q = s => Array.from(document.querySelectorAll(s));
-      const loaded = q('.leaflet-tile-pane img').filter(i => i.complete && i.naturalWidth > 0);
-      const tiles = q('.leaflet-tile-pane img').map(i => {
-        const r=i.getBoundingClientRect();
-        return {src:i.currentSrc||i.src,complete:i.complete,naturalWidth:i.naturalWidth,
-          rect:{x:r.x,y:r.y,width:r.width,height:r.height},
-          cls:i.className};
+    function() {
+      var map = window.__URBION_FCC_MAP__;
+      var el = document.querySelector('#cs-map');
+      var rect = el ? el.getBoundingClientRect() : null;
+      var q = function(s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+      var loaded = q('.leaflet-tile-pane img').filter(function(i) { return i.complete && i.naturalWidth > 0; });
+      var tiles = q('.leaflet-tile-pane img').map(function(i) {
+        var r = i.getBoundingClientRect();
+        return {src:i.currentSrc || i.src, complete:i.complete, naturalWidth:i.naturalWidth,
+          rect:{x:r.x,y:r.y,width:r.width,height:r.height}, cls:i.className};
       });
-      const canvases = q('#cs-map canvas').map(c => ({
-        rect:(()=>{const r=c.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})(),
-        width:c.width,height:c.height
-      }));
-      const svgs = q('#cs-map svg').map(s => {const r=s.getBoundingClientRect();return {rect:{x:r.x,y:r.y,width:r.width,height:r.height}}});
-      const markers = q('#cs-map .leaflet-marker-pane img, #cs-map .leaflet-marker-pane .leaflet-marker-icon');
-      let center=null,bounds=null,zoom=null,mapSize=null;
-      if(map){
-        const c=map.getCenter(); center={lat:c.lat,lng:c.lng};
-        const b=map.getBounds(); bounds={north:b.getNorth(),south:b.getSouth(),east:b.getEast(),west:b.getWest()};
+      var canvases = q('#cs-map canvas').map(function(c) {
+        var r=c.getBoundingClientRect();
+        return {rect:{x:r.x,y:r.y,width:r.width,height:r.height}, width:c.width,height:c.height};
+      });
+      var svgs = q('#cs-map svg').map(function(s) {
+        var r=s.getBoundingClientRect();
+        return {rect:{x:r.x,y:r.y,width:r.width,height:r.height}};
+      });
+      var markers = q('#cs-map .leaflet-marker-pane img, #cs-map .leaflet-marker-pane .leaflet-marker-icon');
+      var center=null, bounds=null, zoom=null, mapSize=null;
+      if (map) {
+        var c=map.getCenter(); center={lat:c.lat,lng:c.lng};
+        var b=map.getBounds(); bounds={north:b.getNorth(),south:b.getSouth(),east:b.getEast(),west:b.getWest()};
         zoom=map.getZoom();
-        const s=map.getSize(); mapSize={x:s.x,y:s.y};
+        var s=map.getSize(); mapSize={x:s.x,y:s.y};
       }
-      let vectorLayers=[];
-      try { map.eachLayer(l=>vectorLayers.push({type:l?.constructor?.name||'unknown',
-          latlng:(()=>{try{const x=l.getLatLng?.();return x?{lat:+x.lat.toFixed(6),lng:+x.lng.toFixed(6)}:null}catch{return null}})(),
-          points:(()=>{try{return l.getLatLngs?.().map(x=>({lat:x.lat,lng:x.lng}))||null}catch{return null}})(),
-          hasPath:!!(l && l._path),hasIcon:!!(l && l._icon),hasCanvas:!!(l && l._renderer && l._renderer._container)})); } catch {}
-      const stage=document.querySelector('.map-stage');
+      var vectorLayers=[];
+      try {
+        map.eachLayer(function(l) {
+          var latlng=null, points=null;
+          try { var x=l.getLatLng && l.getLatLng(); if (x) latlng={lat:Number(x.lat.toFixed(6)),lng:Number(x.lng.toFixed(6))}; } catch (e) {}
+          try { var pts=l.getLatLngs && l.getLatLngs(); if (pts) points=pts.map(function(x){return {lat:x.lat,lng:x.lng};}); } catch (e) {}
+          vectorLayers.push({type:(l && l.constructor && l.constructor.name) || 'unknown',
+            latlng:latlng, points:points, hasPath:!!(l && l._path), hasIcon:!!(l && l._icon),
+            hasCanvas:!!(l && l._renderer && l._renderer._container)});
+        });
+      } catch (e) {}
+      var stage=document.querySelector('.map-stage');
+      var stageRect=null;
+      if (stage) { var sr=stage.getBoundingClientRect(); stageRect={x:sr.x,y:sr.y,width:sr.width,height:sr.height}; }
+      var todLat=document.querySelector('#cs-todlat');
+      var todLon=document.querySelector('#cs-todlon');
+      var sigTod=document.querySelector('#sig-tod');
+      var statTod=document.querySelector('#stat-tod');
       return {
-        time:performance.now(),
-        center,zoom,bounds,mapSize,
-        mapRect:rect?{x:rect.x,y:rect.y,width:rect.width,height:rect.height}:null,
-        clientWidth:el?.clientWidth||null,clientHeight:el?.clientHeight||null,
-        scrollWidth:el?.scrollWidth||null,scrollHeight:el?.scrollHeight||null,
-        stageRect:(()=>{if(!stage)return null;const r=stage.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})(),
-        devicePixelRatio:window.devicePixelRatio,
-        screenshotTargetSize:null,
-        tileCount:tiles.length,loadedTileCount:loaded.length,
-        tiles,canvasCount:canvases.length,canvases,svgCount:svgs.length,svgs,
-        markerCount:markers.length,
-        vectorLayers,
-        overlayCounts:{circles:q('#cs-map .leaflet-overlay-pane circle').length,paths:q('#cs-map .leaflet-overlay-pane path').length,polylines:q('#cs-map .leaflet-overlay-pane path').length},
-        dom:{todLat:document.querySelector('#cs-todlat')?.value||'',todLon:document.querySelector('#cs-todlon')?.value||'',sigTod:document.querySelector('#sig-tod')?.textContent||'',statTod:document.querySelector('#stat-tod')?.textContent||''}
+        time:performance.now(), center:center, zoom:zoom, bounds:bounds, mapSize:mapSize,
+        mapRect:rect ? {x:rect.x,y:rect.y,width:rect.width,height:rect.height} : null,
+        clientWidth:el ? el.clientWidth : null, clientHeight:el ? el.clientHeight : null,
+        scrollWidth:el ? el.scrollWidth : null, scrollHeight:el ? el.scrollHeight : null,
+        stageRect:stageRect, devicePixelRatio:window.devicePixelRatio, screenshotTargetSize:null,
+        tileCount:tiles.length, loadedTileCount:loaded.length, tiles:tiles,
+        canvasCount:canvases.length, canvases:canvases, svgCount:svgs.length, svgs:svgs,
+        markerCount:markers.length, vectorLayers:vectorLayers,
+        overlayCounts:{circles:q('#cs-map .leaflet-overlay-pane circle').length,
+          paths:q('#cs-map .leaflet-overlay-pane path').length,
+          polylines:q('#cs-map .leaflet-overlay-pane path').length},
+        dom:{todLat:todLat ? todLat.value : '', todLon:todLon ? todLon.value : '',
+          sigTod:sigTod ? sigTod.textContent : '', statTod:statTod ? statTod.textContent : ''}
       };
     }
     """)
@@ -286,7 +298,6 @@ def main():
         expect(page.locator("#cs-map .leaflet-marker-pane img")).to_have_count(1)
         TOD = capture_map(page,"TOD_valid")
 
-        # Clear both fields and capture immediately; no production waits.
         page.locator("#cs-todlat").fill("")
         page.locator("#cs-todlon").fill("")
         expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
