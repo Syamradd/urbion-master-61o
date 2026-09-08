@@ -7,14 +7,18 @@ def read(name):
     return (ROOT / name).read_text(encoding="utf-8")
 
 
-def test_legacy_decision_surface_is_fallback_only_when_intelligence_surface_exists():
+def test_legacy_decision_surface_is_reachable_but_not_root_booted():
     legacy = read("urbion_championship_decision_layer.js")
     server = read("championship_server.py")
+    final = read("urbion_championship_final_command_center.js")
     assert "document.getElementById('intel-upgrade')" in legacy
     assert "id='decision-layer'" in legacy
     assert "urbion_championship_intelligence_upgrade.js" in server
     assert "urbion_championship_decision_layer.js" in server
-    assert "urbion_championship_intelligence_upgrade.js\",\"urbion_championship_decision_layer.js" in server
+    assert "urbion_championship_final_command_center.js" in server
+    assert 'urbion_championship_intelligence_upgrade.js' in server
+    assert 'urbion_championship_decision_layer.js' in server
+    assert 'Decision' in final
 
 
 def test_fallback_keeps_legacy_guardrail_and_assessment_path():

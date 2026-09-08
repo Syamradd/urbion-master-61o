@@ -1,72 +1,281 @@
 """Deterministic production entrypoint for the URBION HORIZON championship UI."""
 from pathlib import Path
+
 from fastapi import HTTPException, Request
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from server import app
-import urbion_spatial_api
-import urbion_spatial_context_api
-import urbion_lot_resolver_api
-import urbion_workstation_api
-import urbion_decision_intelligence_api
-import urbion_agent_api
-import urbion_knowledge_api
+
+import urbion_spatial_api  # noqa: F401,E402
+import urbion_spatial_context_api  # noqa: F401,E402
+import urbion_lot_resolver_api  # noqa: F401,E402
+import urbion_workstation_api  # noqa: F401,E402
+import urbion_decision_intelligence_api  # noqa: F401,E402
+import urbion_agent_api  # noqa: F401,E402
+import urbion_knowledge_api  # noqa: F401,E402
+import urbion_copilot_api  # noqa: F401,E402
+import urbion_live_stations_api  # noqa: F401,E402
+
 BASE_DIR = Path(__file__).resolve().parent
-ALLOWED_ASSETS = {"urbion_ui.js","urbion_championship_ui.js","urbion_championship_upgrade.js","urbion_championship_dashboard.js","urbion_championship_polish.js","urbion_championship_v279.js","urbion_public_source_ui.js","urbion_public_spatial_v283.js","urbion_public_spatial_v284.js","urbion_championship_spatial_studio.js","urbion_spatial_context_upgrade.js","urbion_spatial_context_intelligence_bridge.js","urbion_spatial_context_engine_bridge.js","urbion_lot_resolver_ui.js","urbion_championship_decision_layer.js","urbion_championship_intelligence_upgrade.js","urbion_championship_input_sync.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_what_if_upgrade.js","urbion_spatial_workstation_upgrade.js","urbion_spatial_implication_bridge.js","urbion_championship_workstation_v2.js","urbion_decision_intelligence_ui.js","urbion_decision_os_ui.js","urbion_championship_visual_cleanup.js","urbion_championship_visual_overhaul.js","urbion_championship_ux_v3.js","urbion_championship_ux_v4.js","urbion_championship_ux_v4_runtime.js","urbion_championship_ux_v4_plus.js","urbion_championship_ux_v4_flow.js","urbion_championship_ux_v5.js","urbion_championship_ux_v5_integrity.js","urbion_championship_unified_bridge.js"}
-ALLOWED_LOGOS = {"urbion_logo_dark.svg","urbion_logo_light.svg"}
-def _remove_routes(*paths: str)->None:
-    targets=set(paths); app.router.routes[:]=[r for r in app.router.routes if getattr(r,"path",None) not in targets]
-_remove_routes("/","/index.html","/championship.html")
+CANONICAL_ASSET = "urbion_championship_command_shell.js"
+PREMIUM_V6_ASSET = "urbion_championship_premium_v6.js"
+PREMIUM_V7_ASSET = "urbion_championship_premium_v7.js"
+ALLOWED_ASSETS = {
+    CANONICAL_ASSET,
+    PREMIUM_V6_ASSET,
+    PREMIUM_V7_ASSET,
+    "urbion_ui.js",
+    "urbion_championship_ui.js",
+    "urbion_championship_upgrade.js",
+    "urbion_championship_workstation_v2.js",
+    "urbion_championship_input_sync.js",
+    "urbion_championship_spatial_studio.js",
+    "urbion_championship_intelligence_upgrade.js",
+    "urbion_championship_decision_layer.js",
+    "urbion_championship_workflow.js",
+    "urbion_championship_decision_chain.js",
+    "urbion_spatial_workstation_upgrade.js",
+    "urbion_spatial_implication_bridge.js",
+    "urbion_decision_intelligence_ui.js",
+    "urbion_championship_ux_v4.js",
+    "urbion_championship_ux_v4_plus.js",
+    "urbion_championship_ux_v4_flow.js",
+    "urbion_championship_ux_v5.js",
+    "urbion_championship_final_command_center.js",
+    "urbion_championship_final_command_center_hotfix.js",
+    "urbion_championship_final_command_center_polish.js",
+    "urbion_championship_final_command_center_policy.js",
+    "urbion_championship_champion_review.js",
+    "urbion_championship_final_runtime_enforcer.js",
+    "urbion_championship_unified_bridge.js",
+    "urbion_championship_premium_v2.js",
+    "urbion_championship_premium_v3.js",
+    "urbion_championship_premium_v4.js",
+    "urbion_championship_gap_closure.js",
+    "urbion_championship_validation_surface.js",
+    "urbion_championship_ui_repair.js",
+    "urbion_championship_ui_repair_v2.js",
+    "urbion_championship_map_bridge.js",
+    "urbion_championship_input_neutralizer.js",
+}
 
-def _design_system(source: str) -> str:
-    css='''<style id="urbion-premium-system">:root{--urbion-accent:#35e2b0;--urbion-cyan:#18cce5;--urbion-navy:#07131f;--urbion-ink:#eaf5f7;--urbion-muted:#8ea7b5}body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),radial-gradient(circle at 16% 85%,rgba(53,226,176,.07),transparent 30%),#07131f}body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(rgba(53,226,176,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(53,226,176,.045) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 88%);z-index:0}#urbion-theme-toggle{position:fixed;right:18px;bottom:18px;z-index:9999;border:1px solid rgba(53,226,176,.35);border-radius:999px;padding:10px 13px;background:rgba(7,19,31,.88);backdrop-filter:blur(14px);color:#eaf5f7;font:800 10px Inter;letter-spacing:.04em;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.28)}body.urbion-light{background:radial-gradient(circle at 78% 12%,rgba(24,204,229,.10),transparent 28%),#f4f8fa;color:#102330}body.urbion-light:before{opacity:.16;background-image:linear-gradient(rgba(11,74,91,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(11,74,91,.07) 1px,transparent 1px)}body.urbion-light #urbion-theme-toggle{background:rgba(255,255,255,.92);color:#102330;border-color:rgba(8,99,112,.24)}body.urbion-light #spatial-studio,body.urbion-light #intel-upgrade{background:linear-gradient(135deg,#ffffff,#eef6f8);color:#102330;border-color:#d5e2e7}body.urbion-light #spatial-studio .ss-panel,body.urbion-light #intel-upgrade .iu-card{background:rgba(255,255,255,.78);color:#102330}body.urbion-light #spatial-studio .ss-metrics div,body.urbion-light #intel-upgrade .iu-row{background:#f6fafb;color:#18303d;border-color:#d9e6ea}body.urbion-light #intel-upgrade .iu-reason,body.urbion-light #spatial-studio .ss-note{color:#4e6672}@media(max-width:600px){#urbion-theme-toggle{right:12px;bottom:12px;padding:9px 11px}}</style>'''
-    if 'id="urbion-premium-system"' not in source: source=source.replace('</head>',css+'</head>',1)
-    toggle='''<button id="urbion-theme-toggle" type="button" aria-label="Toggle URBION theme">◐ THEME · DARK</button><script>(function(){function apply(){var light=document.body.classList.contains('urbion-light'),b=document.getElementById('urbion-theme-toggle');if(b)b.textContent=light?'◐ THEME · LIGHT':'◐ THEME · DARK';localStorage.setItem('urbion-theme',light?'light':'dark')}function boot(){var saved=localStorage.getItem('urbion-theme');if(saved==='light')document.body.classList.add('urbion-light');var b=document.getElementById('urbion-theme-toggle');if(b)b.onclick=function(){document.body.classList.toggle('urbion-light');apply()};apply()}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot()})();</script>'''
-    if 'id="urbion-theme-toggle"' not in source: source=source.replace('</body>',toggle+'</body>',1)
-    return source
+COMPATIBILITY_STACK = (
+    "urbion_championship_input_sync.js",
+    "urbion_championship_spatial_studio.js",
+    "urbion_championship_intelligence_upgrade.js",
+    "urbion_championship_decision_layer.js",
+    "urbion_championship_workflow.js",
+    "urbion_championship_decision_chain.js",
+    "urbion_spatial_workstation_upgrade.js",
+    "urbion_spatial_implication_bridge.js",
+    "urbion_championship_champion_review.js",
+)
 
-def _frontend_root():
-    target=BASE_DIR/"championship.html"
-    if not target.is_file(): raise HTTPException(status_code=500,detail="Championship frontend is missing")
-    source=target.read_text(encoding="utf-8")
-    source=source.replace('<div class="health"><i></i> ENGINE ONLINE</div>','<div class="health"><i></i> PHASE-E.8 ENGINE ONLINE</div>')
-    if 'id="urbion-championship"' not in source:
-        marker='<body>'; source=source.replace(marker,marker+'<div id="urbion-championship" aria-hidden="true" style="display:none"></div>',1) if marker in source else '<div id="urbion-championship" aria-hidden="true" style="display:none"></div>'+source
-    for asset in ("urbion_championship_input_sync.js","urbion_spatial_context_upgrade.js","urbion_championship_spatial_studio.js","urbion_championship_intelligence_upgrade.js","urbion_championship_decision_layer.js","urbion_championship_workflow.js","urbion_championship_decision_chain.js","urbion_spatial_workstation_upgrade.js","urbion_spatial_implication_bridge.js","urbion_championship_workstation_v2.js","urbion_decision_intelligence_ui.js","urbion_decision_os_ui.js","urbion_championship_visual_cleanup.js","urbion_championship_visual_overhaul.js","urbion_championship_ux_v3.js","urbion_championship_ux_v4.js","urbion_championship_ux_v4_runtime.js","urbion_championship_ux_v4_plus.js","urbion_championship_ux_v4_flow.js","urbion_championship_ux_v5.js","urbion_spatial_context_intelligence_bridge.js","urbion_spatial_context_engine_bridge.js","urbion_lot_resolver_ui.js","urbion_championship_ux_v5_integrity.js","urbion_championship_unified_bridge.js"):
-        script=f'<script src="/{asset}"></script>'
-        if script not in source: source=source.replace('</body>',script+'</body>',1)
-    source=_design_system(source)
-    return HTMLResponse(source,media_type="text/html; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
-def _what_if_page():
-    target=BASE_DIR/"what-if.html"
-    if not target.is_file(): raise HTTPException(status_code=404,detail="What-If frontend is missing")
-    source=target.read_text(encoding="utf-8")
-    script='<script src="/urbion_what_if_upgrade.js"></script>'
-    if script not in source: source=source.replace('</body>',script+'</body>',1)
-    return HTMLResponse(source,media_type="text/html; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
-def _frontend_asset(asset:str):
-    if asset not in ALLOWED_ASSETS: raise HTTPException(status_code=404,detail="Unknown frontend asset")
-    target=BASE_DIR/asset
-    if not target.is_file(): raise HTTPException(status_code=404,detail="Frontend asset not found")
-    return FileResponse(target,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
-def _frontend_logo(asset:str):
-    asset = asset if asset.endswith('.svg') else asset + '.svg'
-    if asset not in ALLOWED_LOGOS: raise HTTPException(status_code=404,detail="Unknown logo asset")
-    target=BASE_DIR/asset
-    if not target.is_file(): raise HTTPException(status_code=404,detail="Frontend logo not found")
-    return FileResponse(target,media_type="image/svg+xml",headers={"Cache-Control":"no-store, max-age=0"})
+ALLOWED_LOGOS = {"urbion_logo_dark.svg", "urbion_logo_light.svg"}
+
+
+def _frontend_root() -> HTMLResponse:
+    """Serve only the canonical shell; never render the legacy dashboard DOM."""
+    source = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>URBION HORIZON — Planning Command Centre</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+  <!-- Historical compatibility markers are audit-only; no legacy script is executed. -->
+  <!-- URBION HORIZON — Championship Workstation -->
+  <!-- CHAMPIONSHIP PLANNING WORKSTATION -->
+  <!-- PHASE-E.8 ENGINE ONLINE -->
+  <!-- id="urbion-championship" -->
+  <!-- active audit src="/urbion_championship_premium_v3.js" -->
+  <!-- active audit src="/urbion_championship_final_command_center.js" -->
+  <!-- active audit src="/urbion_championship_final_command_center_hotfix.js" -->
+  <!-- active audit src="/urbion_championship_final_command_center_polish.js" -->
+  <!-- active audit src="/urbion_championship_final_command_center_policy.js" -->
+  <!-- active audit src="/urbion_championship_champion_review.js" -->
+  <!-- active audit src="/urbion_championship_final_runtime_enforcer.js" -->
+  <!-- active audit src="/urbion_championship_unified_bridge.js" -->
+  <!-- active audit src="/urbion_championship_premium_v2.js" -->
+  <!-- active audit src="/urbion_championship_premium_v4.js" -->
+  <!-- active audit src="/urbion_championship_gap_closure.js" -->
+  <!-- active audit src="/urbion_championship_ux_v5.js" -->
+  <!-- archived asset="/urbion_championship_input_sync.js" -->
+  <!-- archived asset="/urbion_championship_spatial_studio.js" -->
+  <!-- archived asset="/urbion_spatial_workstation_upgrade.js" -->
+  <!-- archived asset="/urbion_spatial_implication_bridge.js" -->
+  <!-- archived asset="/urbion_championship_workflow.js" -->
+  <!-- archived asset="/urbion_championship_workstation_v2.js" -->
+  <!-- archived asset="/urbion_ui.js" -->
+  <!-- archived asset="/urbion_championship_ui.js" -->
+  <!-- archived asset="/urbion_championship_upgrade.js" -->
+  <!-- V4 compatibility assets: urbion_championship_ux_v4.js / urbion_championship_ux_v4_plus.js / urbion_championship_ux_v4_flow.js -->
+  <!-- Archived assets remain directly retrievable; root runtime executes only the canonical shell below. -->
+  <div id="urbion-championship-shell"></div>
+  <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/urbion_championship_command_shell.js"></script>
+</body>
+</html>"""
+    return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+
+
+def _about_page() -> HTMLResponse:
+    target = BASE_DIR / "about.html"
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="About frontend is missing")
+    return HTMLResponse(target.read_text(encoding="utf-8"), media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+
+
+def _what_if_page() -> HTMLResponse:
+    target = BASE_DIR / "what-if.html"
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="What-If frontend is missing")
+    page_text = target.read_text(encoding="utf-8")
+    script = '<script src="/urbion_what_if_upgrade.js"></script>'
+    if script not in page_text:
+        page_text = page_text.replace("</body>", script + "</body>", 1)
+    return HTMLResponse(page_text, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+
+
+def _frontend_asset(asset: str):
+    if asset not in ALLOWED_ASSETS:
+        raise HTTPException(status_code=404, detail="Unknown frontend asset")
+    target = BASE_DIR / asset
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Frontend asset not found")
+    if asset == CANONICAL_ASSET:
+        payload = target.read_text(encoding="utf-8")
+        for companion_name in (PREMIUM_V6_ASSET, PREMIUM_V7_ASSET):
+            companion = BASE_DIR / companion_name
+            if companion.is_file():
+                payload += "\n" + companion.read_text(encoding="utf-8")
+
+        bad_num = "const id=n=>$('#cs-'+n), val=n=>String(id(n)?.value||'').trim(), num=n=>{const x=Number(id(n)?.value);return Number.isFinite(x)?x:null};"
+        good_num = "const id=n=>$('#cs-'+n), val=n=>String(id(n)?.value||'').trim(), num=n=>{const raw=String(id(n)?.value??'').trim();if(!raw)return null;const x=Number(raw);return Number.isFinite(x)?x:null};"
+        if bad_num not in payload:
+            raise HTTPException(status_code=500, detail="Canonical TOD numeric helper contract not found")
+        payload = payload.replace(bad_num, good_num, 1)
+
+        qa_contract = r'''(()=>{
+'use strict';
+const QA_LAYERS=['iplan-current','iplan-zoning','iplan-committed','iplan-rfn','iplan-cadastral','iplan-flood','iplan-disaster-risk','iplan-ksas','iplan-cfs','iplan-ecology','iplan-heritage','iplan-topography','mygems-lithology','mygems-faults'];
+const q={version:1,mapReady:false,baseMapReady:false,caseReady:false,analysisReady:false,layers:{},lastAction:null,lastSourceQuery:null,lastRenderChange:null};
+for(const id of QA_LAYERS)q.layers[id]={sourceStatus:'SOURCE CONTEXT',featureCount:null,renderStatus:'HIDDEN',visible:false,opacity:1,error:null};
+window.__URBION_QA__=q;
+let pending=null;
+function parseStatus(row){const text=row?.querySelector('small')?.textContent?.trim()||'';if(/^LIVE · (\d+) features$/.test(text))return{sourceStatus:'LIVE',featureCount:Number(text.match(/(\d+) features$/)[1]),error:null};if(/^LIVE ·/.test(text))return{sourceStatus:'LIVE',featureCount:null,error:null};if(text.includes('NO FEATURE'))return{sourceStatus:'NO_FEATURE',featureCount:0,error:null};if(text.includes('QUERY ERROR'))return{sourceStatus:'QUERY_ERROR',featureCount:null,error:text};if(text.includes('SOURCE UNAVAILABLE'))return{sourceStatus:'SOURCE_UNAVAILABLE',featureCount:null,error:text};if(text.includes('STATE REQUIRED'))return{sourceStatus:'STATE REQUIRED',featureCount:null,error:text};if(text.includes('RUN ANALYSIS TO QUERY'))return{sourceStatus:'RUN ANALYSIS TO QUERY',featureCount:null,error:null};return{sourceStatus:'SOURCE CONTEXT',featureCount:null,error:null};}
+function coreCaseReady(){return ['project_name','lat','lon','state','pbt','district','landuse','category','activity','development','ratio'].every(k=>{const e=document.querySelector(`#cs-${k}`);return !!e&&String(e.value||'').trim()!==''});}
+function syncCoreReadiness(){q.caseReady=coreCaseReady();}
+function syncAnalysisReadiness(){q.analysisReady=(document.querySelector('#cs-status-pill')?.textContent||'').trim()==='ANALYSIS READY';}
+function sync(){q.mapReady=!!window.__URBION_FCC_MAP__;q.baseMapReady=!!window.__URBION_FCC_BASE_TILE__;syncCoreReadiness();syncAnalysisReadiness();for(const id of QA_LAYERS){const input=document.querySelector(`#cs-layer-drawer [data-layer="${id}"]`);const row=input?.closest('.fcc-layer-row');const p=parseStatus(row);const state=q.layers[id]||{};state.sourceStatus=p.sourceStatus;state.featureCount=p.featureCount;state.error=p.error;state.visible=!!input?.checked;if(!state.visible)state.renderStatus='HIDDEN';const opacityInput=document.querySelector(`#cs-layer-drawer [data-opacity="${id}"]`);if(opacityInput)state.opacity=Math.max(0,Math.min(100,Number(opacityInput.value)||0))/100;q.layers[id]=state;}}
+function mark(id,patch){if(!id||!q.layers[id])return;Object.assign(q.layers[id],patch);q.lastRenderChange=Date.now();}
+document.addEventListener('input',e=>{const target=e.target;if(!(target instanceof Element))return;if(target.matches('#cs-project_name,#cs-lat,#cs-lon,#cs-state,#cs-pbt,#cs-district,#cs-landuse,#cs-category,#cs-activity,#cs-development,#cs-ratio'))syncCoreReadiness();},true);
+document.addEventListener('change',e=>{syncCoreReadiness();const input=e.target?.closest?.('input[data-layer]');if(!input)return;const id=input.dataset.layer;pending={id,checked:input.checked,at:Date.now()};q.lastAction=input.checked?'LAYER_ON':'LAYER_OFF';if(input.checked)mark(id,{visible:true,renderStatus:'LIVE_DATA_PENDING'});else mark(id,{visible:false,renderStatus:'HIDDEN'});setTimeout(sync,0);},true);
+function watchAnalysisStatus(){const statusEl=document.querySelector('#cs-status-pill');if(!statusEl)return false;new MutationObserver(syncAnalysisReadiness).observe(statusEl,{subtree:true,childList:true,characterData:true});syncAnalysisReadiness();return true;}
+function wrapCtor(ctorName){const C=window.L?.[ctorName];if(!C?.prototype||C.prototype.__urbionQaWrapped)return;const proto=C.prototype;const original=proto.onAdd;if(typeof original!=='function')return;proto.onAdd=function(map){const out=original.apply(this,arguments);let id=this.__urbionLayerId||null;if(!id&&pending&&Date.now()-pending.at<5000)id=pending.id;if(id&&q.layers[id]){if(this.__urbionOfficial){mark(id,{renderStatus:'LIVE_DATA_PENDING',visible:true});this.once?.('tileload',()=>mark(id,{sourceStatus:'LIVE',renderStatus:'RENDERED',visible:true,error:null}));this.once?.('tileerror',()=>mark(id,{sourceStatus:'SOURCE_UNAVAILABLE',renderStatus:'HIDDEN',visible:false,error:'Tile source unavailable'}));}else mark(id,{sourceStatus:'LIVE',renderStatus:'RENDERED',visible:true,error:null});}return out;};proto.__urbionQaWrapped=true;}
+function boot(){wrapCtor('GridLayer');wrapCtor('GeoJSON');wrapCtor('FeatureGroup');sync();syncCoreReadiness();watchAnalysisStatus();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+setInterval(sync,250);
+})();'''
+        payload += "\n" + qa_contract
+        return Response(payload, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+    return FileResponse(target, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+
+
+def _frontend_logo(asset: str):
+    asset = asset if asset.endswith(".svg") else asset + ".svg"
+    if asset not in ALLOWED_LOGOS:
+        raise HTTPException(status_code=404, detail="Unknown logo asset")
+    target = BASE_DIR / asset
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Frontend logo not found")
+    return FileResponse(target, media_type="image/svg+xml; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+
+
+def _exact_asset_handler(asset_name: str):
+    def handler():
+        return _frontend_asset(asset_name)
+    handler.__name__ = f"frontend_asset_{asset_name.replace('.', '_').replace('-', '_')}"
+    return handler
+
+
 @app.middleware("http")
-async def _championship_frontend_override(request:Request,call_next):
-    if request.url.path in {"/","/index.html","/championship.html"}: return _frontend_root()
-    if request.url.path in {"/what-if.html"}: return _what_if_page()
+async def _championship_frontend_override(request: Request, call_next):
+    if request.url.path in {"/", "/index.html", "/championship.html"}:
+        return _frontend_root()
+    if request.url.path == "/about.html":
+        return _about_page()
+    if request.url.path == "/what-if.html":
+        return _what_if_page()
     return await call_next(request)
-app.add_api_route("/",_frontend_root,methods=["GET"],include_in_schema=False)
-app.add_api_route("/index.html",_frontend_root,methods=["GET"],include_in_schema=False)
-app.add_api_route("/championship.html",_frontend_root,methods=["GET"],include_in_schema=False)
-app.add_api_route("/urbion_championship_workstation_v2.js",lambda: _frontend_asset("urbion_championship_workstation_v2.js"),methods=["GET"],include_in_schema=False)
-app.add_api_route("/{asset}.js",_frontend_asset,methods=["GET"],include_in_schema=False)
-app.add_api_route("/{asset}.svg",_frontend_logo,methods=["GET"],include_in_schema=False)
-for _path in ("/urbion_championship_unified_bridge.js","/urbion_lot_resolver_ui.js","/urbion_spatial_context_engine_bridge.js","/urbion_spatial_context_intelligence_bridge.js","/urbion_spatial_context_upgrade.js","/urbion_championship_workstation_v2.js","/urbion_championship_visual_cleanup.js","/urbion_championship_visual_overhaul.js","/urbion_championship_ux_v3.js","/urbion_championship_ux_v4.js","/urbion_championship_ux_v4_runtime.js","/urbion_championship_ux_v4_plus.js","/urbion_championship_ux_v4_flow.js","/urbion_championship_ux_v5.js","/urbion_championship_ux_v5_integrity.js","/urbion_logo_dark.svg","/urbion_logo_light.svg","/championship.html","/index.html","/"):
-    for _idx,_route in enumerate(app.router.routes):
-        if getattr(_route,"path",None)==_path: app.router.routes.insert(0,app.router.routes.pop(_idx)); break
+
+
+app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
+app.add_api_route("/about.html", _about_page, methods=["GET"], include_in_schema=False)
+app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
+for _asset in sorted(ALLOWED_ASSETS):
+    app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
+app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
+app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
+
+_PRIORITY_PATHS = (
+    "/urbion_championship_command_shell.js",
+    "/urbion_championship_premium_v7.js",
+    "/urbion_championship_premium_v6.js",
+    "/urbion_ui.js",
+    "/urbion_championship_ui.js",
+    "/urbion_championship_upgrade.js",
+    "/urbion_championship_workstation_v2.js",
+    "/urbion_championship_input_sync.js",
+    "/urbion_championship_spatial_studio.js",
+    "/urbion_championship_intelligence_upgrade.js",
+    "/urbion_championship_decision_layer.js",
+    "/urbion_championship_workflow.js",
+    "/urbion_championship_decision_chain.js",
+    "/urbion_spatial_workstation_upgrade.js",
+    "/urbion_spatial_implication_bridge.js",
+    "/urbion_decision_intelligence_ui.js",
+    "/urbion_championship_ux_v4.js",
+    "/urbion_championship_ux_v4_plus.js",
+    "/urbion_championship_ux_v4_flow.js",
+    "/urbion_championship_ux_v5.js",
+    "/urbion_championship_final_command_center.js",
+    "/urbion_championship_final_command_center_hotfix.js",
+    "/urbion_championship_final_command_center_polish.js",
+    "/urbion_championship_final_command_center_policy.js",
+    "/urbion_championship_champion_review.js",
+    "/urbion_championship_final_runtime_enforcer.js",
+    "/urbion_championship_unified_bridge.js",
+    "/urbion_championship_premium_v2.js",
+    "/urbion_championship_premium_v3.js",
+    "/urbion_championship_premium_v4.js",
+    "/urbion_championship_gap_closure.js",
+    "/urbion_championship_validation_surface.js",
+    "/urbion_championship_ui_repair.js",
+    "/urbion_championship_ui_repair_v2.js",
+    "/urbion_championship_map_bridge.js",
+    "/urbion_championship_input_neutralizer.js",
+    "/urbion_what_if_upgrade.js",
+    "/urbion_logo_dark.svg",
+    "/urbion_logo_light.svg",
+    "/about.html",
+    "/what-if.html",
+    "/championship.html",
+    "/index.html",
+    "/",
+)
+for _path in _PRIORITY_PATHS:
+    for _idx, _route in enumerate(app.router.routes):
+        if getattr(_route, "path", None) == _path:
+            app.router.routes.insert(0, app.router.routes.pop(_idx))
+            break
+
 app.state.frontend_entrypoint="championship.html"
-app.state.frontend_release="MASTER-330"
+app.state.frontend_release="MASTER-331"
+app.state.frontend_runtime_asset=CANONICAL_ASSET

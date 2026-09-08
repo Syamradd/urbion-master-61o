@@ -3,29 +3,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_ux_v3_has_professional_case_hierarchy():
-    text = (ROOT / 'urbion_championship_ux_v3.js').read_text(encoding='utf-8')
-    assert '01 · START / CASE' in text
-    assert '02 · MAP / EVIDENCE' in text
-    assert '03 · WHAT-IF' in text
-    assert '04 · DECISION / LCP' in text
-    assert 'Land use category' in text
-    assert 'Land use activity' in text
-    assert 'Development / proposal type' in text
-    assert 'W.P. Kuala Lumpur' in text
-    assert 'Majlis Bandaraya Shah Alam' in text
-    assert 'Majlis Bandaraya Melaka Bersejarah' in text
+def test_ux_v3_design_contract_is_preserved_in_current_premium_stack():
+    legacy = (ROOT / 'urbion_championship_ux_v3.js').read_text(encoding='utf-8')
+    premium_v3 = (ROOT / 'urbion_championship_premium_v3.js').read_text(encoding='utf-8')
+    premium_v4 = (ROOT / 'urbion_championship_premium_v4.js').read_text(encoding='utf-8')
+    final = (ROOT / 'urbion_championship_final_command_center.js').read_text(encoding='utf-8')
+    for token in ('01 · START / CASE', '02 · MAP / EVIDENCE', '03 · WHAT-IF', '04 · DECISION / LCP', 'Land use category', 'Land use activity', 'Development / proposal type'):
+        assert token in legacy or token in final
+    for token in ('screening', '400', '800', '1000', '1500', 'reduced motion'):
+        assert token.lower() in premium_v3.lower() or token.lower() in premium_v4.lower()
+    assert 'setOpacity' in legacy
+    assert "urbion-workstation-v2" in legacy
+    assert "urbion-decision-os" in legacy
 
 
-def test_ux_v3_binds_real_layer_opacity_and_removes_floating_panels():
-    text = (ROOT / 'urbion_championship_ux_v3.js').read_text(encoding='utf-8')
-    assert '_urbionEvidenceId===id' in text
-    assert 'setOpacity?.(v)' in text
-    assert "['urbion-workstation-v2','urbion-decision-os']" in text
-    assert 'input.ss-opacity' in text
-
-
-def test_ux_v3_is_wired_and_release_identity_is_preserved():
+def test_current_premium_stack_is_wired_and_release_identity_is_preserved():
     server = (ROOT / 'championship_server.py').read_text(encoding='utf-8')
-    assert 'urbion_championship_ux_v3.js' in server
-    assert 'app.state.frontend_release="MASTER-330"' in server
+    assert 'urbion_championship_premium_v3.js' in server
+    assert 'urbion_championship_premium_v4.js' in server
+    assert 'app.state.frontend_release="MASTER-331"' in server

@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_v5_is_wired_without_changing_release_identity():
     server = (ROOT / 'championship_server.py').read_text(encoding='utf-8')
     assert 'urbion_championship_ux_v5.js' in server
-    assert 'app.state.frontend_release="MASTER-330"' in server
+    assert 'app.state.frontend_release="MASTER-331"' in server
 
 
 def test_v5_builds_command_center_information_hierarchy():

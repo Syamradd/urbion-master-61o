@@ -56,7 +56,7 @@ def test_master329_frontend_asset_registry_has_no_duplicate_chain_asset():
 def test_master330_release_lock_and_workflow_gate():
     server = read('championship_server.py')
     workflow = read('.github/workflows/urbion-ci.yml')
-    assert 'app.state.frontend_release="MASTER-330"' in server
+    assert 'app.state.frontend_release="MASTER-331"' in server
     assert 'tests/test_master324_decision_chain_consolidation.py' in workflow
     assert 'tests/test_master325_330_final_acceptance.py' in workflow
     assert 'full-regression' in workflow

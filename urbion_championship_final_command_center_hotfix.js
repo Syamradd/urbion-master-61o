@@ -1,0 +1,53 @@
+(()=>{
+'use strict';
+function boot(){
+ const root=document.getElementById('urbion-final-command-centre'); if(!root)return;
+ const $=id=>document.getElementById(id);
+ const v=id=>String($('fcc-'+id)?.value||'').trim();
+ const payload=(ratioOverride)=>({site_lat:Number(v('lat')),site_lon:Number(v('lon')),tod_lat:Number(v('todlat')),tod_lon:Number(v('todlon')),plot_ratio:Number((ratioOverride??v('ratio'))||4.5),precinct:'Terminal Sg. Udang',state:v('state')||'Melaka',district:v('district')||'Melaka Tengah',pbt:v('pbt')||'Majlis Bandaraya Melaka Bersejarah',lot_no:v('lot'),project_reference:v('project_reference'),development_type:v('development'),development_class:v('category'),land_use:v('landuse'),activity:v('activity'),project_name:v('project_name'),building_height:null,perimeter_planting:null,landscaped_pedestrian_walkway:null,shop_frontage_verified:false,shop_office_verified:false});
+ async function run(ratioOverride){
+   const btn=$('fcc-run');if(btn)btn.disabled=true;const status=$('fcc-case-status');if(status)status.textContent=ratioOverride==null?'Running assessment + live spatial evidence…':'Running controlled What-If comparison through the same assessment engine…';
+   try{
+     const base=payload();
+     if(ratioOverride!=null&&Number(ratioOverride)!==Number(base.plot_ratio)){
+       const wr=await fetch('/what-if',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({baseline:base,variants:[{id:'SELECTED',name:'Selected controlled scenario',overrides:{plot_ratio:Number(ratioOverride)}}]})});
+       if(!wr.ok)throw Error('What-If '+wr.status);
+       const comparison=await wr.json();window.__URBION_WHAT_IF=comparison;window.dispatchEvent(new CustomEvent('urbion:what-if',{detail:comparison}));
+       const selected=comparison?.scenarios?.find(x=>x.id==='SELECTED')||comparison?.scenarios?.[0];
+       if(selected&&status)status.textContent=`What-If complete · ${selected.status||'REQUIRES REVIEW'} · Δ score ${Number(selected.score_delta||0).toFixed(2)}`;
+     }else{
+       const res=await fetch('/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(base)});if(!res.ok)throw Error('Assessment '+res.status);
+       const data=await res.json();window.__urbionAssessment=data;window.dispatchEvent(new CustomEvent('urbion:analysis',{detail:data}));
+       const sr=await fetch('/spatial/site-context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({site_lat:Number(v('lat')),site_lon:Number(v('lon')),radius_m:800,state:v('state')||'Melaka'})});
+       if(sr.ok){const ctx=await sr.json();window.__URBION_FINAL_CONTEXT=ctx;window.dispatchEvent(new CustomEvent('urbion:spatial-context',{detail:ctx}));const ls=ctx.layers||[],find=id=>ls.find(x=>x.id===id),z=find('iplan-zoning'),f=find('iplan-flood')||find('iplan-disaster-risk'),e=find('iplan-ecology')||find('iplan-ksas'),g=find('mygems-faults')||find('mygems-lithology');
+         if($('sig-zoning'))$('sig-zoning').textContent=z?.status==='LIVE_QUERY'?'LIVE':z?.status||'NO DATA';if($('sig-risk'))$('sig-risk').textContent=f?.feature_count?'FEATURES '+f.feature_count:(f?.status||'NO DATA');if($('sig-eco'))$('sig-eco').textContent=e?.feature_count?'FEATURES '+e.feature_count:(e?.status||'NO DATA');if($('sig-geo'))$('sig-geo').textContent=g?.feature_count?'FEATURES '+g.feature_count:(g?.status||'NO DATA');
+         const live=ls.filter(x=>x.status==='LIVE_QUERY').length,gaps=ls.filter(x=>x.status==='QUERY_ERROR'||x.status==='EVIDENCE_GAP').length;if($('fcc-evidence-count'))$('fcc-evidence-count').textContent=live+'/'+ls.length;if($('fcc-health-list'))$('fcc-health-list').innerHTML=ls.slice(0,10).map(x=>`<span><i class="${x.status==='LIVE_QUERY'?'ok':x.status==='NO_FEATURE'?'warn':'gap'}"></i>${String(x.name||x.id).replace(/[&<>\"']/g,'')}<small>${String(x.status||'—')}</small></span>`).join('')+(gaps?`<em>${gaps} source/query gaps disclosed — not converted to positive evidence.</em>`:'');
+       }
+       if($('fcc-time'))$('fcc-time').textContent=new Date().toLocaleString();if(status)status.textContent='Analysis complete. Evidence chain refreshed.';const overview=document.querySelector('#fcc-tabs [data-tab="overview"]');overview?.click();
+     }
+   }catch(err){if(status)status.textContent='Analysis error: '+err.message;}finally{if(btn)btn.disabled=!['project_name','lat','lon','state','pbt','district','landuse','category','activity','development','ratio'].every(id=>v(id));}
+ }
+ const runBtn=$('fcc-run');if(runBtn)runBtn.onclick=()=>run();const next=$('fcc-next');if(next)next.onclick=()=>runBtn?.disabled?null:run();
+ document.addEventListener('click',e=>{const b=e.target.closest?.('.scenario button');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const card=b.closest('.scenario'),txt=card?.querySelector('strong')?.textContent||'';if(txt.includes('×'))run(Number(txt.replace(/[^0-9.]/g,'')));},true);
+ window.URBION_FINAL_RUN=run;
+ const logo=root.querySelector('.fcc-brand img'),theme=$('fcc-theme'),full=$('fcc-full'),card=root.querySelector('.fcc-map-card');
+ const setLogo=()=>{if(logo)logo.src=document.body.classList.contains('fcc-light')?'/urbion_logo_light.svg':'/urbion_logo_dark.svg'};
+ try{if(localStorage.getItem('urbion-theme-final')==='light')document.body.classList.add('fcc-light');}catch(e){}setLogo();theme?.addEventListener('click',()=>{setTimeout(setLogo,0);try{localStorage.setItem('urbion-theme-final',document.body.classList.contains('fcc-light')?'light':'dark')}catch(e){}});if(card)card.id='fcc-map-card';if(full&&!full.dataset.finalBound){full.dataset.finalBound='1';full.onclick=()=>{card?.classList.toggle('fcc-map-full');setTimeout(()=>window.dispatchEvent(new Event('resize')),60);};}
+ const tr={'Planning Case':'Penyediaan Kes','LOCATION & GOVERNANCE':'LOKASI & TADBIR URUS','LAND USE & DEVELOPMENT':'GUNA TANAH & PEMBANGUNAN','TOD / SPATIAL RELATIONSHIP':'HUBUNGAN TOD / RUANG','Site / Project Full Name':'Nama Penuh Tapak / Projek','Latitude / Longitude':'Latitud / Longitud','State':'Negeri','Pihak Berkuasa Tempatan (PBT)':'Pihak Berkuasa Tempatan (PBT)','District / Daerah':'Daerah','Lot / UPI Reference':'Rujukan Lot / UPI','Project Reference':'Rujukan Projek','Land Use Type':'Jenis Guna Tanah','Development Category':'Kategori Pembangunan','Activity':'Aktiviti','Development / Proposal':'Pembangunan / Cadangan','Intensity / Plot Ratio':'Intensiti / Nisbah Plot','TOD Latitude / Longitude':'Latitud / Longitud TOD','LIVE GIS / SPATIAL EVIDENCE':'GIS LANGSUNG / BUKTI RUANG','FIT SITE':'PADANKAN TAPAK','LAYERS':'LAPISAN','RESOLVE LOT':'RESOLUSI LOT','CASE → GIS → EVIDENCE':'KES → GIS → BUKTI','CASE IDENTITY':'IDENTITI KES','AUTHORITY PATH':'LALUAN PIHAK BERKUASA','LIVE / PUBLIC EVIDENCE REGISTER':'DAFTAR BUKTI LANGSUNG / AWAM','PLANNER-READY OUTPUT':'OUTPUT SEDIA PERANCANG','DECISION GATE':'PINTU KEPUTUSAN','NEXT AUTHORITY ACTION':'TINDAKAN PIHAK BERKUASA SETERUSNYA','Planning Intelligence':'Kecerdasan Perancangan','ACTIVE SITE':'TAPAK AKTIF','SPATIAL SIGNALS':'ISYARAT RUANG','EVIDENCE HEALTH':'KESIHATAN BUKTI','NEXT ACTION':'TINDAKAN SETERUSNYA','Land use':'Guna tanah','Zoning':'Zon','Flood / risk':'Banjir / risiko','Ecology / KSAS':'Ekologi / KSAS','Geology / MyGEMS':'Geologi / MyGEMS','TOD / 400m / 800m':'TOD / 400m / 800m','Help':'Bantuan','About Us':'Tentang Kami','Data Sources':'Sumber Data','System Status':'Status Sistem','Print':'Cetak','Export Case':'Eksport Kes','RESET CASE':'SET SEMULA KES','Site → Evidence → What-If → Decision → Output':'Tapak → Bukti → What-If → Keputusan → Output'};
+ const replaceDirect=(el,text)=>{const n=Array.from(el.childNodes).find(x=>x.nodeType===3&&x.nodeValue.trim());if(n)n.nodeValue=' '+text+' ';else if(!el.children.length)el.textContent=text;};
+ const translate=()=>{const bm=localStorage.getItem('urbion-lang')==='bm';root.querySelectorAll('label,.fcc-step b,.fcc-map-head b,.fcc-card-head span,.fcc-footer-links button,.fcc-rail .fcc-kicker,.fcc-case>.fcc-kicker,.fcc-commandbar h2,.fcc-chain span,.fcc-decision-list b,.fcc-decision-list span').forEach(el=>{if(!el.dataset.en){const n=Array.from(el.childNodes).find(x=>x.nodeType===3&&x.nodeValue.trim());el.dataset.en=n?n.nodeValue.trim():el.textContent.trim();}replaceDirect(el,bm?(tr[el.dataset.en]||el.dataset.en):el.dataset.en);});};
+ translate();$('fcc-lang')?.addEventListener('click',()=>setTimeout(translate,30));
+ const unifiedExport=async(e)=>{
+   e.preventDefault();e.stopImmediatePropagation();
+   const status=$('fcc-case-status');if(status)status.textContent='Packaging unified planner case…';
+   try{
+     const u=window.__URBION_UNIFIED_STATE||{};
+     const lcp=window.__URBION_LCP_INTELLIGENCE||u.lcp||null;
+     const pkg={release:'PHASE-E.8',package_type:'UNIFIED_PLANNER_CASE',exported_at:new Date().toISOString(),case:payload(),assessment:window.__urbionAssessment||u.assessment||null,spatial_context:window.__URBION_FINAL_CONTEXT||u.spatial||null,evidence:(window.__URBION_FINAL_CONTEXT||u.spatial)?.layers||[],policy_guideline:lcp?.guideline_intelligence||null,policy_graph:lcp?.policy_graph||null,recommendations:lcp?.recommendations||null,agency_intelligence:lcp?.agency_intelligence||null,km_readiness:window.__URBION_KM_READINESS||u.km||lcp?.km_readiness||null,what_if:window.__URBION_WHAT_IF||u.whatIf||null,decision:u.decision||null,lcp_intelligence:lcp,evidence_gaps:[...(lcp?.guideline_intelligence?.review_gaps||[]),...(lcp?.policy_graph?.review_gaps||[]),...(lcp?.recommendations?.review_gaps||[])],authority_boundary:'Planner decision support only; cadastral authority remains with JUPEM verification and statutory interpretation/approval remains with the responsible authority/PBT.',next_authority_action:u.decision?.next_action||lcp?.recommendations?.next_action||'Review evidence, applicable controls and authority requirements.'};
+     const blob=new Blob([JSON.stringify(pkg,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='urbion-horizon-unified-case-package.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);if(status)status.textContent='Unified planner case package exported.';
+   }catch(err){if(status)status.textContent='Export error: '+err.message;}
+ };
+ const exportBtn=$('fcc-export');if(exportBtn&&!exportBtn.dataset.unifiedExport){exportBtn.dataset.unifiedExport='1';exportBtn.addEventListener('click',unifiedExport,true);}
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,0);
+})();

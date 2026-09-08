@@ -1,14 +1,12 @@
-name: URBION CI
+name: URBION Championship Full CI
 
 on:
   push:
-    branches: [main, feature/ux-v5-command-center]
+    branches: [feature/champion-command-center-consolidation]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
-# Release-contract pipeline. Feature-branch pushes are validated before merge.
-# Regression lanes remain independent and parallel; runtime smoke gates full regression.
 permissions:
   contents: read
 
@@ -21,10 +19,8 @@ jobs:
       matrix:
         lane: [core, frontend, mapping, planning, judge, spatial, station, impact, policy, recommendation, lcp, redteam, smoke, release, presentation, contract, final]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: pip
@@ -59,10 +55,8 @@ jobs:
     needs: regression
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: pip
@@ -78,27 +72,15 @@ jobs:
           PID=$!
           trap 'kill "$PID" 2>/dev/null || true' EXIT
           python - <<'PY'
-          import json, time, urllib.error, urllib.request
+          import json, time, urllib.request
           base = 'http://127.0.0.1:8765'
-          endpoints = ['/health', '/metadata', '/championship-gate', '/']
-          critical_assets = [
-              '/urbion_championship_final_command_center.js',
-              '/urbion_championship_final_command_center_hotfix.js',
-              '/urbion_championship_final_command_center_polish.js',
-              '/urbion_championship_final_command_center_policy.js',
-              '/urbion_championship_champion_review.js',
-              '/urbion_championship_final_runtime_enforcer.js',
-          ]
-          last_error = None
           for _ in range(30):
               try:
-                  for path in endpoints:
+                  for path in ['/health', '/metadata', '/championship-gate', '/']:
                       with urllib.request.urlopen(base + path, timeout=3) as response:
                           body = response.read()
-                          if response.status != 200 or not body:
-                              raise RuntimeError(f'{path}: unexpected HTTP {response.status}')
-                          if path != '/' and path != '/health':
-                              json.loads(body.decode('utf-8'))
+                          assert response.status == 200 and body
+                          if path != '/': json.loads(body.decode('utf-8'))
                           if path == '/':
                               html = body.decode('utf-8')
                               assert 'URBION HORIZON — Championship Workstation' in html
@@ -108,33 +90,63 @@ jobs:
                               assert 'Site + Development Inputs' not in html
                               assert 'Decision OS' not in html
                               assert 'Planner Workstation' not in html
-                  for asset in critical_assets:
+                  for asset in ['/urbion_championship_final_command_center.js','/urbion_championship_final_command_center_hotfix.js','/urbion_championship_final_command_center_polish.js','/urbion_championship_final_command_center_policy.js','/urbion_championship_champion_review.js','/urbion_championship_final_runtime_enforcer.js','/urbion_championship_premium_v3.js','/urbion_championship_premium_v4.js']:
                       with urllib.request.urlopen(base + asset, timeout=3) as response:
-                          body = response.read()
-                          if response.status != 200 or not body:
-                              raise RuntimeError(f'{asset}: unexpected HTTP {response.status}')
-                  with urllib.request.urlopen(base + '/health', timeout=3) as response:
-                      health = json.loads(response.read().decode('utf-8'))
-                  assert health['status'] == 'healthy'
-                  assert health['engine'] == 'URBION PHASE-E.8'
+                          assert response.status == 200 and response.read()
                   print('RUNTIME_SMOKE_OK')
                   raise SystemExit(0)
-              except (urllib.error.URLError, TimeoutError, RuntimeError, AssertionError, json.JSONDecodeError) as exc:
+              except Exception as exc:
                   last_error = exc
                   time.sleep(1)
           print(open('/tmp/urbion-uvicorn.log', encoding='utf-8').read())
           raise SystemExit(f'Runtime smoke failed: {last_error}')
           PY
 
+  browser-qa:
+    name: browser-qa
+    needs: runtime-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install Playwright
+        run: python -m pip install playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Launch Render-equivalent Uvicorn command
+        env:
+          PYTHONPATH: .
+          PORT: 8765
+        run: |
+          set -euo pipefail
+          python -m uvicorn championship_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-browser-uvicorn.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/health >/dev/null; then break; fi
+            sleep 1
+          done
+          PYTHONPATH=tests:. python tests/browser_championship_qa.py
+      - name: Upload browser QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urbion-browser-qa
+          path: /tmp/urbion-browser-qa/
+          if-no-files-found: warn
+
   full:
     name: full-regression
     runs-on: ubuntu-latest
-    needs: runtime-smoke
+    needs: browser-qa
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: pip

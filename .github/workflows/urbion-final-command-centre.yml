@@ -1,0 +1,27 @@
+name: URBION Final Command Centre
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  final-command-centre:
+    name: final-command-centre-contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Validate final scope
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_final_command_center_contract.py
