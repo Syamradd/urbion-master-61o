@@ -5,9 +5,6 @@ on:
     branches: [diag/pr113-map-reset-forensics]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   map-reset-forensics:
     name: map-reset-forensics
@@ -62,20 +59,3 @@ jobs:
             /tmp/diagnostic-map-reset/
             /tmp/urbion-forensics-uvicorn.log
           if-no-files-found: warn
-
-      - name: Store report on isolated diagnostic branch
-        if: always()
-        env:
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          if [ ! -f /tmp/diagnostic-map-reset/report.json ]; then
-            echo "REPORT_JSON_MISSING"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp /tmp/diagnostic-map-reset/report.json "diag-forensics-report-${RUN_ID}.json"
-          git add "diag-forensics-report-${RUN_ID}.json"
-          git commit -m "[skip ci] diag: store forensic report ${RUN_ID}"
-          git push origin HEAD:diag/pr113-map-reset-forensics
