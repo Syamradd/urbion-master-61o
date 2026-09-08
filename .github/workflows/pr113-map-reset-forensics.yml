@@ -63,10 +63,9 @@ jobs:
             /tmp/urbion-forensics-uvicorn.log
           if-no-files-found: warn
 
-      - name: Publish report to isolated results branch
+      - name: Store report on isolated diagnostic branch
         if: always()
         env:
-          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -76,12 +75,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          RESULT_BRANCH="diag/pr113-forensics-results-${RUN_ID}"
-          git switch --detach
-          rm -rf diag-forensics-result
-          mkdir -p diag-forensics-result
-          cp /tmp/diagnostic-map-reset/report.json diag-forensics-result/report.json
-          git add diag-forensics-result/report.json
-          git commit -m "diag: publish forensic report ${RUN_ID}"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:"${RESULT_BRANCH}"
-          echo "RESULT_BRANCH=${RESULT_BRANCH}"
+          cp /tmp/diagnostic-map-reset/report.json "diag-forensics-report-${RUN_ID}.json"
+          git add "diag-forensics-report-${RUN_ID}.json"
+          git commit -m "[skip ci] diag: store forensic report ${RUN_ID}"
+          git push origin HEAD:diag/pr113-map-reset-forensics
