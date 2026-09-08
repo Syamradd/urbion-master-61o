@@ -12,6 +12,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Inspect canonical analysis flow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('urbion_championship_command_shell.js').read_text(encoding='utf-8')
+          for needle in ['async function runAnalysis','function runAnalysis','loadLcp','fetch(API','fetch(\'/assess','/spatial/site-context']:
+              i=s.find(needle)
+              print(f'--- {needle} @ {i} ---')
+              if i>=0:
+                  print(s[max(0,i-1800):i+4200])
+          PY
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
       - name: Install Playwright
@@ -50,11 +61,9 @@ jobs:
                   with urllib.request.urlopen(req,timeout=45) as r:
                       data=r.read()
                       print(f'DIAG {path} status={r.status} elapsed={time.monotonic()-t:.2f}s bytes={len(data)}')
-                      print(data[:1000].decode('utf-8','replace'))
               except Exception as e:
                   print(f'DIAG {path} FAILED elapsed={time.monotonic()-t:.2f}s error={e!r}')
           PY
-          python -m playwright install chromium >/dev/null 2>&1 || true
           python - <<'PY'
           import asyncio, json, time
           from playwright.async_api import async_playwright
@@ -65,10 +74,14 @@ jobs:
                   page=await browser.new_page(viewport={'width':1440,'height':900})
                   events=[]
                   errors=[]
+                  async def record_response(response):
+                      if any(x in response.url for x in ['/assess','/spatial/','/lcp','/iplan/','/decision','/copilot']):
+                          events.append({'kind':'response','status':response.status,'url':response.url})
+                  page.on('response', lambda r: asyncio.create_task(record_response(r)))
+                  page.on('requestfailed', lambda r: events.append({'kind':'requestfailed','method':r.method,'url':r.url,'failure':r.failure}))
                   page.on('console', lambda m: errors.append('console:'+m.text) if m.type=='error' else None)
                   page.on('pageerror', lambda e: errors.append('pageerror:'+str(e)))
-                  page.on('requestfailed', lambda r: events.append({'kind':'requestfailed','method':r.method,'url':r.url,'failure':r.failure}))
-                  page.on('response', lambda r: events.append({'kind':'response','status':r.status,'url':r.url}) if any(x in r.url for x in ['/assess','/spatial/','/lcp','/iplan/','/decision','/copilot']) else None)
+                  await page.add_init_script('''(() => { const orig=window.fetch; window.__fetchTrace=[]; window.fetch=async function(...args){ const url=String(args[0]); const t=performance.now(); window.__fetchTrace.push({event:"start",url,t}); try { const r=await orig.apply(this,args); window.__fetchTrace.push({event:"done",url,t:performance.now(),status:r.status}); return r; } catch(e){ window.__fetchTrace.push({event:"error",url,t:performance.now(),error:String(e)}); throw e; } }; })();''')
                   await page.goto(BASE+'/',wait_until='networkidle',timeout=30000)
                   vals={'#cs-project_name':'Browser QA · Sg. Udang','#cs-lat':'2.285','#cs-lon':'102.196','#cs-ratio':'4.5'}
                   for s,v in vals.items(): await page.locator(s).fill(v)
@@ -82,10 +95,10 @@ jobs:
                       if last=='ANALYSIS READY': break
                       await page.wait_for_timeout(500)
                   print('BROWSER_STATUS',last,'elapsed',round(time.monotonic()-t,2))
+                  print('FETCH_TRACE',json.dumps(await page.evaluate('window.__fetchTrace'),ensure_ascii=False))
                   print('BROWSER_QA',json.dumps(await page.evaluate('window.__URBION_QA__'),ensure_ascii=False))
                   print('BROWSER_ERRORS',json.dumps(errors,ensure_ascii=False))
                   print('BROWSER_EVENTS',json.dumps(events,ensure_ascii=False))
-                  print('BROWSER_STATUS_TEXT',await page.locator('#cs-status-pill').inner_text())
                   await browser.close()
           asyncio.run(main())
           PY
