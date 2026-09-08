@@ -1,5 +1,6 @@
 """Deployment gateway for optional advisory and intelligence integrations."""
 from fastapi import Body, HTTPException
+import server
 from server import AssessmentRequest, app, assess_core
 from urbion_gemini_redteam import gemini_configured, review_with_gemini
 from urbion_live_stations import build_live_station_snapshot
@@ -44,7 +45,7 @@ def environment_intelligence(payload:dict=Body(default_factory=dict)):
 def lcp_intelligence(payload:dict=Body(...),live_stations:bool=False,auto_environment:bool=True):
     raw=payload.get("assessment") or payload.get("assessment_inputs")
     if not isinstance(raw,dict): raise HTTPException(status_code=422,detail={"code":"ASSESSMENT_INPUT_REQUIRED"})
-    try: assessment=assess_core(AssessmentRequest(**raw))
+    try: assessment=server.assess_core(AssessmentRequest(**raw))
     except Exception as exc: raise HTTPException(status_code=422,detail={"code":"INVALID_LCP_INPUT","message":str(exc)})
     station=payload.get("station_snapshot")
     if live_stations: station=build_live_station_snapshot(assessment["site"]["latitude"],assessment["site"]["longitude"],assessment["site"].get("state","Melaka"),int(payload.get("station_limit",5)))
@@ -53,7 +54,7 @@ def lcp_intelligence(payload:dict=Body(...),live_stations:bool=False,auto_enviro
     variants=payload.get("scenario_variants") or payload.get("variants");what_if=None
     if variants:
         if not isinstance(variants,list) or len(variants)>12: raise HTTPException(status_code=422,detail={"code":"INVALID_SCENARIO_VARIANTS"})
-        comparison=execute_what_if(raw,variants,lambda inputs:assess_core(AssessmentRequest(**inputs)));what_if={k:comparison.get(k) for k in ["title","version","baseline_status","baseline_score","scenarios","ranked_scenarios","best_candidate","disclaimer"]}
+        comparison=execute_what_if(raw,variants,lambda inputs:server.assess_core(AssessmentRequest(**inputs)));what_if={k:comparison.get(k) for k in ["title","version","baseline_status","baseline_score","scenarios","ranked_scenarios","best_candidate","disclaimer"]}
     return build_lcp_intelligence(assessment=assessment,development_inputs=payload.get("development_inputs"),policy_links=payload.get("policy_links"),national_links=payload.get("national_links"),sdg_links=payload.get("sdg_links"),spatial_inputs=payload.get("spatial_inputs"),station_snapshot=station,km_inputs=payload.get("km_inputs"),what_if_summary=what_if,environment_context=env,agency_assets=payload.get("agency_assets"),agency_radius_m=float(payload.get("agency_radius_m",5000)),guideline_topics=payload.get("guideline_topics"))
 @app.post("/lcp/release-packet")
 def lcp_release_packet(payload:dict=Body(...)):

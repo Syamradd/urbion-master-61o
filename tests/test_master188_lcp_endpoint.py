@@ -31,6 +31,27 @@ def test_lcp_intelligence_endpoint_contract():
     assert body['statutory_verification'] == 'NOT_CLAIMED'
 
 
+def test_lcp_intelligence_endpoint_allows_null_tod():
+    client = TestClient(app)
+    response = client.post('/lcp/intelligence', json={
+        "assessment": {
+            "site_lat": 2.2, "site_lon": 102.25,
+            "tod_lat": None, "tod_lon": None,
+            "development_type": "Mixed Use", "development_class": "Mixed Use",
+            "state": "Melaka", "district": "Melaka Tengah",
+            "pbt": "Majlis Bandaraya Melaka Bersejarah",
+        },
+    })
+    assert response.status_code == 200
+    body = response.json()
+    assert body['site']['tod_distance_m'] is None
+    assert body['tod']['latitude'] is None
+    assert body['tod']['longitude'] is None
+    assert body['classification'] == 'NO TOD DISTANCE'
+    assert body['evidence_state']['tod_distance'] == 'UNVERIFIED'
+    assert body['statutory_verification'] == 'NOT_CLAIMED'
+
+
 def test_lcp_intelligence_endpoint_rejects_missing_assessment():
     client = TestClient(app)
     response = client.post('/lcp/intelligence', json={})
