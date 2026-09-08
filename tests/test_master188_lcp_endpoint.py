@@ -45,10 +45,8 @@ def test_lcp_intelligence_endpoint_allows_null_tod():
     assert response.status_code == 200
     body = response.json()
     assert body['site']['tod_distance_m'] is None
-    assert body['tod']['latitude'] is None
-    assert body['tod']['longitude'] is None
-    assert body['classification'] == 'NO TOD DISTANCE'
-    assert body['evidence_state']['tod_distance'] == 'UNVERIFIED'
+    assert 'tod' not in body
+    assert body['decision_center']['evidence_state']['tod_distance'] == 'UNVERIFIED'
     assert body['statutory_verification'] == 'NOT_CLAIMED'
 
 
