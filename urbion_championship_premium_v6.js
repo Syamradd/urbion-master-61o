@@ -14,14 +14,13 @@ function phase1Style(){
 #urbion-championship-shell .workspace-head{padding:9px 0 8px;align-items:center;gap:16px}
 #urbion-championship-shell .workspace-head h1{font-size:clamp(27px,2.55vw,40px);margin:4px 0 3px}
 #urbion-championship-shell .workspace-head p{font-size:9px}
-body{overflow-anchor:none}
 #urbion-championship-shell .workstation{grid-template-columns:minmax(250px,24%) minmax(0,52%) minmax(250px,24%);gap:10px;align-items:stretch}
 #urbion-championship-shell .case-panel,#urbion-championship-shell .intel-panel{min-height:0}
-#urbion-championship-shell .map-panel-canonical{min-width:0;min-height:0;display:flex;flex-direction:column}
+#urbion-championship-shell .map-panel-canonical{min-width:0;min-height:0;display:flex;flex-direction:column;align-self:start}
 
 /* Phase 1B — one stable Leaflet viewport owned by the map panel */
 #urbion-championship-shell .map-toolbar{flex:0 0 auto;min-height:66px}
-#urbion-championship-shell .map-stage{height:clamp(520px,calc(100vh - 245px),650px);min-height:520px;max-height:none;position:relative;overflow:hidden;flex:1 1 auto}
+#urbion-championship-shell .map-stage{height:clamp(520px,calc(100vh - 245px),650px);min-height:520px;max-height:none;position:relative;overflow:hidden;flex:0 0 clamp(520px,calc(100vh - 245px),650px)}
 #urbion-championship-shell .map-stage #cs-map,
 #urbion-championship-shell .map-stage .leaflet-container{width:100%;height:100%}
 #urbion-championship-shell .map-stage #cs-map{position:absolute;inset:0;min-height:0;overflow:hidden}
@@ -42,15 +41,15 @@ body{overflow-anchor:none}
   #urbion-championship-shell .case-panel{order:1;overflow:visible}
   #urbion-championship-shell .map-panel-canonical{order:2}
   #urbion-championship-shell .intel-panel{order:3;overflow:visible}
-  #urbion-championship-shell .map-stage{height:560px;min-height:560px}
+  #urbion-championship-shell .map-stage{height:560px;min-height:560px;flex-basis:560px}
 }
 @media(max-width:720px){
   #urbion-championship-shell .workspace-head{display:block;padding:8px 0}
   #urbion-championship-shell .workspace-head h1{font-size:26px}
-  #urbion-championship-shell .map-stage{height:520px;min-height:520px}
+  #urbion-championship-shell .map-stage{height:520px;min-height:520px;flex-basis:520px}
 }
 @media(max-height:760px) and (min-width:1101px){
-  #urbion-championship-shell .map-stage{height:500px;min-height:500px}
+  #urbion-championship-shell .map-stage{height:500px;min-height:500px;flex-basis:500px}
 }
 `;
   document.head.appendChild(s);
