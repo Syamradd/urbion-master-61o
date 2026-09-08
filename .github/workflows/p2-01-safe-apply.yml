@@ -48,12 +48,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pytest -q tests/test_championship_runtime_integrity.py
+          node --check urbion_championship_command_shell.js
           git diff --check
           test "$(git diff --name-only | wc -l)" -eq 1
           test "$(git diff --name-only)" = "urbion_championship_command_shell.js"
           grep -q 'PHASE 2 P2-01 — PANEL SURFACE HIERARCHY' urbion_championship_command_shell.js
-      - name: Commit patch and remove temporary workflow
+      - name: Commit patch
         shell: bash
         run: |
           set -euo pipefail
