@@ -32,10 +32,12 @@ jobs:
           python -m pip install playwright numpy pillow
           python -m playwright install --with-deps chromium
 
-      - name: Launch exact Render-equivalent Uvicorn command
+      - name: Launch server, wait for health, and run diagnostic in same process step
         env:
           PYTHONPATH: .
           PORT: 8765
+          BASE_URL: http://127.0.0.1:8765
+          DIAG_OUT: /tmp/diagnostic-map-reset
         run: |
           set -euo pipefail
           python -m uvicorn championship_server:app --host 0.0.0.0 --port 8765 > /tmp/urbion-forensics-uvicorn.log 2>&1 &
@@ -49,14 +51,6 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:8765/health >/dev/null
-
-      - name: Run map reset forensic diagnostic
-        env:
-          PYTHONPATH: .
-          BASE_URL: http://127.0.0.1:8765
-          DIAG_OUT: /tmp/diagnostic-map-reset
-        run: |
-          set -euo pipefail
           python svgdiagnostic_map_reset.py
 
       - name: Upload forensic evidence
