@@ -159,6 +159,8 @@ def _frontend_asset(asset: str):
         if bad_num not in payload:
             raise HTTPException(status_code=500, detail="Canonical TOD numeric helper contract not found")
         payload = payload.replace(bad_num, good_num, 1)
+        if "await loadLcp();" in payload:
+            payload = payload.replace("await loadLcp();", "loadLcp();", 1)
 
         qa_contract = r'''(()=>{
 'use strict';
