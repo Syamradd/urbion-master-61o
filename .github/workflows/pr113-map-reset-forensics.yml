@@ -1,0 +1,70 @@
+name: PR113 Map Reset Forensics
+
+on:
+  push:
+    branches: [diag/pr113-map-reset-forensics]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  map-reset-forensics:
+    name: map-reset-forensics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR #113 diagnostic tree
+        uses: actions/checkout@v4
+        with:
+          ref: diag/pr113-map-reset-forensics
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install project dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Install diagnostic/browser dependencies
+        run: |
+          python -m pip install playwright numpy pillow
+          python -m playwright install --with-deps chromium
+
+      - name: Launch exact Render-equivalent Uvicorn command
+        env:
+          PYTHONPATH: .
+          PORT: 8765
+        run: |
+          set -euo pipefail
+          python -m uvicorn championship_server:app --host 0.0.0.0 --port 8765 > /tmp/urbion-forensics-uvicorn.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/health >/dev/null; then
+              echo "HEALTH_OK"
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8765/health >/dev/null
+
+      - name: Run map reset forensic diagnostic
+        env:
+          PYTHONPATH: .
+          BASE_URL: http://127.0.0.1:8765
+          DIAG_OUT: /tmp/diagnostic-map-reset
+        run: |
+          set -euo pipefail
+          python svgdiagnostic_map_reset.py
+
+      - name: Upload forensic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr113-map-reset-forensics
+          path: |
+            /tmp/diagnostic-map-reset/
+            /tmp/urbion-forensics-uvicorn.log
+          if-no-files-found: warn
