@@ -102,3 +102,4 @@ jobs:
                   await browser.close()
           asyncio.run(main())
           PY
+# retrigger diagnostic after workflow creation
