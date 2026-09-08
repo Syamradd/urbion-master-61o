@@ -14,7 +14,8 @@ function phase1Style(){
 #urbion-championship-shell .workspace-head{padding:9px 0 8px;align-items:center;gap:16px}
 #urbion-championship-shell .workspace-head h1{font-size:clamp(27px,2.55vw,40px);margin:4px 0 3px}
 #urbion-championship-shell .workspace-head p{font-size:9px}
-#urbion-championship-shell .workstation{grid-template-columns:minmax(250px,24%) minmax(0,52%) minmax(250px,24%);gap:10px;align-items:stretch;overflow-anchor:none}
+body{overflow-anchor:none}
+#urbion-championship-shell .workstation{grid-template-columns:minmax(250px,24%) minmax(0,52%) minmax(250px,24%);gap:10px;align-items:stretch}
 #urbion-championship-shell .case-panel,#urbion-championship-shell .intel-panel{min-height:0}
 #urbion-championship-shell .map-panel-canonical{min-width:0;min-height:0;display:flex;flex-direction:column}
 
