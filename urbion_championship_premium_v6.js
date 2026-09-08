@@ -122,6 +122,27 @@ function wireMapSelection(){
   });
 }
 
+function wireTodViewGuard(){
+  const m=window.__URBION_FCC_MAP__;
+  if(!m||m.__urbionPhase1TodViewGuardWired)return;
+  m.__urbionPhase1TodViewGuardWired=true;
+  m.__urbionPhase1TodViewGuardActive=false;
+  const originalSetView=m.setView;
+  m.setView=function(center,zoom,options){
+    if(m.__urbionPhase1TodViewGuardActive)return m;
+    return originalSetView.call(this,center,zoom,options);
+  };
+  const guard=()=>{
+    m.__urbionPhase1TodViewGuardActive=true;
+    queueMicrotask(()=>{m.__urbionPhase1TodViewGuardActive=false;});
+  };
+  ['#cs-todlat','#cs-todlon'].forEach(selector=>{
+    const e=$(selector);
+    e?.addEventListener('input',guard,true);
+    e?.addEventListener('change',guard,true);
+  });
+}
+
 function wireMapResize(){
   const m=window.__URBION_FCC_MAP__,stage=$('.map-stage');
   if(!m||!stage||m.__urbionPhase1ResizeWired)return;
@@ -147,6 +168,7 @@ function wireMapResize(){
 function install(){
   phase1Style();
   wireMapSelection();
+  wireTodViewGuard();
   wireMapResize();
 }
 
@@ -155,7 +177,7 @@ else install();
 
 /* Shared status helper used by Premium V7 official i-Plan integration. */
 window.syncLayerState=function syncLayerState(r,id,active,text){
-  const input=r?.querySelector(`#cs-layer-drawer input[data-layer="${id}"]`);
+  const input=r?.querySelector(`#cs-layer-drawer input[data-layer=\"${id}\"]`);
   const row=input?.closest?.('.fcc-layer-row');
   const small=row?.querySelector?.('span small')||row?.querySelector?.('small');
   if(small&&text!=null)small.textContent=String(text);
