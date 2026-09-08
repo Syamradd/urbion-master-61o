@@ -122,6 +122,25 @@ function wireMapSelection(){
   });
 }
 
+/* Avoid redundant Leaflet view resets. The canonical shell calls setView from
+   updateMap() on every form input, including TOD edits. When the requested view
+   already equals the live map view, skipping the no-op setView preserves Leaflet's
+   existing tile footprint/render state while allowing real view changes through. */
+function wireStableMapView(){
+  const m=window.__URBION_FCC_MAP__;
+  if(!m||m.__urbionPhase1StableSetViewWired)return;
+  m.__urbionPhase1StableSetViewWired=true;
+  const originalSetView=m.setView;
+  m.setView=function(center,zoom,options){
+    const current=m.getCenter?.();
+    const targetLat=Array.isArray(center)?Number(center[0]):Number(center?.lat);
+    const targetLon=Array.isArray(center)?Number(center[1]):Number(center?.lng);
+    const targetZoom=zoom==null?m.getZoom?.():Number(zoom);
+    if(current&&Number.isFinite(targetLat)&&Number.isFinite(targetLon)&&Number.isFinite(targetZoom)&&Number.isFinite(m.getZoom?.())&&Math.abs(current.lat-targetLat)<1e-9&&Math.abs(current.lng-targetLon)<1e-9&&m.getZoom()===targetZoom)return m;
+    return originalSetView.call(this,center,zoom,options);
+  };
+}
+
 function wireMapResize(){
   const m=window.__URBION_FCC_MAP__,stage=$('.map-stage');
   if(!m||!stage||m.__urbionPhase1ResizeWired)return;
@@ -147,6 +166,7 @@ function wireMapResize(){
 function install(){
   phase1Style();
   wireMapSelection();
+  wireStableMapView();
   wireMapResize();
 }
 
