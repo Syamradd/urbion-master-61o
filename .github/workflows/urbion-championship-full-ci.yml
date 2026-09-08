@@ -123,21 +123,15 @@ jobs:
           PYTHONPATH: .
           PORT: 8765
         run: |
-          set -uo pipefail
+          set -euo pipefail
           python -m uvicorn championship_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-browser-uvicorn.log 2>&1 &
           PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8765/health >/dev/null; then break; fi
             sleep 1
           done
-          set +e
           PYTHONPATH=tests:. python tests/browser_championship_qa.py
-          TEST_RC=$?
-          echo '--- SERVER LOG AFTER BROWSER QA ---'
-          cat /tmp/urbion-browser-uvicorn.log || true
-          echo '--- END SERVER LOG ---'
-          kill "$PID" 2>/dev/null || true
-          exit "$TEST_RC"
       - name: Upload browser QA evidence
         if: always()
         uses: actions/upload-artifact@v4
