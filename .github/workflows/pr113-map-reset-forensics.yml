@@ -64,12 +64,16 @@ jobs:
           if-no-files-found: warn
 
       - name: Publish report to isolated results branch
-        if: always() && hashFiles('/tmp/diagnostic-map-reset/report.json') != ''
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
+          if [ ! -f /tmp/diagnostic-map-reset/report.json ]; then
+            echo "REPORT_JSON_MISSING"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           RESULT_BRANCH="diag/pr113-forensics-results-${RUN_ID}"
