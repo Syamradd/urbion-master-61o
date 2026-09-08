@@ -1,0 +1,64 @@
+name: P2-01 Safe Apply
+
+on:
+  push:
+    branches:
+      - fix/p2-01-surface-hierarchy
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Apply CSS-only surface hierarchy patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('urbion_championship_command_shell.js')
+          text=p.read_text(encoding='utf-8')
+          marker='/* PHASE 2 P2-01 — PANEL SURFACE HIERARCHY */'
+          assert text.count(marker)==0, 'P2-01 patch already present'
+          needle="s.textContent=`"
+          assert text.count(needle)==1, f'Expected exactly one canonical style template, found {text.count(needle)}'
+          css="""/* PHASE 2 P2-01 — PANEL SURFACE HIERARCHY */
+          .workstation{background:rgba(4,14,22,.34);border:1px solid rgba(105,211,210,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 16px 38px rgba(0,0,0,.16)}
+          .case-panel{background:linear-gradient(145deg,rgba(10,28,40,.99),rgba(5,15,24,.99));border-color:rgba(105,211,210,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 14px 32px rgba(0,0,0,.22)}
+          .map-panel-canonical{background:#06131d;border-color:rgba(105,211,210,.30);box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 18px 42px rgba(0,0,0,.28)}
+          .intel-panel{background:rgba(7,19,29,.72);border:1px solid rgba(105,211,210,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.02),0 14px 32px rgba(0,0,0,.18)}
+          .intel-head{background:linear-gradient(145deg,rgba(11,29,41,.98),rgba(7,18,27,.99));border-color:rgba(105,211,210,.20);box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 8px 20px rgba(0,0,0,.16)}
+          .intel-card,.analysis-card{background:linear-gradient(145deg,rgba(8,22,32,.94),rgba(5,14,22,.97));border-color:rgba(105,211,210,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.018),0 6px 16px rgba(0,0,0,.12)}
+          .cs-light .workstation{background:rgba(242,248,250,.55);border-color:#dce8ec;box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 12px 30px rgba(30,60,70,.08)}
+          .cs-light .case-panel{background:linear-gradient(145deg,#fff,#f4f9fa);border-color:#c9dce2;box-shadow:inset 0 1px 0 #fff,0 12px 28px rgba(30,60,70,.10)}
+          .cs-light .map-panel-canonical{background:#f7fbfc;border-color:#b9d4dc;box-shadow:inset 0 1px 0 #fff,0 16px 34px rgba(30,60,70,.12)}
+          .cs-light .intel-panel{background:rgba(242,248,250,.70);border-color:#d5e3e7;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 28px rgba(30,60,70,.07)}
+          .cs-light .intel-head{background:linear-gradient(145deg,#fff,#f4f9fa);border-color:#cadde3;box-shadow:inset 0 1px 0 #fff,0 7px 16px rgba(30,60,70,.07)}
+          .cs-light .intel-card,.cs-light .analysis-card{background:linear-gradient(145deg,#f8fbfc,#eef5f7);border-color:#d9e5e9;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 5px 13px rgba(30,60,70,.06)}
+          """
+          css=' '.join(line.strip() for line in css.splitlines())+' '
+          text=text.replace(needle, needle+css, 1)
+          p.write_text(text,encoding='utf-8')
+          PY
+      - name: Validate syntax and scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/test_championship_runtime_integrity.py
+          git diff --check
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "urbion_championship_command_shell.js"
+          grep -q 'PHASE 2 P2-01 — PANEL SURFACE HIERARCHY' urbion_championship_command_shell.js
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add urbion_championship_command_shell.js
+          git commit -m 'style: apply P2-01 panel surface hierarchy'
+          git push origin HEAD
