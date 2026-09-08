@@ -201,7 +201,7 @@ def metrics(page) -> dict[str, Any]:
       try { map.eachLayer(l=>vectorLayers.push({type:l?.constructor?.name||'unknown',
           latlng:(()=>{try{const x=l.getLatLng?.();return x?{lat:+x.lat.toFixed(6),lng:+x.lng.toFixed(6)}:null}catch{return null}})(),
           points:(()=>{try{return l.getLatLngs?.().map(x=>({lat:x.lat,lng:x.lng}))||null}catch{return null}})(),
-          hasPath:!!l?._path,hasIcon:!!l?._icon,hasCanvas:!!l?._renderer?._container:null})); } catch {}
+          hasPath:!!(l && l._path),hasIcon:!!(l && l._icon),hasCanvas:!!(l && l._renderer && l._renderer._container)})); } catch {}
       const stage=document.querySelector('.map-stage');
       return {
         time:performance.now(),
