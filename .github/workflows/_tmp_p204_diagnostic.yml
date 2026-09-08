@@ -1,8 +1,8 @@
 name: _TMP P2-04 Diagnostic
 
 on:
-  push:
-    branches: [fix/p2-04-futuristic-visual-identity]
+  pull_request:
+    branches: [main]
 
 jobs:
   diagnostic:
@@ -102,4 +102,4 @@ jobs:
                   await browser.close()
           asyncio.run(main())
           PY
-# retrigger diagnostic after workflow creation
+# retrigger diagnostic as pull-request workflow
