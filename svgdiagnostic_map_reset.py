@@ -74,9 +74,8 @@ INSTRUMENTATION = r"""
   };
   window.cancelAnimationFrame = window.cancelAnimationFrame.bind(window);
 
-  const oldResize = window.onresize;
-  window.addEventListener('resize', (...args) => { d.windowResize++; push('window-resize'); }, true);
-  document.addEventListener('fullscreenchange', (...args) => { d.fullscreenchange++; push('fullscreenchange'); }, true);
+  window.addEventListener('resize', () => { d.windowResize++; push('window-resize'); }, true);
+  document.addEventListener('fullscreenchange', () => { d.fullscreenchange++; push('fullscreenchange'); }, true);
   document.addEventListener('click', e => {
     if (e.target?.closest?.('#cs-map')) { d.mapClicks++; push('map-click'); }
   }, true);
@@ -234,8 +233,36 @@ def capture_map(page, label: str) -> dict[str, Any]:
     return {"path": str(path), "metrics": m}
 
 
-def select(page, selector: str, label: str):
-    page.locator(selector).select_option(label=label)
+def wait_for_option(page, selector: str, label: str, timeout_ms: int = 10_000) -> None:
+    page.locator(selector).wait_for(state="visible", timeout=timeout_ms)
+    page.wait_for_function(
+        """({selector, label}) => Array.from(document.querySelector(selector)?.options || [])
+            .some(option => option.textContent.trim() === label)""",
+        arg={"selector": selector, "label": label},
+        timeout=timeout_ms,
+    )
+
+
+def set_field(page, key: str, value: str) -> None:
+    locator = page.locator(f"#cs-{key}")
+    tag = locator.evaluate("(el) => el.tagName")
+    if tag == "SELECT":
+        wait_for_option(page, f"#cs-{key}", value)
+        locator.select_option(label=value)
+    else:
+        locator.fill(value)
+
+
+def populate_case(page) -> None:
+    select_keys = [
+        "state", "pbt", "district", "landuse",
+        "category", "activity", "development",
+    ]
+    for key in select_keys:
+        set_field(page, key, CASE[key])
+    for key, value in CASE.items():
+        if key not in select_keys:
+            set_field(page, key, value)
 
 
 def main():
@@ -246,7 +273,7 @@ def main():
         page.goto(BASE_URL, wait_until="domcontentloaded")
         page.wait_for_function("window.__URBION_FCC_MAP__ && document.querySelector('#cs-run')")
 
-        for k,v in CASE.items(): page.locator(f"#cs-{k}").fill(v)
+        populate_case(page)
         page.locator("#cs-todlat").locator("xpath=ancestor::details[1]").locator("summary").click()
         expect(page.locator("#cs-todlat")).to_be_visible()
         page.locator("#cs-run").click()
