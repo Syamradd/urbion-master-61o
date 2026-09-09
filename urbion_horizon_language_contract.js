@@ -15,6 +15,8 @@ const PAIRS={
   'Define planning case':'Takrif kes perancangan','New planning case':'Kes perancangan baharu',
   'Location':'Lokasi','Site / Project Name':'Nama Tapak / Projek','Local Authority (PBT)':'Pihak Berkuasa Tempatan (PBT)','District':'Daerah',
   'Project Reference':'Rujukan Projek','Site / Parcel':'Tapak / Lot','Lot / UPI Reference':'Rujukan Lot / UPI',
+  'Site / Project Full Name':'Nama Penuh Tapak / Projek','Latitude':'Latitud','Longitude':'Longitud','Plot Ratio':'Nisbah Plot',
+  'Project or site name':'Nama projek atau tapak','e.g. 4.5':'contoh 4.5','Select PBT':'Pilih PBT','Select district':'Pilih daerah',
   'Development Proposal':'Cadangan Pemajuan','Development / Proposal':'Pemajuan / Cadangan','Development Intensity':'Intensiti Pemajuan',
   'Intensity / Plot Ratio':'Intensiti / Nisbah Plot','TOD / Transit Context':'Konteks TOD / Transit',
   'Use Map Selection':'Gunakan Pilihan Peta','Locate Me':'Lokasi Saya','Resolve Lot':'Selesaikan Lot',
