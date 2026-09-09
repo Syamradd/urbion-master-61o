@@ -1,0 +1,88 @@
+name: diag-horizon-runtime
+on:
+  push:
+    branches: [fix/horizon-visual-rebase]
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/horizon-visual-rebase
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install Playwright
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Diagnose root runtime
+        shell: bash
+        run: |
+          set -u
+          python -m uvicorn championship_server:app --host 0.0.0.0 --port 8765 > /tmp/diag-uvicorn.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/health >/dev/null; then break; fi
+            sleep 1
+          done
+          python - <<'PY'
+          from pathlib import Path
+          import requests
+          from playwright.sync_api import sync_playwright
+
+          base='http://127.0.0.1:8765'
+          paths=['/','/urbion_championship_command_shell.js','/urbion_horizon_language_contract.js','/urbion_map_identify_runtime.js','/urbion_championship_horizon_ui.js']
+          print('=== HTTP ASSET CHECK ===')
+          for path in paths:
+              try:
+                  r=requests.get(base+path,timeout=10)
+                  print(path, r.status_code, r.headers.get('content-type'), len(r.content), r.text[:120].replace('\n',' '))
+              except Exception as exc:
+                  print(path,'ERROR',repr(exc))
+
+          print('=== PLAYWRIGHT RUNTIME CHECK ===')
+          console=[]; page_errors=[]; failures=[]
+          with sync_playwright() as pw:
+              browser=pw.chromium.launch()
+              page=browser.new_page(viewport={'width':1440,'height':900})
+              page.on('console', lambda msg: console.append({'type':msg.type,'text':msg.text}))
+              page.on('pageerror', lambda exc: page_errors.append(str(exc)))
+              page.on('requestfailed', lambda req: failures.append({'url':req.url,'failure':req.failure}))
+              resp=page.goto(base+'/',wait_until='networkidle',timeout=30000)
+              print('PAGE_RESPONSE', resp.status if resp else None, resp.url if resp else None)
+              print('TITLE', page.title())
+              print('URL', page.url)
+              print('BODY_TEXT', page.locator('body').inner_text()[:2000])
+              print('BODY_HTML', page.locator('body').inner_html()[:4000])
+              print('SHELL_FLAG', page.evaluate("window.__URBION_CHAMPIONSHIP_SHELL__ || false"))
+              print('LANG_FLAG', page.evaluate("window.__URBION_HORIZON_LANGUAGE_FILE__ || false"))
+              print('LANG_CONTRACT', page.evaluate("window.__URBION_HORIZON_LANG_CONTRACT__ || false"))
+              print('HORIZON_FLAG', page.evaluate("window.__URBION_HORIZON_UI__ || window.__URBION_HORIZON__ || false"))
+              print('CASE_INPUT_COUNT', page.locator('#cs-project_name').count())
+              print('SHELL_CONTAINER_COUNT', page.locator('#urbion-championship-shell').count())
+              print('CS_CONTENT_COUNT', page.locator('#cs-content').count())
+              print('CONSOLE', console)
+              print('PAGE_ERRORS', page_errors)
+              print('REQUEST_FAILURES', failures)
+              browser.close()
+          print('=== UVICORN LOG ===')
+          print(Path('/tmp/diag-uvicorn.log').read_text(encoding='utf-8',errors='replace'))
+          PY
+      - name: Remove diagnostic workflow
+        if: always()
+        run: |
+          rm -f .github/workflows/_diag_horizon_runtime.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -u .github/workflows/_diag_horizon_runtime.yml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'chore: remove temporary horizon runtime diagnostic'
+          git push origin HEAD:fix/horizon-visual-rebase
