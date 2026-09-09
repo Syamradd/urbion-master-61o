@@ -225,6 +225,14 @@ app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_sch
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/about.html", _about_page, methods=["GET"], include_in_schema=False)
 app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
+def _map_identify_runtime_asset():
+    target = BASE_DIR / "urbion_map_identify_runtime.js"
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Map identify runtime not found")
+    return Response(target.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+
+
+app.add_api_route("/urbion_map_identify_runtime.js", _map_identify_runtime_asset, methods=["GET"], include_in_schema=False)
 for _asset in sorted(ALLOWED_ASSETS):
     app.add_api_route(f"/{_asset}", _exact_asset_handler(_asset), methods=["GET"], include_in_schema=False)
 app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_schema=False)
