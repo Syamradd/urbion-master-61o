@@ -32,14 +32,15 @@ const PAIRS={
   'Land Use 1':'Guna Tanah 1','Land Use 2':'Guna Tanah 2','Land Use 3':'Guna Tanah 3',
   'Select Land Use 1':'Pilih Guna Tanah 1','Select Land Use 2':'Pilih Guna Tanah 2','Select Land Use 3':'Pilih Guna Tanah 3',
   'Select state':'Pilih negeri','Select State':'Pilih negeri','Select PBT':'Pilih PBT','Select district':'Pilih daerah',
-  'Select development / proposal':'Pilih pemajuan / cadangan','Select development / proposal':'Pilih pemajuan / cadangan',
+  'Select development / proposal':'Pilih pemajuan / cadangan',
   'Select Guna Tanah 1':'Pilih Guna Tanah 1','Select Guna Tanah 2':'Pilih Guna Tanah 2','Select Guna Tanah 3':'Pilih Guna Tanah 3',
   'Optional':'Pilihan','CASE HISTORY':'SEJARAH KES','STREET':'JALAN','SATELLITE':'SATELIT','HYBRID':'HIBRID','LAYERS':'LAPISAN',
   'LIVE SPATIAL PLANNING':'PERANCANGAN RUANG LANGSUNG','Evidence-aware · source-aware · planner in the loop':'Peka bukti · peka sumber · perancang dalam gelung',
   'Evidence first. Spatial first. Explainable AI. Planner in the loop.':'Utamakan bukti. Utamakan ruang. AI boleh dihuraikan. Perancang dalam gelung.',
   'Built by the URBION HORIZON student team':'Dibangunkan oleh pasukan pelajar URBION HORIZON',
   'Back to Command Centre':'Kembali ke Pusat Kawalan',
-  'Unified case package':'Pakej kes bersepadu'
+  'Unified case package':'Pakej kes bersepadu',
+  'URBION HORIZON — About':'URBION HORIZON — Tentang Kami'
 };
 const EN_TO_BM={...PAIRS};
 const BM_TO_EN=Object.fromEntries(Object.entries(PAIRS).map(([en,bm])=>[bm,en]));
@@ -79,6 +80,8 @@ function apply(){
     const key=ensureKeyText(el.getAttribute(attr)||'');
     if(key)el.setAttribute(attr,ms?EN_TO_BM[key]:key);
   });
+  const titleKey=ensureKeyText(document.title);
+  if(titleKey)document.title=ms?EN_TO_BM[titleKey]:titleKey;
   document.documentElement.lang=ms?'ms':'en';
   document.body.dataset.horizonLang=ms?'ms':'en';
   const t=candidates()[0];
