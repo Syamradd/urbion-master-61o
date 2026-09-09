@@ -2,7 +2,7 @@ name: URBION Championship Full CI
 
 on:
   push:
-    branches: [feature/champion-command-center-consolidation]
+    branches: [main, feature/champion-command-center-consolidation]
   pull_request:
     branches: [main]
   workflow_dispatch:
