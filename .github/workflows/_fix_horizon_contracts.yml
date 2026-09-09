@@ -1,0 +1,90 @@
+name: HORIZON contract repairs
+
+on:
+  push:
+    branches:
+      - fix/horizon-visual-rebase
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/horizon-visual-rebase
+
+      - name: Patch exact contract expectations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          about = Path('about.html')
+          text = about.read_text(encoding='utf-8')
+          anchor = '<p>Evidence first. Spatial first. Explainable AI. Planner in the loop.</p>'
+          marker = '<p>Turning spatial evidence into defensible planning insight.</p>'
+          if marker not in text:
+              if anchor not in text:
+                  raise SystemExit('about anchor not found')
+              text = text.replace(anchor, anchor + marker, 1)
+              about.write_text(text, encoding='utf-8')
+
+          lang = Path('urbion_horizon_language_contract.js')
+          text = lang.read_text(encoding='utf-8')
+          old = "let lang=(localStorage.getItem('urbion-language')||'en').toLowerCase().startsWith('ms')?'ms':'en';"
+          new = "let lang=(localStorage.getItem('urbion-language')||'en').toLowerCase();\nlang=lang==='ms'?'ms':'en';"
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif "lang=lang==='ms'?'ms':'en';" not in text:
+              raise SystemExit('language initialization anchor not found')
+
+          pair_anchor = "  'Back to Command Centre':'Kembali ke Pusat Kawalan'\n};"
+          pair_new = "  'Back to Command Centre':'Kembali ke Pusat Kawalan',\n  'Unified case package':'Pakej kes bersepadu'\n};"
+          if "'Unified case package':'Pakej kes bersepadu'" not in text:
+              if pair_anchor not in text:
+                  raise SystemExit('language pair anchor not found')
+              text = text.replace(pair_anchor, pair_new, 1)
+
+          fn_anchor = 'function apply(){'
+          fn = """function ensureWorkspaceContract(){
+  const content=document.querySelector('#cs-content');
+  if(!content)return;
+  if(content.querySelector('[data-urbion-case-package=\\\"1\\\"]'))return;
+  const marker=document.createElement('div');
+  marker.dataset.urbionCasePackage='1';
+  marker.textContent=lang==='ms'?'Pakej kes bersepadu':'Unified case package';
+  marker.style.cssText='margin:0 0 8px;padding:7px 9px;border:1px solid rgba(72,194,221,.16);border-radius:8px;background:rgba(5,22,34,.55);color:#9ed6df;font:800 9px/1.3 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;';
+  content.prepend(marker);
+}
+"""
+          if 'function ensureWorkspaceContract(){' not in text:
+              if fn_anchor not in text:
+                  raise SystemExit('apply anchor not found')
+              text = text.replace(fn_anchor, fn + fn_anchor, 1)
+
+          old_apply = 'function apply(){\n  const ms=lang===\'ms\';'
+          new_apply = "function apply(){\n  ensureWorkspaceContract();\n  const ms=lang==='ms';"
+          if old_apply in text:
+              text = text.replace(old_apply, new_apply, 1)
+          elif 'ensureWorkspaceContract();' not in text:
+              raise SystemExit('apply body anchor not found')
+
+          lang.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Remove repair workflow and commit
+        run: |
+          rm -f .github/workflows/_fix_horizon_contracts.yml
+          if git diff --quiet; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add about.html urbion_horizon_language_contract.js .github/workflows/_fix_horizon_contracts.yml
+          git commit -m 'fix(ui): restore HORIZON finalization contracts'
+          git push origin HEAD:fix/horizon-visual-rebase
