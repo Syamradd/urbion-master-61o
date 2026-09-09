@@ -21,8 +21,11 @@ def test_identify_runtime_contains_live_query_and_conservative_evidence_guards()
 
 
 def test_identify_runtime_surfaces_multiple_layer_results_and_selection():
-    for token in ('lastResults', 'FEATURE', 'data-umi-result', 'renderSelected', 'results.length'):
+    for token in ('lastResults', 'FEATURE', 'data-umi-result', 'renderSelected'):
         assert token in RUNTIME
+    assert 'rs.length' in RUNTIME
+    assert 'state.selectedIndex' in RUNTIME
+    assert 'state.lastResults[state.selectedIndex]' in RUNTIME
 
 
 def test_identify_runtime_contains_mandatory_smart_city_visual_environment():
