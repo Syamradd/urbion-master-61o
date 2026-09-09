@@ -1,0 +1,36 @@
+name: wire-horizon-language-contract
+
+on:
+  push:
+    branches: [fix/horizon-visual-rebase]
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/horizon-visual-rebase
+          fetch-depth: 0
+      - name: Wire contract and clean mixed labels
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('championship_server.py')
+          s=p.read_text(encoding='utf-8')
+          needle='<script src="/urbion_map_identify_runtime.js"></script>\n<script src="/urbion_championship_horizon_ui.js"></script>'
+          repl='<script src="/urbion_horizon_language_contract.js"></script>\n<script src="/urbion_map_identify_runtime.js"></script>\n<script src="/urbion_championship_horizon_ui.js"></script>'
+          if needle not in s:
+              raise SystemExit('script insertion anchor not found')
+          s=s.replace(needle,repl,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          rm -f .github/workflows/_wire_horizon_language_contract.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add championship_server.py .github/workflows/_wire_horizon_language_contract.yml
+          git commit -m "fix(ui): wire global language contract"
+          git push origin HEAD:fix/horizon-visual-rebase
