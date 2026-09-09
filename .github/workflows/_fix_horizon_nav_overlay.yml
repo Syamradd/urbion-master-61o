@@ -1,0 +1,36 @@
+name: fix-horizon-nav-overlay
+on:
+  push:
+    branches: [fix/horizon-visual-rebase]
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/horizon-visual-rebase
+          fetch-depth: 0
+      - name: Remove sticky HORIZON nav overlay
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('urbion_championship_horizon_ui.js')
+          s=p.read_text(encoding='utf-8')
+          marker='/* HORIZON NAV OVERLAY FIX */'
+          if marker not in s:
+              insert='''\n/* HORIZON NAV OVERLAY FIX */\nbody.horizon-ui .main-nav{position:relative!important;top:auto!important;z-index:5!important;pointer-events:auto!important}\nbody.horizon-ui .topbar{position:relative!important;top:auto!important}\n'''
+              token='`;'
+              if token not in s:
+                  raise SystemExit('style terminator not found')
+              s=s.replace(token, insert+token, 1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          rm -f .github/workflows/_fix_horizon_nav_overlay.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add urbion_championship_horizon_ui.js .github/workflows/_fix_horizon_nav_overlay.yml
+          git commit -m "fix(ui): remove HORIZON sticky navigation overlay"
+          git push origin HEAD:fix/horizon-visual-rebase
