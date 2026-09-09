@@ -103,9 +103,10 @@ function addStatus(){if($('#horizon-status'))return;const nav=$('#nav');if(!nav)
 function fixLayerDrawer(){const d=$('#cs-layer-drawer');const map=d?.closest('.map-panel');if(!d||!map)return;map.style.position='relative';map.style.overflow='hidden';d.style.position='absolute';d.style.top='14px';d.style.right='14px';d.style.bottom='14px';d.style.width='min(360px,40%)';d.style.maxHeight='none';d.style.height='auto';d.style.display='flex';d.style.flexDirection='column';d.style.overflow='auto';d.style.zIndex='1400';const scrollables=d.querySelectorAll('.layer-list,.layers-list,.drawer-body,.layer-drawer-body,.layer-drawer-content,.drawer-content');scrollables.forEach(e=>{e.style.overflowY='auto';e.style.minHeight='0';e.style.flex='1 1 auto'});}
 function addMapHud(){const map=$('.map-panel');if(!map||$('#horizon-map-hud'))return;const h=document.createElement('div');h.id='horizon-map-hud';h.innerHTML='<span class="h-hud">SPATIAL ENGINE <b>ONLINE</b></span><span class="h-hud">EVIDENCE <b>LIVE</b></span><span class="h-hud">MAP <b>INTERACTIVE</b></span>';map.appendChild(h)}
 function observe(){const root=$('#urbion-championship-shell');if(!root)return;const mo=new MutationObserver(()=>{enhanceNav();fixLayerDrawer();addMapHud()});mo.observe(root,{subtree:true,childList:true});setInterval(()=>{enhanceNav();fixLayerDrawer();},1500)}
+function syncThemeContract(){const h=document.documentElement,b=document.body,btn=$('#cs-theme');if(!btn||btn.dataset.urbionThemeBound==='1')return;btn.dataset.urbionThemeBound='1';const sync=()=>{const light=h.classList.contains('cs-light');b?.classList.toggle('cs-light',light);window.__URBION_THEME_LIGHT__=light};sync();btn.addEventListener('click',()=>setTimeout(()=>{const next=!h.classList.contains('cs-light');h.classList.toggle('cs-light',next);b?.classList.toggle('cs-light',next);window.__URBION_THEME_LIGHT__=next},0))}
 function boot(){
   document.body.classList.add('horizon-ui');
-  addStyle();addVisual();enhanceNav();addStatus();fixLayerDrawer();addMapHud();observe();
+  addStyle();addVisual();enhanceNav();addStatus();fixLayerDrawer();addMapHud();observe();syncThemeContract();
   window.addEventListener('resize',fixLayerDrawer,{passive:true});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
