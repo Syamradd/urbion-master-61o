@@ -123,6 +123,7 @@ def _frontend_root() -> HTMLResponse:
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/urbion_championship_command_shell.js"></script>
+<script src="/urbion_horizon_language_contract.js"></script>
 <script src="/urbion_map_identify_runtime.js"></script>
 <script src="/urbion_championship_horizon_ui.js"></script>
 </body>
