@@ -1,0 +1,48 @@
+name: repair-horizon-asset-route
+
+on:
+  push:
+    branches: [fix/horizon-visual-rebase]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/horizon-visual-rebase
+          fetch-depth: 0
+      - name: Patch exact HORIZON language asset allowlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('championship_server.py')
+          text = p.read_text(encoding='utf-8')
+          marker = '    "urbion_championship_input_neutralizer.js",\n'
+          addition = '    "urbion_horizon_language_contract.js",\n'
+          if addition in text:
+              raise SystemExit('Language asset is already allowlisted; no repair required.')
+          if marker not in text:
+              raise SystemExit('Expected ALLOWED_ASSETS anchor not found; refusing unsafe patch.')
+          text = text.replace(marker, marker + addition, 1)
+          p.write_text(text, encoding='utf-8')
+          PY
+          python -m py_compile championship_server.py
+          rm -f .github/workflows/_repair_horizon_asset_route.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add championship_server.py .github/workflows/_repair_horizon_asset_route.yml
+          git commit -m 'fix(ui): expose HORIZON language contract asset'
+          git push origin HEAD:fix/horizon-visual-rebase
+      - name: Dispatch fresh championship gate on repaired head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run urbion-championship-full-ci.yml --repo Syamradd/urbion-master-61o --ref fix/horizon-visual-rebase
