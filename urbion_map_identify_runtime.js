@@ -3,7 +3,7 @@
 if(window.__URBION_MAP_IDENTIFY_RUNTIME__)return;
 window.__URBION_MAP_IDENTIFY_RUNTIME__=true;
 
-const state={version:4,active:false,last:null,lastResults:[],selectedIndex:0,pending:0};
+const state={version:5,active:false,last:null,lastResults:[],selectedIndex:0,pending:0};
 window.__URBION_MAP_IDENTIFY__=state;
 const $=(s,r=document)=>r.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#39;'}[c]));
@@ -42,6 +42,17 @@ function ensurePanel(){
   document.head.appendChild(style);host.appendChild(panel);panel.querySelector('[data-umi-close]').onclick=()=>panel.remove();return panel;
 }
 function evidenceHandoff(payload){return {...payload,evidence_handoff:{decision_safe:false,rule_binding_required:true,statutory_approval_claim:false}};}
+function clearCadastralOverlay(){const m=map();if(m&&state.cadastralLayer){m.removeLayer(state.cadastralLayer);state.cadastralLayer=null;}}
+function renderCadastral(features){
+  const m=map();if(!m||!window.L||!Array.isArray(features)||!features.length)return;
+  clearCadastralOverlay();
+  state.cadastralLayer=window.L.geoJSON({type:'FeatureCollection',features},{style:()=>({color:'#69e2c0',weight:2,opacity:.95,fillOpacity:.06}),onEachFeature:(feature,layer)=>{
+    const p=feature?.properties||{};
+    const title=p.LOT?`Lot ${esc(p.LOT)}`:'i-Plan Cadastral Parcel';
+    const details=[p.UPI&&`UPI: ${esc(p.UPI)}`,p.KELUASAN!==undefined&&`Luas: ${esc(p.KELUASAN)}`].filter(Boolean).join('<br>');
+    layer.bindPopup('<b>'+title+'</b>'+(details?'<br>'+details:''));
+  }}).addTo(m);
+}
 function renderSelected(){
   const panel=ensurePanel(),body=panel.querySelector('[data-umi-body]');
   if(!body)return;
@@ -85,10 +96,15 @@ async function identifyAtPoint(layerIds,latlng){
 async function onClick(e){
   const m=map(),layers=visibleOfficialLayers();if(!m||!layers.length)return;
   state.active=true;state.pending=layers.length;state.selectedIndex=0;state.lastResults=[];const panel=ensurePanel();panel.querySelector('[data-umi-body]').innerHTML='<span>Identifying live source features…</span>';
-  const ids=layers.map(([id])=>String(id));
+  const ids=[...new Set([...layers.map(([id])=>String(id)),'iplan-cadastral'])];
   try{
     const results=await identifyAtPoint(ids,e.latlng);
-    state.pending=0;state.lastResults=results;state.last=results[0]||null;renderSelected();
+    state.pending=0;state.lastResults=results;state.last=results[0]||null;
+    const cadastral=results.find(item=>item.layer_id==='iplan-cadastral'&&Array.isArray(item.geometry)?item:results.find(item=>item.layer_id==='iplan-cadastral'));
+    const raw=(await Promise.resolve(cadastral))?.raw_features;
+    const cadastralResult=results.find(item=>item.layer_id==='iplan-cadastral');
+    if(cadastralResult?.features)renderCadastral(cadastralResult.features);
+    renderSelected();
     window.dispatchEvent(new CustomEvent('urbion-map-identify',{detail:{point:e.latlng,results}}));
   }catch(err){
     state.pending=0;
