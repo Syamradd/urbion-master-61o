@@ -120,7 +120,7 @@ jobs:
         run: python -m playwright install --with-deps chromium
       - name: Launch Render-equivalent Uvicorn command
         env:
-          PYTHONPATH: .
+          PYTHONPATH: tests:.
           PORT: 8765
         run: |
           set -euo pipefail
@@ -131,7 +131,7 @@ jobs:
             if curl -fsS http://127.0.0.1:8765/health >/dev/null; then break; fi
             sleep 1
           done
-          PYTHONPATH=tests:. python tests/browser_championship_qa.py
+          python tests/browser_championship_qa_stable.py
       - name: Upload browser QA evidence
         if: always()
         uses: actions/upload-artifact@v4
