@@ -1,0 +1,59 @@
+name: Wire Map Identify Runtime
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    if: ${{ !contains(github.event.head_commit.message, '[urbion-map-identify]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Patch canonical production entrypoint
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('championship_server.py')
+          text = path.read_text(encoding='utf-8')
+
+          asset = '"urbion_map_identify_runtime.js"'
+          if asset not in text:
+              marker = 'ALLOWED_ASSETS = {'
+              if marker not in text:
+                  raise SystemExit('ALLOWED_ASSETS marker not found')
+              text = text.replace(marker, marker + asset + ',\n', 1)
+
+          anchor = '<script src="/urbion_championship_command_shell.js"></script>'
+          injected = anchor + '\n<script src="/urbion_map_identify_runtime.js"></script>'
+          if '/urbion_map_identify_runtime.js' not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'Expected one canonical shell anchor, found {text.count(anchor)}')
+              text = text.replace(anchor, injected, 1)
+
+          if 'urbion_map_identify_runtime.js' not in text:
+              raise SystemExit('Identify runtime reference was not written')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit canonical wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add championship_server.py
+          if git diff --cached --quiet; then
+            echo "No canonical wiring changes needed."
+            exit 0
+          fi
+          git commit -m "feat(map): wire intelligent identify runtime [urbion-map-identify]"
+          git push origin main
