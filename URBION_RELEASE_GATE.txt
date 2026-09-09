@@ -1,0 +1,8 @@
+URBION HORIZON release gate
+
+Current product repairs verified in main:
+- stable semantic browser map-reset hash
+- about/finalization contract restored
+- HORIZON light-theme class contract synchronized
+
+This file is a release-gate trigger and audit marker for the championship CI run.
