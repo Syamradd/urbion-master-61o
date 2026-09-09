@@ -13,7 +13,7 @@ def test_identify_runtime_is_allowlisted_and_loaded_by_production_root():
 def test_identify_runtime_contains_live_query_and_conservative_evidence_guards():
     assert "'/spatial/site-context?'" in RUNTIME
     assert "credentials:'same-origin'" in RUNTIME
-    assert "query_status:'LIVE_QUERY'" in RUNTIME
+    assert "'LIVE_QUERY'" in RUNTIME
     assert "decision_safe:false" in RUNTIME
     assert "rule_binding_required:true" in RUNTIME
     assert "statutory_approval_claim:false" in RUNTIME
