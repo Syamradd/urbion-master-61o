@@ -127,8 +127,7 @@
   }
   function layerStore(){return window.__URBION_RECOVERED_LAYERS__||(window.__URBION_RECOVERED_LAYERS__={})}
   function wireWms(id){
-    const input=$(`#cs-layer-drawer input[data-layer="${id}"]`);if(!input||input.dataset.p20506Wired)return;input.dataset.p20506Wired='1';
-    input.addEventListener('change',()=>{const map=window.__URBION_FCC_MAP__;if(!map)return;const store=layerStore();const old=store[id];if(old&&map.hasLayer(old))map.removeLayer(old);delete store[id];if(!input.checked){setRowStatus(id,'','HIDDEN');return}
+    const input=$(`#cs-layer-drawer input[data-layer="${id}"]`);if(!input||input.dataset.p20506Wired)return;input.dataset.p20506Wired='1';input.addEventListener('change',()=>{const map=window.__URBION_FCC_MAP__;if(!map)return;const store=layerStore();const old=store[id];if(old&&map.hasLayer(old))map.removeLayer(old);delete store[id];if(!input.checked){setRowStatus(id,'','HIDDEN');return}
       const layer=makeWms(id);if(!layer){setRowStatus(id,'ERROR','MAP UNAVAILABLE');return}store[id]=layer;setRowStatus(id,'CHECKING','CHECKING SOURCE…');layer.once('load',()=>setRowStatus(id,'LIVE','LIVE · i-Plan WMS'));layer.once('tileload',()=>setRowStatus(id,'LIVE','LIVE · i-Plan WMS'));layer.once('tileerror',()=>setRowStatus(id,'ERROR','SOURCE UNAVAILABLE'));layer.addTo(map);
       const opacity=$(`#cs-layer-drawer input[data-opacity="${id}"]`);if(opacity&&!opacity.dataset.p20506Wired){opacity.dataset.p20506Wired='1';opacity.addEventListener('input',()=>layer.setOpacity(Math.max(20,Math.min(100,Number(opacity.value)||66))/100),{passive:true})}
     },{passive:true});
@@ -146,7 +145,16 @@
 
   function boot(){
     addStyle();applyTheme();styleNav();bindLanguage();bindTheme();applyLanguage();ensureSourceHub();wireRecoveredLayers();
-    const observer=new MutationObserver(()=>{styleNav();bindLanguage();bindTheme();ensureSourceHub();wireRecoveredLayers();applyLanguage();});
+    let observerBusy=false;
+    const observer=new MutationObserver(()=>{
+      if(observerBusy) return;
+      observerBusy=true;
+      try{
+        styleNav();bindLanguage();bindTheme();ensureSourceHub();wireRecoveredLayers();
+      }finally{
+        observerBusy=false;
+      }
+    });
     observer.observe(document.body,{subtree:true,childList:true});
     setTimeout(wireRecoveredLayers,300);setTimeout(wireRecoveredLayers,1000);setTimeout(wireRecoveredLayers,2500);
   }
