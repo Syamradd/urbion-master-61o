@@ -283,6 +283,7 @@ _PRIORITY_PATHS = (
     "/urbion_championship_ui_repair_v2.js",
     "/urbion_championship_map_bridge.js",
     "/urbion_championship_input_neutralizer.js",
+    "/urbion_horizon_language_contract.js",
     "/urbion_what_if_upgrade.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
