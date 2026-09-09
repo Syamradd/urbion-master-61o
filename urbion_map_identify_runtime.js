@@ -3,11 +3,12 @@
 if(window.__URBION_MAP_IDENTIFY_RUNTIME__)return;
 window.__URBION_MAP_IDENTIFY_RUNTIME__=true;
 
-const state={version:2,active:false,last:null,pending:0};
+const state={version:3,active:false,last:null,pending:0};
 window.__URBION_MAP_IDENTIFY__=state;
 const $=(s,r=document)=>r.querySelector(s);
 
 function map(){return window.__URBION_FCC_MAP__||window.URBION_FCC_MAP||window.__URBION_MAP__||null;}
+function selectedState(){return String($('#cs-state')?.value||window.__URBION_SELECTED_STATE__||'Melaka').trim()||'Melaka';}
 function visibleOfficialLayers(){
   const m=map();
   if(!m)return [];
@@ -42,7 +43,7 @@ function ensurePanel(){
   document.head.appendChild(style);host.appendChild(panel);panel.querySelector('[data-umi-close]').onclick=()=>panel.remove();return panel;
 }
 function render(payload){
-  const panel=ensurePanel(),body=panel.querySelector('[data-umi-body]');
+  const panel=ensurePanel(),body=panel.querySelector('[data-umi-body');
   if(!body)return;
   if(!payload){body.innerHTML='<span class="umi-muted">No feature identified at this location.</span>';return;}
   const p=payload.properties||{};
@@ -51,21 +52,43 @@ function render(payload){
   panel.querySelector('[data-umi-evidence]').onclick=()=>{state.last={...payload,evidence_handoff:{decision_safe:false,rule_binding_required:true,statutory_approval_claim:false}};window.dispatchEvent(new CustomEvent('urbion-map-evidence',{detail:state.last}));};
   panel.querySelector('[data-umi-source]').onclick=()=>{if(payload.source)window.open(payload.source,'_blank','noopener');};
 }
-function identify(service,latlng,mapInstance){
-  const b=mapInstance.getBounds(),size=mapInstance.getSize();
-  const params=new URLSearchParams({f:'json',geometry:JSON.stringify({x:latlng.lng,y:latlng.lat,spatialReference:{wkid:4326}}),geometryType:'esriGeometryPoint',sr:'4326',layers:'all',tolerance:'8',mapExtent:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(','),imageDisplay:[size.x,size.y,96].join(','),returnGeometry:'false'});
-  return fetch(service.replace(/\/$/,'')+'/identify?'+params.toString(),{credentials:'omit'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
+function featureId(feature){
+  const p=feature?.properties||feature?.attributes||{};
+  return String(feature?.id??p.id??p.OBJECTID??p.objectid??p.fid??'Not exposed');
+}
+async function identifyAtPoint(layerIds,latlng,mapInstance){
+  const params=new URLSearchParams({site_lat:String(latlng.lat),site_lon:String(latlng.lng),radius_m:'120',state:selectedState(),layers:layerIds.join(',')});
+  const response=await fetch('/spatial/site-context?'+params.toString(),{credentials:'same-origin',headers:{Accept:'application/json'}});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const data=await response.json();
+  const results=[];
+  for(const item of (data.layers||[])){
+    const candidates=Array.isArray(item.features)?item.features:[];
+    const feature=candidates.find(f=>{
+      const props=f?.properties||{};
+      return props?.OBJECTID!==undefined||props?.objectid!==undefined||props?.id!==undefined||f?.id!==undefined;
+    })||candidates[0];
+    if(feature){
+      results.push({layer_id:item.id,layer_name:item.name_ms||item.name||item.id,feature_id:featureId(feature),source:item.source,query_status:item.status==='LIVE_QUERY'?'LIVE_QUERY':item.status,evidence_state:item.evidence||'EVIDENCE_GAP',decision_safe:false,requires_rule_binding:true,properties:feature.properties||feature.attributes||{},geometry:feature.geometry||null});
+    }else if(item.status==='QUERY_ERROR'){
+      results.push({layer_id:item.id,layer_name:item.name_ms||item.name||item.id,source:item.source,query_status:'QUERY_ERROR',evidence_state:'REVIEW',decision_safe:false,requires_rule_binding:true,properties:{error:item.error||'Source query failed'}});
+    }
+  }
+  return results;
 }
 async function onClick(e){
   const m=map(),layers=visibleOfficialLayers();if(!m||!layers.length)return;
   state.active=true;state.pending=layers.length;const panel=ensurePanel();panel.querySelector('[data-umi-body]').innerHTML='<span>Identifying live source features…</span>';
-  const results=[];
-  for(const [layerId,layer] of layers){
-    try{const data=await identify(layer.__urbionSource,e.latlng,m);for(const r of (data.results||[])){results.push({layer_id:layerId,layer_name:r.layerName||layerId,feature_id:r.value||r.attributes?.OBJECTID||r.attributes?.objectid||null,source:layer.__urbionSource,query_status:'LIVE_QUERY',evidence_state:'SOURCE_CONTEXT',decision_safe:false,requires_rule_binding:true,properties:r.attributes||{}})}}catch(err){results.push({layer_id:layerId,layer_name:layerId,source:layer.__urbionSource,query_status:'QUERY_ERROR',evidence_state:'REVIEW',decision_safe:false,requires_rule_binding:true,properties:{error:String(err.message||err)}})}
-    state.pending--;
+  const ids=layers.map(([id])=>String(id));
+  try{
+    const results=await identifyAtPoint(ids,e.latlng,m);
+    state.pending=0;state.last=results[0]||null;render(state.last);
+    window.dispatchEvent(new CustomEvent('urbion-map-identify',{detail:{point:e.latlng,results}}));
+  }catch(err){
+    state.pending=0;
+    const payload={layer_id:'map',layer_name:'Map Intelligence',source:'/spatial/site-context',query_status:'QUERY_ERROR',evidence_state:'REVIEW',decision_safe:false,requires_rule_binding:true,properties:{error:String(err.message||err)}};
+    state.last=payload;render(payload);window.dispatchEvent(new CustomEvent('urbion-map-identify',{detail:{point:e.latlng,results:[payload]}}));
   }
-  state.last=results[0]||null;render(state.last);
-  window.dispatchEvent(new CustomEvent('urbion-map-identify',{detail:{point:e.latlng,results}}));
 }
 function boot(){const m=map();if(!m||m.__urbionIdentifyWired)return false;m.__urbionIdentifyWired=true;m.on('click',onClick);state.mapReady=true;return true;}
 let tries=0;const timer=setInterval(()=>{tries++;if(boot()||tries>120)clearInterval(timer)},250);
