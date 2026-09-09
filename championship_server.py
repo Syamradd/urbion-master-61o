@@ -20,12 +20,14 @@ CANONICAL_ASSET = "urbion_championship_command_shell.js"
 PREMIUM_V6_ASSET = "urbion_championship_premium_v6.js"
 PREMIUM_V7_ASSET = "urbion_championship_premium_v7.js"
 P20506_ASSET = "urbion_p20506_live_evidence.js"
+HORIZON_UI_ASSET = "urbion_championship_horizon_ui.js"
 ALLOWED_ASSETS = {"urbion_map_identify_runtime.js",
 
     CANONICAL_ASSET,
     PREMIUM_V6_ASSET,
     PREMIUM_V7_ASSET,
     P20506_ASSET,
+    HORIZON_UI_ASSET,
     "urbion_ui.js",
     "urbion_championship_ui.js",
     "urbion_championship_upgrade.js",
@@ -122,6 +124,7 @@ def _frontend_root() -> HTMLResponse:
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/urbion_championship_command_shell.js"></script>
 <script src="/urbion_map_identify_runtime.js"></script>
+<script src="/urbion_championship_horizon_ui.js"></script>
 </body>
 </html>"""
     return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
