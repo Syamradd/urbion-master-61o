@@ -132,6 +132,7 @@ jobs:
             sleep 1
           done
           python tests/browser_championship_qa_stable.py
+          python tests/browser_horizon_visual_language_qa.py
       - name: Upload browser QA evidence
         if: always()
         uses: actions/upload-artifact@v4
