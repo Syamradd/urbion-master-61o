@@ -239,6 +239,7 @@ app.add_api_route("/{asset}.js", _frontend_asset, methods=["GET"], include_in_sc
 app.add_api_route("/{asset}.svg", _frontend_logo, methods=["GET"], include_in_schema=False)
 
 _PRIORITY_PATHS = (
+    "/urbion_map_identify_runtime.js",
     "/urbion_championship_command_shell.js",
     "/urbion_championship_premium_v7.js",
     "/urbion_championship_premium_v6.js",
