@@ -1,0 +1,39 @@
+name: repair-horizon-language-route-v2
+on:
+  push:
+    branches: [fix/horizon-visual-rebase]
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/horizon-visual-rebase
+          fetch-depth: 0
+      - name: Patch language asset route priority
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('championship_server.py')
+          s = p.read_text(encoding='utf-8')
+          needle = '    "/urbion_championship_input_neutralizer.js",\n'
+          insert = '    "/urbion_championship_input_neutralizer.js",\n    "/urbion_horizon_language_contract.js",\n'
+          if '"/urbion_horizon_language_contract.js",' not in s:
+              if needle not in s:
+                  raise SystemExit('priority anchor not found')
+              s = s.replace(needle, insert, 1)
+          else:
+              print('language route already prioritized')
+          p.write_text(s, encoding='utf-8')
+          PY
+          python -m py_compile championship_server.py
+          rm -f .github/workflows/_repair_horizon_language_route_v2.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add championship_server.py .github/workflows/_repair_horizon_language_route_v2.yml
+          git commit -m 'fix(ui): prioritize HORIZON language asset route'
+          git push origin HEAD:fix/horizon-visual-rebase
