@@ -1,0 +1,44 @@
+name: URBION One-Time About QA Contract Fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Align About QA contract with branded Bahasa Melayu page
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/browser_championship_qa.py')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              'expect(page).to_have_title("URBION HORIZON — About")': 'expect(page).to_have_title("URBION HORIZON — Tentang Kami")',
+              'expect(page.locator("body")).to_contain_text("Turning spatial evidence into")': 'expect(page.locator("body")).to_contain_text("Daripada bukti spatial kepada")',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Missing expected QA contract token: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit QA contract fix and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/_fix_about_qa_contract.yml
+          git add tests/browser_championship_qa.py
+          git commit -m "test: align About QA contract with branded page"
+          git push origin HEAD:main
