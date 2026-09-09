@@ -247,6 +247,7 @@ _PRIORITY_PATHS = (
     "/urbion_championship_premium_v7.js",
     "/urbion_championship_premium_v6.js",
     "/urbion_p20506_live_evidence.js",
+    "/urbion_championship_horizon_ui.js",
     "/urbion_ui.js",
     "/urbion_championship_ui.js",
     "/urbion_championship_upgrade.js",
