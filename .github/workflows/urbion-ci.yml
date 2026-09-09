@@ -88,6 +88,7 @@ jobs:
               '/urbion_championship_final_command_center_policy.js',
               '/urbion_championship_champion_review.js',
               '/urbion_championship_final_runtime_enforcer.js',
+              '/urbion_map_identify_runtime.js',
           ]
           last_error = None
           for _ in range(30):
