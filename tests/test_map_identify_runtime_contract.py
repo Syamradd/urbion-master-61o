@@ -18,18 +18,19 @@ def test_map_identify_runtime_is_served_by_canonical_root():
     assert response.text.strip()
 
 
-def test_map_identify_runtime_discovers_real_leaflet_layers_and_queries_arcgis_identify():
+def test_map_identify_runtime_discovers_real_leaflet_layers_and_uses_same_origin_spatial_context():
     text = RUNTIME.read_text(encoding='utf-8')
     for token in (
         'window.__URBION_FCC_MAP__',
         'm._layers',
         '__urbionSource',
-        '/identify?',
-        "layers:'all'",
+        '/spatial/site-context?',
         "query_status:'LIVE_QUERY'",
-        "evidence_state:'SOURCE_CONTEXT'",
+        "evidence_state:item.evidence||'EVIDENCE_GAP'",
     ):
         assert token in text
+    assert "credentials:'same-origin'" in text
+    assert '/identify?' not in text
 
 
 def test_map_identify_runtime_keeps_evidence_conservative():
