@@ -29,6 +29,10 @@ def stable_map_hash(page) -> str:
             d: el.getAttribute('d') || '',
             className: el.getAttribute('class') || '',
           })),
+          renderedTiles: Array.from(document.querySelectorAll('#cs-map .leaflet-tile-pane img.leaflet-tile')).map((el) => ({
+            src: el.currentSrc || el.src || '',
+            className: el.className || '',
+          })).sort((a, b) => a.src.localeCompare(b.src)),
         })
         """
     )
