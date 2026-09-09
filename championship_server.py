@@ -19,10 +19,12 @@ BASE_DIR = Path(__file__).resolve().parent
 CANONICAL_ASSET = "urbion_championship_command_shell.js"
 PREMIUM_V6_ASSET = "urbion_championship_premium_v6.js"
 PREMIUM_V7_ASSET = "urbion_championship_premium_v7.js"
+P20506_ASSET = "urbion_p20506_live_evidence.js"
 ALLOWED_ASSETS = {
     CANONICAL_ASSET,
     PREMIUM_V6_ASSET,
     PREMIUM_V7_ASSET,
+    P20506_ASSET,
     "urbion_ui.js",
     "urbion_championship_ui.js",
     "urbion_championship_upgrade.js",
@@ -149,7 +151,7 @@ def _frontend_asset(asset: str):
         raise HTTPException(status_code=404, detail="Frontend asset not found")
     if asset == CANONICAL_ASSET:
         payload = target.read_text(encoding="utf-8")
-        for companion_name in (PREMIUM_V6_ASSET, PREMIUM_V7_ASSET):
+        for companion_name in (PREMIUM_V6_ASSET, PREMIUM_V7_ASSET, P20506_ASSET):
             companion = BASE_DIR / companion_name
             if companion.is_file():
                 payload += "\n" + companion.read_text(encoding="utf-8")
@@ -230,6 +232,7 @@ _PRIORITY_PATHS = (
     "/urbion_championship_command_shell.js",
     "/urbion_championship_premium_v7.js",
     "/urbion_championship_premium_v6.js",
+    "/urbion_p20506_live_evidence.js",
     "/urbion_ui.js",
     "/urbion_championship_ui.js",
     "/urbion_championship_upgrade.js",
