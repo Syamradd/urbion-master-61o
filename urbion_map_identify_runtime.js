@@ -3,7 +3,7 @@
 if(window.__URBION_MAP_IDENTIFY_RUNTIME__)return;
 window.__URBION_MAP_IDENTIFY_RUNTIME__=true;
 
-const state={version:5,active:false,last:null,lastResults:[],selectedIndex:0,pending:0};
+const state={version:6,active:false,last:null,lastResults:[],selectedIndex:0,pending:0,cadastralLayer:null};
 window.__URBION_MAP_IDENTIFY__=state;
 const $=(s,r=document)=>r.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#39;'}[c]));
@@ -86,7 +86,7 @@ async function identifyAtPoint(layerIds,latlng){
       return props?.OBJECTID!==undefined||props?.objectid!==undefined||props?.id!==undefined||f?.id!==undefined;
     })||candidates[0];
     if(feature){
-      results.push({layer_id:item.id,layer_name:item.name_ms||item.name||item.id,feature_id:featureId(feature),source:item.source,query_status:item.status==='LIVE_QUERY'?'LIVE_QUERY':item.status,evidence_state:item.evidence||'EVIDENCE_GAP',decision_safe:false,requires_rule_binding:true,properties:feature.properties||feature.attributes||{},geometry:feature.geometry||null});
+      results.push({layer_id:item.id,layer_name:item.name_ms||item.name||item.id,feature_id:featureId(feature),source:item.source,query_status:item.status==='LIVE_QUERY'?'LIVE_QUERY':item.status,evidence_state:item.evidence||'EVIDENCE_GAP',decision_safe:false,requires_rule_binding:true,properties:feature.properties||feature.attributes||{},geometry:feature.geometry||null,features:item.id==='iplan-cadastral'?candidates:null});
     }else if(item.status==='QUERY_ERROR'){
       results.push({layer_id:item.id,layer_name:item.name_ms||item.name||item.id,source:item.source,query_status:'QUERY_ERROR',evidence_state:'REVIEW',decision_safe:false,requires_rule_binding:true,properties:{error:item.error||'Source query failed'}});
     }
@@ -100,8 +100,6 @@ async function onClick(e){
   try{
     const results=await identifyAtPoint(ids,e.latlng);
     state.pending=0;state.lastResults=results;state.last=results[0]||null;
-    const cadastral=results.find(item=>item.layer_id==='iplan-cadastral'&&Array.isArray(item.geometry)?item:results.find(item=>item.layer_id==='iplan-cadastral'));
-    const raw=(await Promise.resolve(cadastral))?.raw_features;
     const cadastralResult=results.find(item=>item.layer_id==='iplan-cadastral');
     if(cadastralResult?.features)renderCadastral(cadastralResult.features);
     renderSelected();
