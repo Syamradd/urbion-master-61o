@@ -18,3 +18,8 @@ def test_identify_runtime_contains_live_query_and_conservative_evidence_guards()
     assert "rule_binding_required:true" in RUNTIME
     assert "statutory_approval_claim:false" in RUNTIME
     assert "'/identify?'" not in RUNTIME
+
+
+def test_identify_runtime_surfaces_multiple_layer_results_and_selection():
+    for token in ('lastResults', 'FEATURE', 'data-umi-result', 'renderSelected', 'results.length'):
+        assert token in RUNTIME
