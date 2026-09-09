@@ -1,0 +1,137 @@
+name: apply-horizon-language-contract
+
+on:
+  push:
+    branches: [tmp/horizon-lang-patch]
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/horizon-lang-patch
+          fetch-depth: 0
+      - name: Patch language contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('urbion_championship_horizon_ui.js')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('function bindLanguage(){')
+          end=s.index('function syncThemeContract(){', start)
+          new=r'''function bindLanguage(){
+  if(window.__URBION_HORIZON_LANG_CONTRACT__)return;
+  window.__URBION_HORIZON_LANG_CONTRACT__=true;
+  const PAIRS={
+    'Gambaran Keseluruhan':'Overview','Overview':'Gambaran Keseluruhan',
+    'Kecerdasan Tapak':'Site Intelligence','Site Intelligence':'Kecerdasan Tapak',
+    'Penilaian AI':'AI Assessment','AI Assessment':'Penilaian AI',
+    'Bagaimana Jika':'What-If Studio','What-If Studio':'Bagaimana Jika',
+    'Pusat Keputusan':'Decision Centre','Decision Centre':'Pusat Keputusan',
+    'Kecerdasan LCP':'LCP Intelligence','LCP Intelligence':'Kecerdasan LCP',
+    'Mod Penilai':'Judge View','Judge View':'Mod Penilai',
+    'Pihak Berkuasa Tempatan (PBT)':'Local Authority (PBT)','Local Authority (PBT)':'Pihak Berkuasa Tempatan (PBT)',
+    'District / Daerah':'District','District':'Daerah',
+    'Guna Tanah 1':'Land Use 1','Land Use 1':'Guna Tanah 1',
+    'Guna Tanah 2':'Land Use 2','Land Use 2':'Guna Tanah 2',
+    'Guna Tanah 3':'Land Use 3','Land Use 3':'Guna Tanah 3',
+    'Select Guna Tanah 1':'Select Land Use 1','Select Land Use 1':'Select Guna Tanah 1',
+    'Select Guna Tanah 2':'Select Land Use 2','Select Land Use 2':'Select Guna Tanah 2',
+    'Select Guna Tanah 3':'Select Land Use 3','Select Land Use 3':'Select Guna Tanah 3',
+    'New planning case':'New planning case','Kes perancangan baharu':'New planning case',
+    'Takrif kes perancangan':'Define planning case','Define planning case':'Takrif kes perancangan',
+    'Lokasi':'Location','Location':'Lokasi',
+    'Nama Tapak / Projek':'Site / Project Name','Site / Project Name':'Nama Tapak / Projek',
+    'Negeri':'State','State':'Negeri',
+    'Daerah':'District','District':'Daerah',
+    'Tapak / Lot':'Site / Parcel','Site / Parcel':'Tapak / Lot',
+    'Rujukan Projek':'Project Reference','Project Reference':'Rujukan Projek',
+    'Cadangan Pemajuan':'Development Proposal','Development Proposal':'Cadangan Pemajuan',
+    'Intensiti Pemajuan':'Development Intensity','Development Intensity':'Intensiti Pemajuan',
+    'Konteks TOD / Transit':'TOD / Transit Context','TOD / Transit Context':'Konteks TOD / Transit',
+    'Gunakan Pilihan Peta':'Use Map Selection','Use Map Selection':'Gunakan Pilihan Peta',
+    'Lokasi Saya':'Locate Me','Locate Me':'Lokasi Saya',
+    'Selesaikan Lot':'Resolve Lot','Resolve Lot':'Selesaikan Lot',
+    'JALANKAN ANALISIS TAPAK':'RUN SITE ANALYSIS','RUN SITE ANALYSIS':'JALANKAN ANALISIS TAPAK',
+    'Peta Kecerdasan Ruang':'Spatial Intelligence Map','Spatial Intelligence Map':'Peta Kecerdasan Ruang',
+    'Kecerdasan Perancangan':'Planning Intelligence','Planning Intelligence':'Kecerdasan Perancangan',
+    'Kesediaan Keputusan':'Decision Readiness','Decision Readiness':'Kesediaan Keputusan',
+    'Penemuan Utama':'Key Insights','Key Insights':'Penemuan Utama',
+    'Tindakan Pantas':'Quick Actions','Quick Actions':'Tindakan Pantas',
+    'Kesihatan Bukti':'Evidence Health','Evidence Health':'Kesihatan Bukti',
+    'LAPISAN PETA':'MAP LAYERS','MAP LAYERS':'LAPISAN PETA',
+    'Rasmi':'Official','Official':'Rasmi',
+    'Langsung':'Live','Live':'Langsung',
+    'Analisis':'Analysis','Analysis':'Analisis',
+    'Tersuai':'Custom','Custom':'Tersuai',
+    'Perancangan':'Planning','Planning':'Perancangan',
+    'Lot':'Parcel','Parcel':'Lot',
+    'Pengangkutan':'Transport','Transport':'Pengangkutan',
+    'Alam Sekitar / Risiko':'Environment / Risk','Environment / Risk':'Alam Sekitar / Risiko',
+    'Bentuk Muka Bumi':'Terrain','Terrain':'Bentuk Muka Bumi',
+    'Geologi':'Geology','Geology':'Geologi',
+    'Hidrologi':'Hydrology','Hydrology':'Hidrologi',
+    'Sumber':'Sources','Sources':'Sumber',
+    'Cetak':'Print','Print':'Cetak',
+    'Eksport':'Export','Export':'Eksport',
+    'Tentang':'About','About':'Tentang',
+    'Bantuan':'Help','Help':'Bantuan',
+    'Sistem Dalam Talian':'System Online','System Online':'Sistem Dalam Talian',
+    'JALAN':'ROAD','ROAD':'JALAN','SATELIT':'SATELLITE','SATELLITE':'SATELIT','HIBRID':'HYBRID','HYBRID':'HIBRID','LAPISAN':'LAYERS','LAYERS':'LAPISAN'
+  };
+  const getToggle=()=>$$('button,a,[role="button"]').find(el=>/^(EN|BM|ENGLISH|BAHASA MELAYU)$/i.test((el.textContent||'').trim())||el.dataset.horizonLanguage==='1');
+  let lang=(localStorage.getItem('urbion-language')||document.body.dataset.horizonLang||'en').toLowerCase().startsWith('ms')?'ms':'en';
+  const identify=(el)=>{
+    const marked=el.getAttribute('data-horizon-i18n-key');
+    if(marked&&PAIRS[marked])return marked;
+    const text=(el.textContent||'').trim();
+    if(PAIRS[text]){el.setAttribute('data-horizon-i18n-key',PAIRS[text]);return PAIRS[text];}
+    return null;
+  };
+  const EN_SET=new Set(Object.values(PAIRS));
+  const apply=()=>{
+    const ms=lang==='ms';
+    $$('[data-i18n-en][data-i18n-ms],[data-horizon-en][data-horizon-ms]').forEach(el=>{
+      const en=el.dataset.i18nEn||el.dataset.horizonEn, bm=el.dataset.i18nMs||el.dataset.horizonMs;
+      if(en!==undefined&&bm!==undefined)el.textContent=ms?bm:en;
+    });
+    $$('button,label,h1,h2,h3,h4,p,small,span,.eyebrow,.label,.site-meta,.muted,a').forEach(el=>{
+      if(el.closest('script,style,textarea,input,select,option'))return;
+      const key=identify(el);if(!key)return;
+      el.textContent=ms?PAIRS[key]:key;
+    });
+    $$('input[placeholder],textarea[placeholder]').forEach(el=>{
+      const raw=el.getAttribute('placeholder')||'', key=PAIRS[raw];
+      if(key)el.setAttribute('placeholder',ms?PAIRS[key]:key);
+    });
+    document.documentElement.lang=ms?'ms':'en';document.body.dataset.horizonLang=ms?'ms':'en';
+    const t=getToggle();if(t){t.textContent=ms?'BM':'EN';t.dataset.horizonLanguage='1';t.setAttribute('aria-pressed',String(ms));}
+    localStorage.setItem('urbion-language',ms?'ms':'en');
+    window.__URBION_HORIZON_LANGUAGE__=ms?'ms':'en';
+  };
+  const toggle=getToggle();
+  if(toggle&&!toggle.dataset.horizonLanguageBound){
+    toggle.dataset.horizonLanguageBound='1';
+    toggle.addEventListener('click',e=>{e.preventDefault();lang=lang==='en'?'ms':'en';apply();},{capture:true});
+  }
+  const scan=()=>apply();
+  apply();
+  const root=$('#urbion-championship-shell')||document.body;
+  new MutationObserver(()=>{const t=getToggle();if(t&&!t.dataset.horizonLanguageBound){t.dataset.horizonLanguageBound='1';t.addEventListener('click',e=>{e.preventDefault();lang=lang==='en'?'ms':'en';apply();},{capture:true});} if(!window.__URBION_LANG_APPLYING__) {window.__URBION_LANG_APPLYING__=true;requestAnimationFrame(()=>{window.__URBION_LANG_APPLYING__=false;scan();});}}).observe(root,{subtree:true,childList:true,characterData:true});
+  setInterval(apply,3000);
+  window.__URBION_HORIZON_SET_LANG__=next=>{lang=String(next).toLowerCase().startsWith('ms')?'ms':'en';apply();};
+}
+'''
+          s=s[:start]+new+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          rm -f .github/workflows/_apply_horizon_language_contract.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add urbion_championship_horizon_ui.js .github/workflows/_apply_horizon_language_contract.yml
+          git commit -m "fix(ui): enforce global EN-BM language contract"
+          git push origin HEAD:tmp/horizon-lang-patch
