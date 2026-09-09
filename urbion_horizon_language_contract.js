@@ -71,8 +71,9 @@ function ensureWorkspaceContract(){
 function apply(){
   ensureWorkspaceContract();
   const ms=lang==='ms';
-  document.querySelectorAll('button,label,h1,h2,h3,h4,p,small,span,a,.eyebrow,.label,.site-meta,.muted').forEach(el=>{
+  document.querySelectorAll('button,label,h1,h2,h3,h4,p,small,span,a,b,strong,em,.eyebrow,.label,.site-meta,.muted').forEach(el=>{
     if(el.closest('script,style,textarea,input,select,option'))return;
+    if(el.children.length>0)return;
     const key=ensureKey(el);if(key)el.textContent=ms?EN_TO_BM[key]:key;
   });
   document.querySelectorAll('input[placeholder],textarea[placeholder],select[aria-label]').forEach(el=>{
