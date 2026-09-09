@@ -25,7 +25,7 @@ def test_map_identify_runtime_discovers_real_leaflet_layers_and_uses_same_origin
         'm._layers',
         '__urbionSource',
         '/spatial/site-context?',
-        "query_status:'LIVE_QUERY'",
+        "item.status==='LIVE_QUERY'?'LIVE_QUERY':item.status",
         "evidence_state:item.evidence||'EVIDENCE_GAP'",
     ):
         assert token in text
