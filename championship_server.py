@@ -61,6 +61,7 @@ ALLOWED_ASSETS = {"urbion_map_identify_runtime.js",
     "urbion_championship_ui_repair_v2.js",
     "urbion_championship_map_bridge.js",
     "urbion_championship_input_neutralizer.js",
+    "urbion_horizon_language_contract.js",
 }
 
 COMPATIBILITY_STACK = (
