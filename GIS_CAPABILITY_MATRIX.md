@@ -13,6 +13,7 @@ A source may be registered without being queryable. A rendered map layer is not 
 | i-Plan Current Land Use | GeoServer WMS + WFS | YES | YES | YES | NO — source context |
 | i-Plan Zoning | GeoServer WMS + WFS | YES | YES | YES | NO — source context |
 | i-Plan Committed Land Use | GeoServer WMS + WFS | YES | YES | YES | NO — source context |
+| i-Plan Cadastral Parcels | iPLAN ArcGIS REST Feature Layer (`LOT_XX`) | YES | YES | YES | NO — source context |
 | i-Plan Flood | GeoServer WMS + WFS | YES | YES* | YES* | NO — source context |
 | i-Plan Disaster Risk | GeoServer WMS + WFS | YES | YES* | YES* | NO — source context |
 | i-Plan KSAS | GeoServer WMS + WFS | YES | YES* | YES* | NO — source context |
@@ -36,11 +37,13 @@ A source may be registered without being queryable. A rendered map layer is not 
 
 1. `urbion_data_sources.py` — source and visual layer registry.
 2. `urbion_spatial_context.py` — parallel WFS / ArcGIS geometry query engine.
-3. `urbion_spatial_context_api.py` — `/spatial/site-context` endpoint.
-4. `urbion_spatial_context_upgrade.js` — renders returned GeoJSON on the existing Leaflet map.
-5. `urbion_spatial_context_intelligence_bridge.js` — binds live GIS hits to the V5 Planning Intelligence rail.
-6. `urbion_spatial_context_engine_bridge.js` — feeds the live context into the existing deterministic `/spatial/intelligence` engine.
-7. Existing `urbion_spatial_intelligence.py` — retains the final spatial decision-support model and its statutory disclaimer.
+3. `urbion_spatial_context_api.py` — `/spatial/site-context` endpoint, including the explicit iPLAN cadastral bridge.
+4. `urbion_cadastral_context.py` — state-aware iPLAN `LOT_XX` ArcGIS parcel query adapter.
+5. `urbion_spatial_context_upgrade.js` — renders returned GeoJSON on the existing Leaflet map.
+6. `urbion_spatial_context_intelligence_bridge.js` — binds live GIS hits to the V5 Planning Intelligence rail.
+7. `urbion_spatial_context_engine_bridge.js` — feeds the live context into the existing deterministic `/spatial/intelligence` engine.
+8. `urbion_map_identify_runtime.js` — multi-layer identify, source/evidence detail, and cadastral parcel highlighting.
+9. Existing `urbion_spatial_intelligence.py` — retains the final spatial decision-support model and its statutory disclaimer.
 
 ## Site-centric outputs
 
