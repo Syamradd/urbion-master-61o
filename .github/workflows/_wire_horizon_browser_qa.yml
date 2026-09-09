@@ -1,0 +1,34 @@
+name: wire-horizon-browser-qa
+on:
+  push:
+    branches: [fix/horizon-visual-rebase]
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/horizon-visual-rebase
+          fetch-depth: 0
+      - name: Add HORIZON browser gate
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/urbion-championship-full-ci.yml')
+          s=p.read_text(encoding='utf-8')
+          needle='          python tests/browser_championship_qa_stable.py\n'
+          repl='          python tests/browser_championship_qa_stable.py\n          python tests/browser_horizon_visual_language_qa.py\n'
+          if needle not in s:
+              raise SystemExit('browser QA insertion anchor not found')
+          s=s.replace(needle,repl,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          rm -f .github/workflows/_wire_horizon_browser_qa.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/urbion-championship-full-ci.yml .github/workflows/_wire_horizon_browser_qa.yml
+          git commit -m "test(browser): enforce HORIZON visual language gate"
+          git push origin HEAD:fix/horizon-visual-rebase
