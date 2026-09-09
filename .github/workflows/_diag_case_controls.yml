@@ -1,0 +1,47 @@
+name: diag-case-controls
+on:
+  push:
+    branches: [fix/horizon-visual-rebase]
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: fix/horizon-visual-rebase, fetch-depth: 1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Diagnose controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -r requirements.txt playwright >/dev/null
+          python -m playwright install chromium >/dev/null
+          python -m uvicorn championship_server:app --host 0.0.0.0 --port 8765 >/tmp/diag.log 2>&1 &
+          PID=$!; trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/health >/dev/null 2>&1 && break; sleep 1; done
+          python - <<'PY'
+          import json
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as pw:
+            b=pw.chromium.launch()
+            p=b.new_page(viewport={'width':1440,'height':900})
+            p.goto('http://127.0.0.1:8765/',wait_until='networkidle',timeout=30000)
+            controls=p.evaluate("""Array.from(document.querySelectorAll('input,select,textarea,button')).map(e=>({tag:e.tagName,id:e.id,name:e.name,type:e.type,value:e.value,text:(e.textContent||'').trim().slice(0,80),placeholder:e.placeholder})).filter(x=>x.tag==='INPUT'||x.tag==='SELECT'||x.tag==='TEXTAREA'||(x.id||'').startsWith('cs-'))""")
+            print('CONTROL_COUNT',len(controls))
+            print(json.dumps(controls,ensure_ascii=False,separators=(',',':')))
+            print('CS_IDS',p.evaluate("Array.from(document.querySelectorAll('[id^=cs-]')).map(e=>e.id)"))
+            print('PROJECT_TEXT_PARENTS',p.evaluate("Array.from(document.querySelectorAll('*')).filter(e=>(e.textContent||'').trim()==='Site / Project Full Name').slice(0,3).map(e=>e.parentElement?.outerHTML.slice(0,900))"))
+            b.close()
+          PY
+      - name: Remove diagnostic workflow
+        if: always()
+        run: |
+          rm -f .github/workflows/_diag_case_controls.yml
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -u .github/workflows/_diag_case_controls.yml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'chore: remove temporary case controls diagnostic'
+          git push origin HEAD:fix/horizon-visual-rebase
