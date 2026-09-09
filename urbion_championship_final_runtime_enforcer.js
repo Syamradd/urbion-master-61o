@@ -26,7 +26,29 @@ function patchReadinessText(){
  el.__urbionReadinessTextGuard=true;
  return true;
 }
-function runtimeGuard(){patchReadinessText();}
+
+// Layer-drawer pointer isolation: keep the real checkbox above the canonical
+// row hit-area. This fixes the actual browser hit-test failure without using
+// Playwright force-clicks or changing the map/layer state model.
+function patchLayerPointerSafety(){
+ if(document.getElementById('urbion-layer-pointer-safety'))return true;
+ const style=document.createElement('style');
+ style.id='urbion-layer-pointer-safety';
+ style.textContent=`
+#cs-layer-drawer .fcc-layer-row{position:relative;isolation:isolate;}
+#cs-layer-drawer .fcc-layer-row input[data-layer]{position:relative!important;z-index:20!important;pointer-events:auto!important;}
+#cs-layer-drawer .fcc-layer-row input[data-opacity]{position:relative!important;z-index:20!important;pointer-events:auto!important;}
+#cs-layer-drawer button,#cs-layer-drawer input,#cs-layer-drawer select{pointer-events:auto!important;}
+`;
+ (document.head||document.documentElement).appendChild(style);
+ return true;
+}
+
+function runtimeGuard(){
+ patchReadinessText();
+ patchLayerPointerSafety();
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{runtimeGuard();setTimeout(runtimeGuard,50)},{once:true});
 else{runtimeGuard();setTimeout(runtimeGuard,50)}
+setInterval(patchLayerPointerSafety,500);
 })();
