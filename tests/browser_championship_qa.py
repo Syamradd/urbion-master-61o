@@ -409,8 +409,8 @@ def main() -> None:
 
         with page.expect_navigation(wait_until="networkidle"):
             page.locator('button[data-tool="about"]').click()
-        expect(page).to_have_title("URBION HORIZON — About")
-        expect(page.locator("body")).to_contain_text("Turning spatial evidence into")
+        expect(page).to_have_title("URBION HORIZON — Tentang Kami")
+        expect(page.locator("body")).to_contain_text("Daripada bukti spatial kepada")
         capture(page, "about")
         page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
 
