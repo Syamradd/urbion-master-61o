@@ -12,6 +12,7 @@ import hashlib
 import json
 
 import browser_championship_qa as qa
+from playwright.sync_api import Locator
 
 
 def stable_map_hash(page) -> str:
@@ -45,22 +46,21 @@ def stable_map_hash(page) -> str:
 
 qa.map_hash = stable_map_hash
 
-# HORIZON keeps the command navigation sticky for UX. When the functional
-# browser gate scrolls #cs-run into view, the sticky nav can otherwise sit on
-# top of the button and intercept the real pointer click. Move only that
-# target into the viewport centre; keep the normal (non-forced) click so the
-# test still exercises the actual user interaction.
-_original_run_click = qa.page_click_run if hasattr(qa, "page_click_run") else None
+# HORIZON intentionally keeps the main navigation elevated. The existing
+# browser acceptance flow scrolls #cs-run into view, which can place the
+# sticky nav over that button and intercept the real pointer click. Center
+# only that action before clicking; do not use force=True so the functional
+# test still exercises a genuine enabled button interaction.
+_original_click = Locator.click
 
 
-def click_run_without_sticky_overlap(page) -> None:
-    button = page.locator("#cs-run")
-    button.evaluate("el => el.scrollIntoView({block:'center', inline:'nearest'})")
-    button.click()
+def _click_with_run_scroll(self, *args, **kwargs):
+    if getattr(self, "_selector", "") == "#cs-run":
+        self.evaluate("el => el.scrollIntoView({block:'center', inline:'nearest'})")
+    return _original_click(self, *args, **kwargs)
 
 
-if not hasattr(qa, "page_click_run"):
-    qa.page_click_run = click_run_without_sticky_overlap
+Locator.click = _click_with_run_scroll
 
 
 if __name__ == "__main__":
