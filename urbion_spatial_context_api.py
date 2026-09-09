@@ -6,12 +6,13 @@ from fastapi import APIRouter, Body, HTTPException
 from server import app
 from urbion_spatial_context import build_site_context, clear_spatial_context_cache
 from urbion_cadastral_context import query_cadastral
+from urbion_feature_evidence_contract import feature_evidence
+from urbion_retrieval import urbion_retrieve_rules
+from urbion_applicability import urbion_check_applicability
+from urbion_compliance import urbion_evaluate_compliance
 
 router = APIRouter(tags=["spatial-context"])
 
-# Keep the initial analysis context bounded. The UI can still request the full
-# layer catalogue explicitly, while the judge journey gets a deterministic
-# first-pass context instead of waiting on every external GIS source.
 INITIAL_ANALYSIS_LAYERS = (
     "iplan-current",
     "iplan-zoning",
@@ -60,6 +61,59 @@ def _site_context(lat: float, lon: float, radius_m: float, state: str, layer_ids
             })
         context["query"]["layer_count"] = len(context["layers"])
     return context
+
+
+def _bind_feature_evidence(feature: dict, development_type: str = "", authority: str = "MBMB") -> dict:
+    handoff = feature_evidence(feature)
+    rules = []
+    applicability = []
+    compliance = []
+    if handoff["eligible_for_rule_binding"] and development_type:
+        rules = urbion_retrieve_rules(development_type=development_type, authority=authority, spatial_context={
+            "map_feature": handoff,
+            "map_feature_properties": feature.get("properties") or {},
+            "map_layer_id": feature.get("layer_id"),
+            "map_feature_id": feature.get("feature_id"),
+            "tod_verified": False,
+            "precinct_verified": False,
+        })
+        proposal = {
+            "development_type": development_type,
+            "spatial_context": {
+                "map_feature": handoff,
+                "map_feature_properties": feature.get("properties") or {},
+                "map_layer_id": feature.get("layer_id"),
+                "map_feature_id": feature.get("feature_id"),
+                "tod_verified": False,
+                "precinct_verified": False,
+                "shop_frontage_verified": False,
+                "shop_office_verified": False,
+            },
+        }
+        applicability = urbion_check_applicability(proposal, rules)
+        compliance = urbion_evaluate_compliance(applicability, feature.get("proposal") or {})
+    return {
+        "evidence": handoff,
+        "binding_status": "BOUND_CANDIDATES" if rules else ("ELIGIBLE_NO_RULE_MATCH" if handoff["eligible_for_rule_binding"] else "REVIEW"),
+        "rules": rules,
+        "applicability": applicability,
+        "compliance": compliance,
+        "statutory_approval_claim": False,
+        "decision_safe": False,
+    }
+
+
+@router.post("/spatial/feature-evidence/bind")
+def spatial_feature_evidence_bind(payload: dict = Body(default_factory=dict)):
+    feature = payload.get("feature") or payload
+    try:
+        return _bind_feature_evidence(
+            feature,
+            development_type=str(payload.get("development_type") or feature.get("development_type") or "").strip(),
+            authority=str(payload.get("authority") or "MBMB").strip(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "INVALID_FEATURE_EVIDENCE", "message": str(exc)}) from exc
 
 
 @router.post("/spatial/site-context")
