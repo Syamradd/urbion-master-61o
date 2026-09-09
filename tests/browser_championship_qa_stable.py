@@ -33,6 +33,9 @@ def stable_map_hash(page) -> str:
             src: el.currentSrc || el.src || '',
             className: el.className || '',
           })).sort((a, b) => a.src.localeCompare(b.src)),
+          activeLayers: Array.from(document.querySelectorAll('#cs-layer-drawer input[data-layer]:checked'))
+            .map((el) => el.getAttribute('data-layer') || '')
+            .sort(),
         })
         """
     )
