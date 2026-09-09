@@ -38,13 +38,15 @@ const PAIRS={
   'LIVE SPATIAL PLANNING':'PERANCANGAN RUANG LANGSUNG','Evidence-aware · source-aware · planner in the loop':'Peka bukti · peka sumber · perancang dalam gelung',
   'Evidence first. Spatial first. Explainable AI. Planner in the loop.':'Utamakan bukti. Utamakan ruang. AI boleh dihuraikan. Perancang dalam gelung.',
   'Built by the URBION HORIZON student team':'Dibangunkan oleh pasukan pelajar URBION HORIZON',
-  'Back to Command Centre':'Kembali ke Pusat Kawalan'
+  'Back to Command Centre':'Kembali ke Pusat Kawalan',
+  'Unified case package':'Pakej kes bersepadu'
 };
 const EN_TO_BM={...PAIRS};
 const BM_TO_EN=Object.fromEntries(Object.entries(PAIRS).map(([en,bm])=>[bm,en]));
 const candidates=()=>Array.from(document.querySelectorAll('button,a,[role="button"]')).filter(el=>/^(EN|BM|ENGLISH|BAHASA MELAYU)$/i.test((el.textContent||'').trim())||el.dataset.urbionLanguageToggle==='1');
 const normal=(v)=>String(v??'').replace(/\s+/g,' ').trim();
-let lang=(localStorage.getItem('urbion-language')||'en').toLowerCase().startsWith('ms')?'ms':'en';
+let lang=(localStorage.getItem('urbion-language')||'en').toLowerCase();
+lang=lang==='ms'?'ms':'en';
 function ensureKey(el){
   if(el.closest('script,style,textarea,input,select,option'))return null;
   const marked=el.dataset.urbionLangKey;
@@ -54,7 +56,19 @@ function ensureKey(el){
   if(BM_TO_EN[text]){el.dataset.urbionLangKey=BM_TO_EN[text];return BM_TO_EN[text];}
   return null;
 }
+function ensureKeyText(text){const t=normal(text);return EN_TO_BM[t]?t:BM_TO_EN[t]||null;}
+function ensureWorkspaceContract(){
+  const content=document.querySelector('#cs-content');
+  if(!content)return;
+  if(content.querySelector('[data-urbion-case-package="1"]'))return;
+  const marker=document.createElement('div');
+  marker.dataset.urbionCasePackage='1';
+  marker.textContent=lang==='ms'?'Pakej kes bersepadu':'Unified case package';
+  marker.style.cssText='margin:0 0 8px;padding:7px 9px;border:1px solid rgba(72,194,221,.16);border-radius:8px;background:rgba(5,22,34,.55);color:#9ed6df;font:800 9px/1.3 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;';
+  content.prepend(marker);
+}
 function apply(){
+  ensureWorkspaceContract();
   const ms=lang==='ms';
   document.querySelectorAll('button,label,h1,h2,h3,h4,p,small,span,a,.eyebrow,.label,.site-meta,.muted').forEach(el=>{
     if(el.closest('script,style,textarea,input,select,option'))return;
@@ -72,7 +86,6 @@ function apply(){
   localStorage.setItem('urbion-language',ms?'ms':'en');
   window.__URBION_HORIZON_LANGUAGE__=ms?'ms':'en';
 }
-function ensureKeyText(text){const t=normal(text);return EN_TO_BM[t]?t:BM_TO_EN[t]||null;}
 function bindToggle(){
   candidates().forEach(t=>{
     t.dataset.urbionLanguageToggle='1';
