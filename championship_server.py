@@ -61,6 +61,7 @@ ALLOWED_ASSETS = {"urbion_map_identify_runtime.js",
     "urbion_championship_ui_repair_v2.js",
     "urbion_championship_map_bridge.js",
     "urbion_championship_input_neutralizer.js",
+    "urbion_horizon_language_contract.js",
 }
 
 COMPATIBILITY_STACK = (
@@ -123,6 +124,7 @@ def _frontend_root() -> HTMLResponse:
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/urbion_championship_command_shell.js"></script>
+<script src="/urbion_horizon_language_contract.js"></script>
 <script src="/urbion_map_identify_runtime.js"></script>
 <script src="/urbion_championship_horizon_ui.js"></script>
 </body>
@@ -281,6 +283,7 @@ _PRIORITY_PATHS = (
     "/urbion_championship_ui_repair_v2.js",
     "/urbion_championship_map_bridge.js",
     "/urbion_championship_input_neutralizer.js",
+    "/urbion_horizon_language_contract.js",
     "/urbion_what_if_upgrade.js",
     "/urbion_logo_dark.svg",
     "/urbion_logo_light.svg",
