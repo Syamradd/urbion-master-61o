@@ -43,7 +43,7 @@ function ensurePanel(){
   document.head.appendChild(style);host.appendChild(panel);panel.querySelector('[data-umi-close]').onclick=()=>panel.remove();return panel;
 }
 function render(payload){
-  const panel=ensurePanel(),body=panel.querySelector('[data-umi-body');
+  const panel=ensurePanel(),body=panel.querySelector('[data-umi-body]');
   if(!body)return;
   if(!payload){body.innerHTML='<span class="umi-muted">No feature identified at this location.</span>';return;}
   const p=payload.properties||{};
@@ -56,7 +56,7 @@ function featureId(feature){
   const p=feature?.properties||feature?.attributes||{};
   return String(feature?.id??p.id??p.OBJECTID??p.objectid??p.fid??'Not exposed');
 }
-async function identifyAtPoint(layerIds,latlng,mapInstance){
+async function identifyAtPoint(layerIds,latlng){
   const params=new URLSearchParams({site_lat:String(latlng.lat),site_lon:String(latlng.lng),radius_m:'120',state:selectedState(),layers:layerIds.join(',')});
   const response=await fetch('/spatial/site-context?'+params.toString(),{credentials:'same-origin',headers:{Accept:'application/json'}});
   if(!response.ok)throw new Error('HTTP '+response.status);
@@ -65,7 +65,7 @@ async function identifyAtPoint(layerIds,latlng,mapInstance){
   for(const item of (data.layers||[])){
     const candidates=Array.isArray(item.features)?item.features:[];
     const feature=candidates.find(f=>{
-      const props=f?.properties||{};
+      const props=f?.properties||f?.attributes||{};
       return props?.OBJECTID!==undefined||props?.objectid!==undefined||props?.id!==undefined||f?.id!==undefined;
     })||candidates[0];
     if(feature){
@@ -81,7 +81,7 @@ async function onClick(e){
   state.active=true;state.pending=layers.length;const panel=ensurePanel();panel.querySelector('[data-umi-body]').innerHTML='<span>Identifying live source features…</span>';
   const ids=layers.map(([id])=>String(id));
   try{
-    const results=await identifyAtPoint(ids,e.latlng,m);
+    const results=await identifyAtPoint(ids,e.latlng);
     state.pending=0;state.last=results[0]||null;render(state.last);
     window.dispatchEvent(new CustomEvent('urbion-map-identify',{detail:{point:e.latlng,results}}));
   }catch(err){
