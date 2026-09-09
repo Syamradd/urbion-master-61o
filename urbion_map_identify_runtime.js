@@ -3,16 +3,32 @@
 if(window.__URBION_MAP_IDENTIFY_RUNTIME__)return;
 window.__URBION_MAP_IDENTIFY_RUNTIME__=true;
 
-const state={version:1,active:false,last:null,pending:0};
+const state={version:2,active:false,last:null,pending:0};
 window.__URBION_MAP_IDENTIFY__=state;
 const $=(s,r=document)=>r.querySelector(s);
 
 function map(){return window.__URBION_FCC_MAP__||window.URBION_FCC_MAP||window.__URBION_MAP__||null;}
 function visibleOfficialLayers(){
+  const m=map();
+  if(!m)return [];
   const store=window.__URBION_OFFICIAL_LAYERS__||{};
-  return Object.entries(store).filter(([,layer])=>{const m=map();return layer&&m?.hasLayer?.(layer)&&layer.__urbionSource});
+  const candidates=[...Object.entries(store).map(([id,layer])=>[id,layer])];
+  if(m._layers){
+    Object.values(m._layers).forEach(layer=>{
+      if(!layer?.__urbionSource)return;
+      const id=layer.__urbionLayerId||layer.__urbionId||layer.__urbionSource;
+      candidates.push([id,layer]);
+    });
+  }
+  const seen=new Set();
+  return candidates.filter(([id,layer])=>{
+    if(!layer||!layer.__urbionSource||!m.hasLayer?.(layer))return false;
+    const key=String(layer.__urbionSource)+'|'+String(id);
+    if(seen.has(key))return false;
+    seen.add(key);return true;
+  });
 }
-function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));}
+function esc(v){return String(v??'').replace(/[&<>\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#39;'}[c]));}
 function ensurePanel(){
   let panel=$('#urbion-map-identify');
   if(panel)return panel;
@@ -37,7 +53,7 @@ function render(payload){
 }
 function identify(service,latlng,mapInstance){
   const b=mapInstance.getBounds(),size=mapInstance.getSize();
-  const params=new URLSearchParams({f:'json',geometry:JSON.stringify({x:latlng.lng,y:latlng.lat,spatialReference:{wkid:4326}}),geometryType:'esriGeometryPoint',sr:'4326',layers:'all:0',tolerance:'8',mapExtent:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(','),imageDisplay:[size.x,size.y,96].join(','),returnGeometry:'false'});
+  const params=new URLSearchParams({f:'json',geometry:JSON.stringify({x:latlng.lng,y:latlng.lat,spatialReference:{wkid:4326}}),geometryType:'esriGeometryPoint',sr:'4326',layers:'all',tolerance:'8',mapExtent:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(','),imageDisplay:[size.x,size.y,96].join(','),returnGeometry:'false'});
   return fetch(service.replace(/\/$/,'')+'/identify?'+params.toString(),{credentials:'omit'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
 }
 async function onClick(e){
