@@ -23,3 +23,8 @@ def test_identify_runtime_contains_live_query_and_conservative_evidence_guards()
 def test_identify_runtime_surfaces_multiple_layer_results_and_selection():
     for token in ('lastResults', 'FEATURE', 'data-umi-result', 'renderSelected', 'results.length'):
         assert token in RUNTIME
+
+
+def test_identify_runtime_contains_mandatory_smart_city_visual_environment():
+    for token in ('urbion-visual-environment', 'uve-sky', 'uve-grid', 'uve-skyline', 'installVisualEnvironment'):
+        assert token in RUNTIME
