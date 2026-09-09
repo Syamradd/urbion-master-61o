@@ -12,10 +12,11 @@ STATION_SOURCE_CONTRACT: dict[str, dict[str, Any]] = {
     "air_quality": {
         "provider": "JAS MyEQMS / EQMP",
         "mode": "PUBLIC_DATA_PORTAL",
-        "machine_query": "NOT_ESTABLISHED",
-        "geometry": "NOT_CLAIMED",
+        "machine_query": "AVAILABLE_AS_FEATURE_QUERY",
+        "geometry": "FEATURE_QUERY",
         "reading_fields": ["IPU", "PM2.5", "PM10", "SO2", "NO2", "O3", "CO"],
         "evidence_state": "SOURCE_CONTEXT",
+        "adapter": "urbion_myeqms_adapter.fetch_myeqms_stations",
     },
     "rainfall": {
         "provider": "JPS Public Infobanjir",
