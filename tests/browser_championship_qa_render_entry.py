@@ -16,7 +16,23 @@ def _origin() -> str:
     return raw.rstrip("/")
 
 
-qa.BASE_URL = _origin() + "/championship.html"
+class _QAEntryURL(str):
+    """Keep the QA module's health probe at the origin while browsing the canonical entry."""
+
+    def __new__(cls, origin: str):
+        value = str.__new__(cls, origin + "/championship.html")
+        value.origin = origin
+        return value
+
+    def __add__(self, other):
+        if other == "/health":
+            return self.origin + "/health"
+        if other == "/":
+            return str(self)
+        return str.__add__(self, other)
+
+
+qa.BASE_URL = _QAEntryURL(_origin())
 stable.qa.BASE_URL = qa.BASE_URL
 
 if __name__ == "__main__":
