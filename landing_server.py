@@ -17,6 +17,7 @@ LANGUAGE_BOOTSTRAP = BASE_DIR / "urbion_horizon_language_bootstrap.js"
 HORIZON_UI_ASSET = BASE_DIR / "urbion_championship_horizon_ui.js"
 HORIZON_H1_CONTRACT = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.03!important;"
 HORIZON_H1_SAFE = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.12!important;"
+HORIZON_H1_STYLE = "body.horizon-ui .hero h1{line-height:1.12!important;height:auto!important;min-height:0!important;overflow:visible!important;box-sizing:border-box!important;}"
 
 
 def _canonical_championship_page() -> HTMLResponse:
@@ -28,8 +29,11 @@ def _canonical_championship_page() -> HTMLResponse:
     html = body.decode("utf-8")
     marker = "</body>"
     script = '<script src="/urbion_horizon_language_bootstrap.js"></script>'
+    style = f'<style id="horizon-h1-visual-contract">{HORIZON_H1_STYLE}</style>'
     if script not in html and marker in html:
-        html = html.replace(marker, script + marker, 1)
+        html = html.replace(marker, script + style + marker, 1)
+    elif marker in html and "horizon-h1-visual-contract" not in html:
+        html = html.replace(marker, style + marker, 1)
     return HTMLResponse(
         html,
         status_code=response.status_code,
