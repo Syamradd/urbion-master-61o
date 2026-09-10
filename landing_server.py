@@ -14,6 +14,9 @@ from championship_server import _frontend_root, app
 BASE_DIR = Path(__file__).resolve().parent
 LANDING_FILE = BASE_DIR / "landing.html"
 LANGUAGE_BOOTSTRAP = BASE_DIR / "urbion_horizon_language_bootstrap.js"
+HORIZON_UI_ASSET = BASE_DIR / "urbion_championship_horizon_ui.js"
+HORIZON_H1_CONTRACT = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.03!important;"
+HORIZON_H1_SAFE = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.12!important;"
 
 
 def _canonical_championship_page() -> HTMLResponse:
@@ -56,6 +59,21 @@ async def _urbion_landing_override(request: Request, call_next):
             return Response("URBION HORIZON language bootstrap is missing.", status_code=500, media_type="text/plain; charset=utf-8")
         return Response(
             LANGUAGE_BOOTSTRAP.read_text(encoding="utf-8"),
+            media_type="application/javascript; charset=utf-8",
+            headers={"Cache-Control": "no-store, max-age=0"},
+        )
+    if request.url.path == "/urbion_championship_horizon_ui.js":
+        if not HORIZON_UI_ASSET.is_file():
+            return Response("URBION HORIZON UI asset is missing.", status_code=500, media_type="text/plain; charset=utf-8")
+        payload = HORIZON_UI_ASSET.read_text(encoding="utf-8")
+        # Keep the canonical UI asset unchanged on disk; only the production
+        # entrypoint applies this surgical visual guard against 4px heading
+        # clipping reported by the browser acceptance contract.
+        if HORIZON_H1_CONTRACT not in payload:
+            return Response("URBION HORIZON heading visual contract is missing.", status_code=500, media_type="text/plain; charset=utf-8")
+        payload = payload.replace(HORIZON_H1_CONTRACT, HORIZON_H1_SAFE, 1)
+        return Response(
+            payload,
             media_type="application/javascript; charset=utf-8",
             headers={"Cache-Control": "no-store, max-age=0"},
         )
