@@ -7,7 +7,6 @@
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const ROOT=()=>$('#urbion-championship-shell');
-  const langKey='urbion-lang';
   const themeKey='urbion-theme';
   const IPLAN_WMS='https://iplan.planmalaysia.gov.my/geoserver/iplan/wms';
   const WMS={
@@ -33,8 +32,6 @@
     'lcp intelligence':'nav-lcp',
     'output':'nav-output'
   };
-  const DICT={
-    'Overview':'Gambaran Keseluruhan','Site Intelligence':'Kecerdasan Tapak','AI Assessment':'Penilaian AI','What-If':'Bagaimana Jika','Decision Centre':'Pusat Keputusan','LCP Intelligence':'Kecerdasan LCP','Output':'Output','Define Planning Case':'Tentukan Kes Perancangan','Spatial Intelligence Map':'Peta Kecerdasan Spatial','Planning Intelligence':'Kecerdasan Perancangan','Evidence · Analysis · Scenario · Decision':'Eviden · Analisis · Senario · Keputusan','Decision Readiness':'Kesediaan Keputusan','Site Intelligence':'Kecerdasan Tapak','Evidence Health':'Kesihatan Eviden','Next Action':'Tindakan Seterusnya','Analysis Ready':'Analisis Sedia','System Online':'Sistem Dalam Talian','Layers':'Lapisan','Street':'Jalan','Satellite':'Satelit','Hybrid':'Hibrid','Live':'Langsung','Source Unavailable':'Sumber Tidak Tersedia','Query Error':'Ralat Pertanyaan','No Feature':'Tiada Ciri','Not Provided':'Tidak Dibekalkan','Run Site Analysis':'Jalankan Analisis Tapak','Case History':'Sejarah Kes','New Case':'Kes Baharu','Use Map Selection':'Guna Pemilihan Peta','Locate me':'Lokasi Saya','Location':'Lokasi','Site / Parcel':'Tapak / Lot','TOD / Transit':'TOD / Transit','Road Network':'Rangkaian Jalan','Current Land Use':'Guna Tanah Semasa','Zoning':'Zon Guna Tanah','Committed Land Use':'Guna Tanah Komited','Flood':'Banjir','Disaster Risk':'Risiko Bencana','Topography':'Topografi','Heritage':'Warisan','Ecological Network':'Rangkaian Ekologi','Environment / Risk':'Alam Sekitar / Risiko','Risk / Hazard':'Risiko / Bahaya','Parcel':'Lot','Planning':'Perancangan','Terrain':'Bentuk Muka Bumi','Geology':'Geologi','Hydrology':'Hidrologi','Add Files':'Tambah Fail','Print':'Cetak','Export':'Eksport','Sources':'Sumber','About Us':'Tentang Kami','Help':'Bantuan'};
 
   function addStyle(){
     if($('#urbion-p20506-style')) return;
@@ -81,27 +78,10 @@
     nodes.forEach(el=>{const c=navClassFor(normalizedText(el));if(c)el.classList.add(c)});
   }
 
-  function translateElement(el,bm){
-    if(el.closest('input,textarea,select'))return;
-    if(el.children.length===0){const raw=String(el.textContent||'').trim();if(bm&&DICT[raw])el.textContent=DICT[raw];else if(!bm){const found=Object.entries(DICT).find(([,v])=>v===raw);if(found)el.textContent=found[0];}}
-  }
-  function applyLanguage(){
-    const bm=localStorage.getItem(langKey)==='bm';
-    document.documentElement.lang=bm?'ms':'en';
-    const root=ROOT();if(!root)return;
-    root.querySelectorAll('*').forEach(el=>translateElement(el,bm));
-    root.querySelectorAll('option').forEach(o=>{const raw=o.value||o.textContent.trim();if(bm&&DICT[raw])o.textContent=DICT[raw];else if(!bm){const found=Object.entries(DICT).find(([,v])=>v===o.textContent.trim());if(found)o.textContent=found[0];}});
-    const btn=$$('button,.main-nav a,nav a',document).find(el=>/^BM$|^EN$/i.test(String(el.textContent||'').trim()));
-    if(btn){btn.textContent=bm?'EN':'BM';btn.setAttribute('aria-label',bm?'Switch to English':'Tukar ke Bahasa Melayu');}
-  }
-  function bindLanguage(){
-    const all=$$('button,.main-nav a,nav a',document);all.forEach(el=>{if(el.dataset.urbionLangBound)return;const t=String(el.textContent||'').trim();if(!/^BM$|^EN$/i.test(t))return;el.dataset.urbionLangBound='1';el.addEventListener('click',()=>setTimeout(()=>{localStorage.setItem(langKey,localStorage.getItem(langKey)==='bm'?'en':'bm');applyLanguage();},30),{passive:true});});
-  }
-
   function applyTheme(){
-    const bm=localStorage.getItem(themeKey)==='light';
-    document.documentElement.classList.toggle('cs-light',bm);
-    document.body.classList.toggle('cs-light',bm);
+    const light=localStorage.getItem(themeKey)==='light';
+    document.documentElement.classList.toggle('cs-light',light);
+    document.body.classList.toggle('cs-light',light);
   }
   function bindTheme(){
     const buttons=$$('button,.main-nav a,nav a');
@@ -144,13 +124,13 @@
   }
 
   function boot(){
-    addStyle();applyTheme();styleNav();bindLanguage();bindTheme();applyLanguage();ensureSourceHub();wireRecoveredLayers();
+    addStyle();applyTheme();styleNav();bindTheme();ensureSourceHub();wireRecoveredLayers();
     let observerBusy=false;
     const observer=new MutationObserver(()=>{
       if(observerBusy) return;
       observerBusy=true;
       try{
-        styleNav();bindLanguage();bindTheme();ensureSourceHub();wireRecoveredLayers();
+        styleNav();bindTheme();ensureSourceHub();wireRecoveredLayers();
       }finally{
         observerBusy=false;
       }
