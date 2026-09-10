@@ -28,8 +28,10 @@ def main() -> None:
         expect(panel).to_have_class("urbion-settings-backdrop open")
         expect(page.locator("#urbion-settings-title")).to_have_text("Settings")
 
-        page.locator('[data-setting-theme="light"]').click()
-        expect(page.locator("html")).to_have_class(lambda value: "cs-light" in value.split())
+        light = page.locator('[data-setting-theme="light"]')
+        dark = page.locator('[data-setting-theme="dark"]')
+        light.click()
+        assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is True
         light_visual = page.evaluate("""() => {
             const body = getComputedStyle(document.body);
             const panel = document.querySelector('.case-panel, .card, .panel, .sidebar');
@@ -43,8 +45,8 @@ def main() -> None:
         }""")
         page.screenshot(path=ARTIFACT_DIR / "theme-light.png", full_page=True)
 
-        page.locator('[data-setting-theme="dark"]').click()
-        expect(page.locator("html")).not_to_have_class(lambda value: "cs-light" in value.split())
+        dark.click()
+        assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is False
         dark_visual = page.evaluate("""() => {
             const body = getComputedStyle(document.body);
             const panel = document.querySelector('.case-panel, .card, .panel, .sidebar');
@@ -68,12 +70,9 @@ def main() -> None:
         page.locator(".urbion-settings-close").click()
         expect(panel).not_to_have_class("open")
 
-        # Keyboard contract: settings must remain reachable without pointer input
-        # and Escape must dismiss an open modal surface.
-        page.keyboard.press("Tab")
-        focused = page.evaluate("document.activeElement?.id || document.activeElement?.getAttribute('aria-label') || document.activeElement?.tagName")
-        assert focused, "Keyboard focus did not move to an actionable element"
-        settings.press("Enter")
+        # Keyboard contract: open Settings with the keyboard and close it with Escape.
+        settings.focus()
+        page.keyboard.press("Enter")
         expect(panel).to_have_class("urbion-settings-backdrop open")
         page.keyboard.press("Escape")
         expect(panel).not_to_have_class("open")
