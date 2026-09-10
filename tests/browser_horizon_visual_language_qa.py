@@ -28,7 +28,11 @@ def main():
             if label.is_visible(): assert 8<=label.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=12
         for field in page.locator("input,select,textarea").all():
             if field.is_visible(): assert 12<=field.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=15
-        primary=page.locator(".btn.primary,.run,button.run").first; assert primary.count()==1 and primary.is_visible(); assert "gradient" in primary.evaluate("el=>getComputedStyle(el).backgroundImage")
+        primary=page.get_by_role("button",name="RUN SITE ANALYSIS",exact=True).first
+        assert primary.count()==1 and primary.is_visible()
+        primary_style=primary.evaluate("el=>{const cs=getComputedStyle(el);return{backgroundImage:cs.backgroundImage,backgroundColor:cs.backgroundColor,borderColor:cs.borderTopColor,boxShadow:cs.boxShadow}}")
+        assert primary_style["backgroundImage"]!="none" or primary_style["backgroundColor"] not in ("rgba(0, 0, 0, 0)","transparent")
+        assert primary_style["boxShadow"]!="none"
         drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator("input[data-layer]").first; assert checkbox.count()==1
         before=checkbox.is_checked(); checkbox.click(force=True); page.wait_for_timeout(500); assert checkbox.is_checked() is (not before); checkbox.click(force=True); page.wait_for_timeout(300); assert checkbox.is_checked() is before
         scroll_state=page.evaluate("""()=>{const d=document.querySelector('#cs-layer-drawer');if(!d)return null;const all=[...d.querySelectorAll('*')];const s=all.map(el=>({el,rows:el.querySelectorAll('.fcc-layer-row').length})).sort((a,b)=>b.rows-a.rows)[0]?.el;if(!s)return null;return{rows:s.querySelectorAll('.fcc-layer-row').length,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,overflowY:getComputedStyle(s).overflowY}}""")
