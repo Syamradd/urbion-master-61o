@@ -20,6 +20,7 @@ VISUAL_V2 = BASE_DIR / "urbion_championship_visual_system_v2.js"
 HORIZON_H1_CONTRACT = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.03!important;"
 HORIZON_H1_SAFE = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.2!important;"
 HORIZON_H1_STYLE = "body.horizon-ui .hero h1{line-height:1.2!important;height:auto!important;min-height:0!important;overflow:visible!important;box-sizing:border-box!important;}"
+MAP_SIZE_STYLE = "body.horizon-ui .map-panel-canonical .leaflet-container{height:clamp(520px,62vh,760px)!important;min-height:500px!important;}@media(max-width:1120px){body.horizon-ui .map-panel-canonical .leaflet-container{height:600px!important;min-height:520px!important;}}@media(max-width:760px){body.horizon-ui .map-panel-canonical .leaflet-container{height:540px!important;min-height:0!important;}}"
 
 
 def _canonical_championship_page() -> HTMLResponse:
@@ -36,10 +37,8 @@ def _canonical_championship_page() -> HTMLResponse:
         '<script src="/urbion_championship_visual_system_v2.js"></script>'
         '<script src="/urbion_horizon_language_bootstrap.js"></script>'
         f'<style id="horizon-h1-visual-contract">{HORIZON_H1_STYLE}</style>'
+        f'<style id="horizon-map-size-visual-contract">{MAP_SIZE_STYLE}</style>'
     )
-    # _frontend_root() already contains the HORIZON UI script; only add missing
-    # presentation assets. The guard is intentionally string-based to avoid
-    # mutating any application engine/API contract.
     if marker in html:
         if "urbion_championship_visual_system_v1.js" not in html:
             html = html.replace(marker, '<script src="/urbion_championship_visual_system_v1.js"></script>' + marker, 1)
@@ -51,7 +50,8 @@ def _canonical_championship_page() -> HTMLResponse:
             html = html.replace(marker, '<script src="/urbion_horizon_language_bootstrap.js"></script>' + marker, 1)
         if "horizon-h1-visual-contract" not in html:
             html = html.replace(marker, f'<style id="horizon-h1-visual-contract">{HORIZON_H1_STYLE}</style>' + marker, 1)
-    # Fail fast during local/CI startup if a required visual asset disappeared.
+        if "horizon-map-size-visual-contract" not in html:
+            html = html.replace(marker, f'<style id="horizon-map-size-visual-contract">{MAP_SIZE_STYLE}</style>' + marker, 1)
     for asset in (VISUAL_V1, VISUAL_OVERHAUL, VISUAL_V2):
         if not asset.is_file():
             return HTMLResponse(f"URBION HORIZON presentation asset missing: {asset.name}", status_code=500)
