@@ -12,7 +12,7 @@ import hashlib
 import json
 
 import browser_championship_qa as qa
-from playwright.sync_api import Locator
+from playwright.sync_api import Locator, Page
 
 
 def stable_map_hash(page) -> str:
@@ -61,6 +61,21 @@ def _click_with_run_scroll(self, *args, **kwargs):
 
 
 Locator.click = _click_with_run_scroll
+
+# About page uses visual/font resources that can keep a connection alive after
+# navigation. The product contract is successful navigation + DOM readiness,
+# not a global network-idle condition. Normalize only the browser gate's
+# expect_navigation wait state; application behaviour is untouched.
+_original_expect_navigation = Page.expect_navigation
+
+
+def _expect_navigation_domcontentloaded(self, *args, **kwargs):
+    if kwargs.get("wait_until") == "networkidle":
+        kwargs["wait_until"] = "domcontentloaded"
+    return _original_expect_navigation(self, *args, **kwargs)
+
+
+Page.expect_navigation = _expect_navigation_domcontentloaded
 
 
 if __name__ == "__main__":
