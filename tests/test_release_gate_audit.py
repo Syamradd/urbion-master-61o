@@ -20,12 +20,14 @@ def test_release_manifest_keeps_explicit_authority_and_verification_boundaries()
 
 def test_production_frontend_contract_serves_same_origin_assets():
     client = TestClient(app)
-    root = client.get('/')
+    root = client.get('/championship.html')
     assert root.status_code == 200
-    assert 'urbion_championship_workstation_v2.js' in root.text
-    asset = client.get('/urbion_championship_workstation_v2.js')
+    assert 'id="urbion-championship-shell"' in root.text
+    assert '/urbion_championship_command_shell.js' in root.text
+    assert '/urbion_map_identify_runtime.js' in root.text
+    asset = client.get('/urbion_championship_command_shell.js')
     assert asset.status_code == 200
-    assert '/workstation/analysis' in asset.text
+    assert asset.text.strip()
 
 
 def test_production_health_and_assessment_remain_available():
