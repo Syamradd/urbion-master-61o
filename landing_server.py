@@ -17,6 +17,7 @@ HORIZON_UI_ASSET = BASE_DIR / "urbion_championship_horizon_ui.js"
 VISUAL_V1 = BASE_DIR / "urbion_championship_visual_system_v1.js"
 VISUAL_OVERHAUL = BASE_DIR / "urbion_horizon_visual_overhaul.js"
 VISUAL_V2 = BASE_DIR / "urbion_championship_visual_system_v2.js"
+LAYER_TOGGLE_REPAIR = BASE_DIR / "urbion_layer_toggle_repair.js"
 HORIZON_H1_CONTRACT = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.03!important;"
 HORIZON_H1_SAFE = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.2!important;"
 HORIZON_H1_STYLE = "body.horizon-ui .hero h1{line-height:1.2!important;height:auto!important;min-height:0!important;overflow:visible!important;box-sizing:border-box!important;}"
@@ -30,15 +31,6 @@ def _canonical_championship_page() -> HTMLResponse:
         body = str(body).encode("utf-8")
     html = body.decode("utf-8")
     marker = "</body>"
-    additions = (
-        '<script src="/urbion_championship_horizon_ui.js"></script>'
-        '<script src="/urbion_championship_visual_system_v1.js"></script>'
-        '<script src="/urbion_horizon_visual_overhaul.js"></script>'
-        '<script src="/urbion_championship_visual_system_v2.js"></script>'
-        '<script src="/urbion_horizon_language_bootstrap.js"></script>'
-        f'<style id="horizon-h1-visual-contract">{HORIZON_H1_STYLE}</style>'
-        f'<style id="horizon-map-size-visual-contract">{MAP_SIZE_STYLE}</style>'
-    )
     if marker in html:
         if "urbion_championship_visual_system_v1.js" not in html:
             html = html.replace(marker, '<script src="/urbion_championship_visual_system_v1.js"></script>' + marker, 1)
@@ -48,11 +40,13 @@ def _canonical_championship_page() -> HTMLResponse:
             html = html.replace(marker, '<script src="/urbion_championship_visual_system_v2.js"></script>' + marker, 1)
         if "urbion_horizon_language_bootstrap.js" not in html:
             html = html.replace(marker, '<script src="/urbion_horizon_language_bootstrap.js"></script>' + marker, 1)
+        if "urbion_layer_toggle_repair.js" not in html:
+            html = html.replace(marker, '<script src="/urbion_layer_toggle_repair.js"></script>' + marker, 1)
         if "horizon-h1-visual-contract" not in html:
             html = html.replace(marker, f'<style id="horizon-h1-visual-contract">{HORIZON_H1_STYLE}</style>' + marker, 1)
         if "horizon-map-size-visual-contract" not in html:
             html = html.replace(marker, f'<style id="horizon-map-size-visual-contract">{MAP_SIZE_STYLE}</style>' + marker, 1)
-    for asset in (VISUAL_V1, VISUAL_OVERHAUL, VISUAL_V2):
+    for asset in (VISUAL_V1, VISUAL_OVERHAUL, VISUAL_V2, LAYER_TOGGLE_REPAIR):
         if not asset.is_file():
             return HTMLResponse(f"URBION HORIZON presentation asset missing: {asset.name}", status_code=500)
     return HTMLResponse(
@@ -89,15 +83,19 @@ async def _urbion_landing_override(request: Request, call_next):
         return Response(VISUAL_V1.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
     if request.url.path == "/urbion_horizon_visual_overhaul.js":
         if not VISUAL_OVERHAUL.is_file():
-            return Response("Visual overhaul is missing.", status_code=500, media_type="text/plain; charset=utf-8")
+            return Response("Visual overhaul is missing.", status_code=500, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
         return Response(VISUAL_OVERHAUL.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
     if request.url.path == "/urbion_championship_visual_system_v2.js":
         if not VISUAL_V2.is_file():
             return Response("Visual system v2 is missing.", status_code=500, media_type="text/plain; charset=utf-8")
         return Response(VISUAL_V2.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+    if request.url.path == "/urbion_layer_toggle_repair.js":
+        if not LAYER_TOGGLE_REPAIR.is_file():
+            return Response("Layer toggle repair asset is missing.", status_code=500, media_type="application/javascript; charset=utf-8")
+        return Response(LAYER_TOGGLE_REPAIR.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
     if request.url.path == "/urbion_championship_horizon_ui.js":
         if not HORIZON_UI_ASSET.is_file():
-            return Response("URBION HORIZON UI asset is missing.", status_code=500, media_type="text/plain; charset=utf-8")
+            return Response("URBION HORIZON UI asset is missing.", status_code=500, media_type="application/javascript; charset=utf-8")
         payload = HORIZON_UI_ASSET.read_text(encoding="utf-8")
         if HORIZON_H1_CONTRACT not in payload:
             return Response("URBION HORIZON heading visual contract is missing.", status_code=500, media_type="text/plain; charset=utf-8")
