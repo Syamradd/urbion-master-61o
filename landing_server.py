@@ -7,7 +7,7 @@ planning application remains the canonical workstation at /championship.html.
 from pathlib import Path
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 
 from championship_server import _frontend_root, app
 
@@ -47,4 +47,12 @@ async def _urbion_landing_override(request: Request, call_next):
         )
     if request.url.path == "/championship.html":
         return _canonical_championship_page()
+    if request.url.path == "/urbion_horizon_language_bootstrap.js":
+        if not LANGUAGE_BOOTSTRAP.is_file():
+            return Response("URBION HORIZON language bootstrap is missing.", status_code=500, media_type="text/plain; charset=utf-8")
+        return Response(
+            LANGUAGE_BOOTSTRAP.read_text(encoding="utf-8"),
+            media_type="application/javascript; charset=utf-8",
+            headers={"Cache-Control": "no-store, max-age=0"},
+        )
     return await call_next(request)
