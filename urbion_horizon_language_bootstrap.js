@@ -13,6 +13,16 @@
     ["LAPISAN PETA", "MAP LAYERS"],
   ];
 
+  const ensureVisualSafety = () => {
+    if (!document.head || document.getElementById("urbion-horizon-visual-safety")) return;
+    const style = document.createElement("style");
+    style.id = "urbion-horizon-visual-safety";
+    style.textContent = [
+      "body.horizon-ui .hero h1{height:auto!important;min-height:0!important;overflow:visible!important;display:block!important;}"
+    ].join("");
+    document.head.appendChild(style);
+  };
+
   const sweepEnglishText = () => {
     if (document.documentElement.lang !== "en" || !document.body) return;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -29,12 +39,14 @@
   const bindLanguageSweep = () => {
     const setLang = window.__URBION_HORIZON_SET_LANG__;
     if (typeof setLang !== "function" || !document.body) return false;
+    ensureVisualSafety();
     const stored = String(localStorage.getItem("urbion-language") || "en").toLowerCase();
     setLang(stored.startsWith("ms") ? "ms" : "en");
     sweepEnglishText();
 
     if (!window.__URBION_HORIZON_LANGUAGE_OBSERVER__) {
       const observer = new MutationObserver(() => {
+        ensureVisualSafety();
         if (document.documentElement.lang === "en") sweepEnglishText();
       });
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
