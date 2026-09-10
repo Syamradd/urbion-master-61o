@@ -1,0 +1,30 @@
+name: One-time Runtime Theme Guard
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply final theme runtime guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "from pathlib import Path; p=Path('urbion_championship_horizon_ui.js'); s=p.read_text(encoding='utf-8'); marker=\"window.__URBION_HORIZON_THEME_RUNTIME_GUARD__=true;\"; guard='''\n/* Final runtime theme guard: re-assert persisted theme after any competing button handler. */\n(()=>{\n\"use strict\";\nif(window.__URBION_HORIZON_THEME_RUNTIME_GUARD__)return;\nwindow.__URBION_HORIZON_THEME_RUNTIME_GUARD__=true;\nconst apply=()=>{\n  const html=document.documentElement;\n  const stored=localStorage.getItem(\"urbion-theme\");\n  const light=stored===\"light\";\n  html.classList.toggle(\"cs-light\",light);\n  const logo=document.querySelector(\"#cs-logo\");\n  if(logo)logo.src=light?\"/urbion_logo_light.svg\":\"/urbion_logo_dark.svg\";\n};\napply();\ndocument.addEventListener(\"click\",event=>{\n  const button=event.target?.closest?.(\"#cs-theme\");\n  if(!button)return;\n  window.setTimeout(apply,0);\n},false);\n})();\n'''; idx=s.rfind(\"})();\"); assert idx>=0, \"HORIZON UI IIFE terminator not found\"; s=s[:idx+5]+\"\\n\"+guard+s[idx+5:]; p.write_text(s,encoding=\"utf-8\")"
+      - name: Commit repair and remove one-time files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add urbion_championship_horizon_ui.js
+          git rm .github/workflows/repair-theme-runtime-once.yml REPAIR_THEME_TRIGGER.txt 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git commit -m 'fix(runtime): enforce persisted theme after toggle'
+          git push origin HEAD:main
