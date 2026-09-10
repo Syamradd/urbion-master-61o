@@ -21,7 +21,17 @@ def main() -> None:
         browser_type = getattr(pw, BROWSER_NAME)
         browser = browser_type.launch()
         page = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
+
+        # The public root is the welcome/landing page. The planning workspace is
+        # reached through the same user-facing CTA that judges will use.
         page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
+        expect(page).to_have_title("URBION HORIZON — Smarter Places. Stronger Futures.")
+        expect(page.locator("#enter-platform")).to_be_visible()
+        expect(page.locator(".hero h1")).to_have_text("Smarter Places.Stronger Futures.")
+        page.locator("#enter-platform").click()
+        page.wait_for_load_state("networkidle")
+        expect(page).to_have_url(BASE_URL + "/championship.html")
+
         expect(page).to_have_title("URBION HORIZON — Planning Command Centre")
         expect(page.locator("#urbion-championship-shell")).to_have_count(1)
         expect(page.locator("#cs-map")).to_have_count(1)
