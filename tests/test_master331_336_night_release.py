@@ -18,54 +18,41 @@ def test_night_release_engine_identity_and_core_chain():
 def test_night_release_spatial_policy_decision_chain():
     client = TestClient(app)
     payload = {
-        'site_lat': 2.285,
-        'site_lon': 102.196,
-        'tod_lat': 2.286,
-        'tod_lon': 102.197,
+        'site_lat': 2.285, 'site_lon': 102.196,
+        'tod_lat': 2.286, 'tod_lon': 102.197,
         'plot_ratio': 4.5,
         'development_type': 'TOD Development / Mixed Use',
         'development_class': 'Mixed Use',
-        'state': 'Melaka',
-        'district': 'Melaka Tengah',
-        'pbt': 'Majlis Bandaraya Melaka Bersejarah',
-        'lot_no': '11213',
+        'state': 'Melaka', 'district': 'Melaka Tengah',
+        'pbt': 'Majlis Bandaraya Melaka Bersejarah', 'lot_no': '11213',
     }
     assessment = client.post('/assess', json=payload)
     assert assessment.status_code == 200
     body = assessment.json()
     assert body['version'] == 'PHASE-E.8'
     assert body['classification'] in {'TOD 400m', 'TOD 800m', 'OUTSIDE TOD 800m'}
-    assert 'policy_coverage' in body
-    assert 'compliance_results' in body
-    assert 'recommendation' in body
-    assert 'decision_trace' in body
+    assert 'policy_coverage' in body and 'compliance_results' in body
+    assert 'recommendation' in body and 'decision_trace' in body
     assert body['evidence_state']['statutory_verification'] == 'NOT_CLAIMED'
 
 
 def test_night_release_scenario_and_decision_surfaces():
     client = TestClient(app)
     payload = {
-        'site_lat': 2.285,
-        'site_lon': 102.196,
-        'tod_lat': 2.286,
-        'tod_lon': 102.197,
+        'site_lat': 2.285, 'site_lon': 102.196,
+        'tod_lat': 2.286, 'tod_lon': 102.197,
         'plot_ratio': 4.5,
         'development_type': 'TOD Development / Mixed Use',
         'development_class': 'Mixed Use',
-        'state': 'Melaka',
-        'district': 'Melaka Tengah',
-        'pbt': 'Majlis Bandaraya Melaka Bersejarah',
-        'lot_no': '11213',
+        'state': 'Melaka', 'district': 'Melaka Tengah',
+        'pbt': 'Majlis Bandaraya Melaka Bersejarah', 'lot_no': '11213',
     }
-    what_if = client.post('/what-if', json={'baseline': payload, 'variants': []})
-    assert what_if.status_code == 200
-    decision = client.post('/decision-center', json=payload)
-    assert decision.status_code == 200
+    assert client.post('/what-if', json={'baseline': payload, 'variants': []}).status_code == 200
+    assert client.post('/decision-center', json=payload).status_code == 200
     judge = client.get('/judge-mode')
     assert judge.status_code == 200
     assert judge.json()['version'] == 'PHASE-E.8'
-    gate = client.get('/championship-gate')
-    assert gate.status_code == 200
+    assert client.get('/championship-gate').status_code == 200
 
 
 def test_night_release_spatial_and_source_surfaces():
@@ -75,8 +62,7 @@ def test_night_release_spatial_and_source_surfaces():
     data = layers.json()
     assert data['layers']
     assert {'toggle', 'opacity', 'identify', 'legend', 'fit-to-site', 'measure-distance', 'measure-area', 'basemap', 'share-location'} <= set(data['layer_controls'])
-    sources = client.get('/sources')
-    assert sources.status_code == 200
+    assert client.get('/sources').status_code == 200
     public = client.get('/public-sources/map-services')
     assert public.status_code == 200
     assert public.json()['statutory_verification'] == 'NOT_CLAIMED'
@@ -84,9 +70,15 @@ def test_night_release_spatial_and_source_surfaces():
 
 def test_night_release_ui_workstation_and_judge_assets():
     client = TestClient(app)
-    root = client.get('/')
-    assert root.status_code == 200
-    html = root.text
+    landing = client.get('/')
+    assert landing.status_code == 200
+    landing_html = landing.text
+    for token in ('URBION HORIZON', 'Spatial Decision Intelligence', 'ENTER PLANNING COMMAND CENTRE', 'SMART CITY', 'ABOUT URBION HORIZON'):
+        assert token in landing_html
+
+    workstation = client.get('/championship.html')
+    assert workstation.status_code == 200
+    html = workstation.text
     for token in (
         'URBION HORIZON — Championship Workstation',
         'PHASE-E.8 ENGINE ONLINE',
