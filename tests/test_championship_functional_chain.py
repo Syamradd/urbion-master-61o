@@ -84,16 +84,16 @@ def test_canonical_planning_chain_executes_end_to_end():
     assert lcp_payload.get("decision_authority") in (None, "NONE") or lcp_payload.get("statutory_verification") == "NOT_CLAIMED"
 
 
-def test_canonical_root_contains_runtime_chain_and_no_legacy_popup_mount():
+def test_canonical_workstation_contains_runtime_chain_and_no_legacy_popup_mount():
     client = TestClient(app)
-    response = client.get("/")
+    response = client.get("/championship.html")
     assert response.status_code == 200
     html = response.text
     assert 'release:"MASTER-331"' in html
-    assert "/urbion_championship_final_command_center.js" in html
-    assert "/urbion_championship_final_command_center_policy.js" in html
-    assert "/urbion_championship_champion_review.js" in html
-    assert "/urbion_championship_final_runtime_enforcer.js" in html
+    assert "/urbion_championship_command_shell.js" in html
+    assert "/urbion_map_identify_runtime.js" in html
+    assert "/urbion_championship_horizon_ui.js" in html
+    assert 'id="urbion-championship-shell"' in html
     assert "MASTER-270 · CHAMPIONSHIP EXECUTION" not in html
     assert 'id="uhx"' not in html
     assert "#uhx" not in html
