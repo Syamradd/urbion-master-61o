@@ -1,0 +1,27 @@
+name: trace layer once
+on:
+  push:
+    branches: [main]
+jobs:
+  trace:
+    if: github.event.head_commit.message != 'chore(ci): remove one-time layer trace'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace layer implementation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s = Path('urbion_championship_command_shell.js').read_text(encoding='utf-8')
+          needles = ['iplan-flood', 'layer-input', 'fcc-layer-row', 'cs-layer-drawer', "addEventListener('change'", 'addEventListener("change"', '.onchange=', 'disabled=', 'sourceStatus', 'renderStatus']
+          for needle in needles:
+              print(f'\n=== {needle} ===')
+              pos=0
+              hits=0
+              while hits<8:
+                  i=s.find(needle,pos)
+                  if i<0: break
+                  print(f'-- hit {hits+1} @ {i} --')
+                  print(s[max(0,i-1000):i+2500])
+                  pos=i+len(needle); hits+=1
+          PY
