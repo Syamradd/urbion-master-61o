@@ -11,14 +11,16 @@ def toggle_layer_row(page, checkbox, target_checked: bool):
     current = checkbox.is_checked()
     if current == target_checked:
         return
+    layer_id = checkbox.get_attribute("data-layer")
+    assert layer_id, "layer checkbox missing data-layer"
     row = checkbox.locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' fcc-layer-row ')][1]")
     assert row.count() == 1, "layer row missing"
     row.click(force=True)
     page.wait_for_timeout(300)
     page.wait_for_function("""(expected) => {
-        const el = document.querySelector('#cs-layer-drawer input[data-layer]');
-        return !!el && el.checked === expected;
-    }""", arg=target_checked, timeout=3000)
+        const el = document.querySelector(`#cs-layer-drawer input[data-layer="${CSS.escape(expected.id)}"]`);
+        return !!el && el.checked === expected.checked;
+    }""", arg={"id": layer_id, "checked": target_checked}, timeout=5000)
     assert checkbox.is_checked() is target_checked
 
 def main():
