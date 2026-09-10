@@ -124,9 +124,10 @@ def _frontend_root() -> HTMLResponse:
   <script>window.__URBION_FRONTEND_BOOT__={release:"MASTER-331",entrypoint:"championship.html"};</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/urbion_championship_command_shell.js"></script>
-<script src="/urbion_horizon_language_contract.js"></script>
-<script src="/urbion_map_identify_runtime.js"></script>
-<script src="/urbion_championship_horizon_ui.js"></script>
+  <script src="/urbion_horizon_language_contract.js"></script>
+  <script src="/urbion_map_identify_runtime.js"></script>
+  <script src="/urbion_championship_horizon_ui.js"></script>
+  <style id="horizon-workspace-h1-visual-contract">body.horizon-ui .workspace-head h1{line-height:1.12!important;height:auto!important;min-height:0!important;overflow:visible!important;box-sizing:border-box!important;}</style>
 </body>
 </html>"""
     return HTMLResponse(source, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
