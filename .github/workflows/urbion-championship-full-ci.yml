@@ -74,34 +74,38 @@ jobs:
           python - <<'PY'
           import json, time, urllib.request
           base = 'http://127.0.0.1:8765'
+          def require(condition, label):
+              if not condition:
+                  raise AssertionError(label)
+          last_error = None
           for _ in range(30):
               try:
                   for path in ['/health', '/metadata', '/championship-gate']:
                       with urllib.request.urlopen(base + path, timeout=3) as response:
                           body = response.read()
-                          assert response.status == 200 and body
+                          require(response.status == 200 and body, f'{path}: HTTP/body contract failed')
                           json.loads(body.decode('utf-8'))
                   with urllib.request.urlopen(base + '/', timeout=3) as response:
                       landing = response.read().decode('utf-8')
-                      assert response.status == 200
-                      assert 'URBION HORIZON — Smarter Places. Stronger Futures.' in landing
-                      assert 'id="enter-platform"' in landing
-                      assert '/championship.html' in landing
-                      assert 'id="urbion-championship-shell"' not in landing
+                      require(response.status == 200, 'landing: HTTP status failed')
+                      require('URBION HORIZON — Smarter Places. Stronger Futures.' in landing, 'landing: brand title missing')
+                      require('id="enter-platform"' in landing, 'landing: CTA missing')
+                      require('/championship.html' in landing, 'landing: canonical CTA target missing')
+                      require('id="urbion-championship-shell"' not in landing, 'landing: dashboard shell leaked into public landing')
                   with urllib.request.urlopen(base + '/championship.html', timeout=3) as response:
                       html = response.read().decode('utf-8')
-                      assert response.status == 200
-                      assert 'URBION HORIZON — Championship Workstation' in html
-                      assert 'window.__URBION_FRONTEND_BOOT__' in html
-                      assert 'release:"MASTER-331"' in html
-                      assert 'id="urbion-championship"' in html
-                      assert 'Site + Development Inputs' not in html
-                      assert 'Decision OS' not in html
-                      assert 'Planner Workstation' not in html
-                      assert 'urbion_horizon_language_bootstrap.js' in html
+                      require(response.status == 200, 'championship: HTTP status failed')
+                      require('URBION HORIZON — Championship Workstation' in html, 'championship: workstation marker missing')
+                      require('window.__URBION_FRONTEND_BOOT__' in html, 'championship: frontend boot missing')
+                      require('release:"MASTER-331"' in html, 'championship: release identity missing')
+                      require('id="urbion-championship"' in html, 'championship: canonical shell marker missing')
+                      require('Site + Development Inputs' not in html, 'championship: stale Site + Development Inputs marker')
+                      require('Decision OS' not in html, 'championship: stale Decision OS marker')
+                      require('Planner Workstation' not in html, 'championship: stale Planner Workstation marker')
+                      require('urbion_horizon_language_bootstrap.js' in html, 'championship: language bootstrap missing')
                   for asset in ['/urbion_championship_final_command_center.js','/urbion_championship_final_command_center_hotfix.js','/urbion_championship_final_command_center_polish.js','/urbion_championship_final_command_center_policy.js','/urbion_championship_champion_review.js','/urbion_championship_final_runtime_enforcer.js','/urbion_championship_premium_v3.js','/urbion_championship_premium_v4.js','/urbion_horizon_language_bootstrap.js']:
                       with urllib.request.urlopen(base + asset, timeout=3) as response:
-                          assert response.status == 200 and response.read()
+                          require(response.status == 200 and response.read(), f'{asset}: asset contract failed')
                   print('RUNTIME_SMOKE_OK')
                   raise SystemExit(0)
               except Exception as exc:
