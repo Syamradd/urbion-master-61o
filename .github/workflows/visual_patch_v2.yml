@@ -1,0 +1,147 @@
+name: URBION isolated visual repair v2
+on:
+  push:
+    branches:
+      - fix/championship-visual-flow-v1
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('championship_server.py')
+          text = root.read_text(encoding='utf-8')
+          old = 'if request.url.path in {"/", "/index.html", "/championship.html"}:'
+          new = 'if request.url.path == "/championship.html":'
+          if old not in text:
+              raise SystemExit('root route override pattern not found')
+          text = text.replace(old, new, 1)
+
+          marker = '    "urbion_horizon_language_contract.js",\n}'
+          addition = '    "urbion_horizon_language_contract.js",\n    "urbion_championship_visual_system_v1.js",\n}'
+          if marker not in text:
+              raise SystemExit('allowed asset marker not found')
+          text = text.replace(marker, addition, 1)
+
+          old_script = '  <script src="/urbion_championship_horizon_ui.js"></script>\n  <style id="horizon-workspace-h1-visual-contract">'
+          new_script = '  <script src="/urbion_championship_horizon_ui.js"></script>\n  <script src="/urbion_championship_visual_system_v1.js"></script>\n  <style id="horizon-workspace-h1-visual-contract">'
+          if old_script not in text:
+              raise SystemExit('script insertion point not found')
+          text = text.replace(old_script, new_script, 1)
+          root.write_text(text, encoding='utf-8')
+          
+          visual = Path('urbion_championship_visual_system_v1.js')
+          if visual.exists():
+              raise SystemExit('visual asset already exists; refusing duplicate repair')
+          visual.write_text(r'''(()=>{
+'use strict';
+if(window.__URBION_VISUAL_SYSTEM_V1__) return;
+window.__URBION_VISUAL_SYSTEM_V1__=true;
+const s=document.createElement('style');
+s.id='urbion-visual-system-v1';
+s.textContent=`
+body.horizon-ui{background:radial-gradient(900px 520px at 74% 0%,rgba(37,170,214,.14),transparent 62%),radial-gradient(760px 520px at 12% 82%,rgba(55,222,189,.09),transparent 60%),linear-gradient(180deg,#020a12 0%,#041621 50%,#020a12 100%)!important}
+body.horizon-ui #urbion-championship-shell{padding-bottom:32px!important;background:transparent!important}
+body.horizon-ui .topbar{height:74px!important;padding:0 26px!important;background:rgba(3,13,21,.90)!important;border-bottom-color:rgba(82,203,222,.16)!important}
+body.horizon-ui .identity img{width:184px!important;max-height:42px!important}
+body.horizon-ui .main-nav{height:54px!important;min-height:54px!important;padding:0 22px!important;gap:5px!important;background:rgba(4,18,28,.86)!important}
+body.horizon-ui .nav-link{height:38px!important;padding:0 12px!important;font-size:9px!important;border-radius:10px!important}
+body.horizon-ui .nav-link span{font-size:9px!important}
+body.horizon-ui .utility{font-size:8px!important}
+body.horizon-ui .app-shell{max-width:1680px!important;padding:0 24px 30px!important}
+body.horizon-ui .workspace-head{padding:22px 0 18px!important}
+body.horizon-ui .workspace-head .eyebrow{font-size:10px!important}
+body.horizon-ui .workspace-head h1{font-size:clamp(36px,3.15vw,54px)!important;line-height:1.03!important;letter-spacing:-.05em!important}
+body.horizon-ui .workspace-head p{font-size:12px!important}
+body.horizon-ui .workspace-actions .primary{min-width:214px!important;min-height:46px!important;font-size:12px!important}
+body.horizon-ui .workstation{grid-template-columns:minmax(300px,340px) minmax(0,1fr) minmax(350px,390px)!important;gap:14px!important}
+body.horizon-ui .case-panel,body.horizon-ui .intel-panel{min-height:0!important;height:calc(100vh - 190px)!important;max-height:920px!important}
+body.horizon-ui .panel-title h2{font-size:17px!important}
+body.horizon-ui .panel-title p{font-size:9px!important}
+body.horizon-ui .case-body summary{font-size:8px!important}
+body.horizon-ui .field{margin:7px 4px!important}
+body.horizon-ui .field>span{font-size:7px!important}
+body.horizon-ui .field input,body.horizon-ui .field select{height:38px!important;font-size:10px!important;padding:9px 10px!important}
+body.horizon-ui .map-panel-canonical{border-radius:18px!important}
+body.horizon-ui .map-toolbar{min-height:78px!important;padding:14px 15px!important}
+body.horizon-ui .map-toolbar .eyebrow{font-size:10px!important}
+body.horizon-ui .map-toolbar h2{font-size:17px!important}
+body.horizon-ui .base-tab{font-size:9px!important;padding:9px 11px!important}
+body.horizon-ui .map-stage{height:min(66vh,680px)!important;min-height:560px!important}
+body.horizon-ui .map-search{top:14px!important;right:14px!important;width:310px!important}
+body.horizon-ui .map-search input{font-size:10px!important;padding:11px!important}
+body.horizon-ui .map-controls{top:76px!important;left:14px!important}
+body.horizon-ui .map-controls button{width:36px!important;height:36px!important}
+body.horizon-ui .intel-panel{gap:10px!important;overflow:auto!important;padding-right:2px!important}
+body.horizon-ui .intel-head{padding:17px 16px!important;border-radius:16px!important}
+body.horizon-ui .intel-head .eyebrow{font-size:10px!important}
+body.horizon-ui .intel-head h2{font-size:20px!important;line-height:1.2!important}
+body.horizon-ui .intel-card{padding:15px!important;border-radius:16px!important}
+body.horizon-ui .intel-card .eyebrow{font-size:9px!important}
+body.horizon-ui .card-row>b{font-size:20px!important}
+body.horizon-ui .readiness-main{grid-template-columns:96px 1fr!important;gap:13px!important}
+body.horizon-ui .readiness-main strong{font-size:56px!important;line-height:.95!important}
+body.horizon-ui .readiness-main b{font-size:12px!important}
+body.horizon-ui .readiness-main p{font-size:10px!important}
+body.horizon-ui .metrics div{padding:8px 0!important}
+body.horizon-ui .metrics span{font-size:9px!important}
+body.horizon-ui .site-summary b{font-size:19px!important}
+body.horizon-ui .site-summary span{font-size:9px!important}
+body.horizon-ui .link-btn{font-size:9px!important}
+body.horizon-ui .mini-stats b{font-size:13px!important}
+body.horizon-ui .mini-stats small{font-size:7px!important}
+body.horizon-ui .signals div{padding:9px 0!important;font-size:10px!important}
+body.horizon-ui .signals b{font-size:8px!important}
+body.horizon-ui .next-card h3{font-size:18px!important}
+body.horizon-ui .next-card p{font-size:10px!important}
+body.horizon-ui .next-card button{font-size:9px!important;padding:10px!important}
+body.horizon-ui .tool-grid button{font-size:8px!important;padding:10px!important}
+body.horizon-ui .tool-result{font-size:9px!important}
+body.horizon-ui .workbench{margin-top:12px!important}
+body.horizon-ui .workbench-nav button{font-size:9px!important;padding:9px 12px!important}
+body.horizon-ui .analysis-card h2{font-size:22px!important}
+body.horizon-ui .analysis-card h3{font-size:15px!important}
+body.horizon-ui .analysis-card p{font-size:10px!important}
+body.horizon-ui .metric-box b{font-size:19px!important}
+body.horizon-ui .scenario strong{font-size:29px!important}
+body.horizon-ui .scenario p{font-size:9px!important}
+body.horizon-ui .footer{font-size:8px!important;margin-top:16px!important}
+body.horizon-ui .horizon-metrics{display:none!important}
+body.horizon-ui #cs-layer-drawer{top:12px!important;right:12px!important;bottom:12px!important;width:min(360px,38%)!important;height:auto!important;max-height:none!important;padding:10px!important;overflow-y:auto!important;overflow-x:hidden!important;border-radius:16px!important;background:rgba(3,15,24,.97)!important;border-color:rgba(87,214,226,.40)!important;z-index:7000!important;scrollbar-width:thin!important}
+body.horizon-ui #cs-layer-drawer.open,body.horizon-ui #cs-layer-drawer:not(.horizon-closed)[aria-hidden=false]{display:flex!important;flex-direction:column!important}
+body.horizon-ui #cs-layer-drawer .layers-head,body.horizon-ui #cs-layer-drawer .layer-status-key{flex:0 0 auto!important;position:sticky!important;z-index:3!important;background:rgba(3,15,24,.97)!important}
+body.horizon-ui #cs-layer-drawer .layer-group{flex:0 0 auto!important;height:auto!important;max-height:none!important;overflow:visible!important;margin:4px 0!important}
+body.horizon-ui #cs-layer-drawer .group-body{display:block!important;height:auto!important;max-height:none!important;overflow:visible!important}
+body.horizon-ui #cs-layer-drawer .group-toggle{min-height:40px!important;font-size:9px!important}
+body.horizon-ui #cs-layer-drawer .fcc-layer-row{min-height:45px!important;padding:8px 9px!important;margin:2px 4px!important;grid-template-columns:19px minmax(0,1fr) 52px!important}
+body.horizon-ui #cs-layer-drawer .fcc-layer-row span{font-size:10px!important;line-height:1.25!important}
+body.horizon-ui #cs-layer-drawer .fcc-layer-row span small{font-size:8px!important}
+body.horizon-ui #cs-layer-drawer .fcc-layer-row input[type=checkbox]{width:17px!important;height:17px!important}
+body.horizon-ui #cs-layer-drawer .layer-opacity{width:52px!important}
+body.horizon-ui #cs-layer-drawer .legend-inline{font-size:8px!important}
+@media(max-width:1320px){body.horizon-ui .workstation{grid-template-columns:minmax(280px,310px) minmax(0,1fr) minmax(310px,350px)!important}}
+@media(max-width:1120px){body.horizon-ui .workstation{grid-template-columns:1fr!important}.case-panel,.intel-panel{height:auto!important;max-height:none!important}.map-stage{height:600px!important}.intel-panel{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}.intel-head{grid-column:1/-1}.tool-card{grid-column:1/-1}}
+@media(max-width:760px){body.horizon-ui .app-shell{padding:0 12px 20px!important}.workspace-head{display:block!important}.workstation{display:block!important}.case-panel,.map-panel-canonical,.intel-panel{margin-bottom:12px!important}.intel-panel{display:block!important}.map-stage{height:540px!important;min-height:0!important}.map-search{width:calc(100% - 28px)!important}.fcc-layer-drawer{left:10px!important;right:10px!important;top:auto!important;bottom:10px!important;width:auto!important;height:min(64%,440px)!important;max-height:440px!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+`;
+document.head.appendChild(s);
+const normalize=()=>{const d=document.querySelector('#cs-layer-drawer');if(!d)return;d.style.overflowY='auto';d.style.overflowX='hidden';d.querySelectorAll('.layer-group').forEach(g=>{g.style.maxHeight='none';g.style.overflow='visible'});d.querySelectorAll('.group-body').forEach(g=>{g.style.maxHeight='none';g.style.overflow='visible'});};
+normalize();
+new MutationObserver(normalize).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','aria-hidden']});
+})();
+''', encoding='utf-8')
+          PY
+          git rm --ignore-unmatch .github/workflows/one_off_visual_patch.yml .github/workflows/visual_patch_v2.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add championship_server.py urbion_championship_visual_system_v1.js .github/workflows
+          git commit -m "fix(ui): repair championship visual flow [visual-auto-patch]"
+          git push
