@@ -25,7 +25,7 @@ try:
     _original_middleware = FastAPI.middleware
 
     def _landing():
-        target = (_BASE / 'index.html').resolve()
+        target = (_BASE / 'urbion_horizon_landing.html').resolve()
         if target.parent != _BASE or not target.is_file():
             raise HTTPException(status_code=404, detail='Landing frontend not found')
         return FileResponse(target, media_type='text/html', headers={'Cache-Control': 'no-store, max-age=0'})
