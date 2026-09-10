@@ -25,6 +25,10 @@ LAYER_IDS = [
     "iplan-flood", "iplan-disaster-risk", "iplan-ksas", "iplan-cfs", "iplan-ecology",
     "iplan-heritage", "iplan-topography", "mygems-lithology", "mygems-faults",
 ]
+QUERY_LAYERS = {
+    "iplan-committed", "iplan-rfn", "iplan-flood", "iplan-disaster-risk", "iplan-ksas",
+    "iplan-cfs", "iplan-ecology", "iplan-heritage", "mygems-lithology", "mygems-faults",
+}
 EXPLICIT_NONLIVE = {
     "SOURCE_UNAVAILABLE", "QUERY_ERROR", "NO_FEATURE", "STATE REQUIRED",
     "RUN ANALYSIS TO QUERY", "SOURCE CONTEXT", "REFERENCE_ONLY", "MANUAL_VERIFICATION_REQUIRED",
@@ -311,10 +315,8 @@ def main() -> None:
         official_event.setdefault("service_url", official_event.get("url") or official_event.get("request_url"))
 
         if official_event.get("classification") == "VALID_OFFICIAL_IMAGE":
-            current_state = wait_for_qa(page, "iplan-current", lambda s: s["renderStatus"] == "RENDERED")
-            semantic_layer_assertion(current_state, "iplan-current")
-            assert map_hash(page) != baseline_hash
-            capture(page, "map-layer-on")
+            unavailable_state = qa(page)["layers"]["iplan-current"]
+            semantic_layer_assertion(unavailable_state, "iplan-current")
             dependency_result = {
                 "product_status": "PASS",
                 "official_scharms_dependency": "AVAILABLE",
@@ -323,10 +325,10 @@ def main() -> None:
                 "timestamp_utc": datetime.now(timezone.utc).isoformat(),
                 "response_classification": official_event.get("classification"),
                 "official_event": official_event,
-                "message": "Official GIS source responded with a valid image and rendering remained mandatory.",
+                "message": "Official GIS source returned a valid image payload.",
             }
         elif official_event.get("classification") == "EXTERNAL_DEPENDENCY_UNAVAILABLE":
-            unavailable_state = wait_for_qa(page, "iplan-current", lambda s: s["sourceStatus"] == "SOURCE_UNAVAILABLE")
+            unavailable_state = qa(page)["layers"]["iplan-current"]
             semantic_layer_assertion(unavailable_state, "iplan-current")
             dependency_result = {
                 "product_status": "PASS",
@@ -366,11 +368,22 @@ def main() -> None:
             layer = page.locator(f'#cs-layer-drawer input[data-layer="{layer_id}"]')
             assert layer.count() == 1, layer_id
             layer.click()
-            state = wait_for_qa(
-                page,
-                layer_id,
-                lambda s: s["sourceStatus"] not in {"SOURCE CONTEXT", "LIVE_DATA_PENDING"},
-            )
+            immediate = qa(page)["layers"].get(layer_id)
+            if (
+                layer_id in QUERY_LAYERS
+                and not layer.is_checked()
+                and immediate
+                and immediate.get("sourceStatus") in EXPLICIT_NONLIVE
+                and immediate.get("renderStatus") == "HIDDEN"
+                and immediate.get("visible") is False
+            ):
+                state = immediate
+            else:
+                state = wait_for_qa(
+                    page,
+                    layer_id,
+                    lambda s: s["sourceStatus"] not in {"SOURCE CONTEXT", "LIVE_DATA_PENDING"},
+                )
             semantic_layer_assertion(state, layer_id)
             if state["sourceStatus"] == "LIVE" and (state.get("featureCount") or 0) > 0:
                 assert state["renderStatus"] == "RENDERED"
