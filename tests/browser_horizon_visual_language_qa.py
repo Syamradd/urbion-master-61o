@@ -43,7 +43,19 @@ def main():
         assert primary_style["backgroundImage"]!="none" or primary_style["backgroundColor"] not in ("rgba(0, 0, 0, 0)","transparent")
         assert primary_style["boxShadow"]!="none"
         drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator("input[data-layer]").first; assert checkbox.count()==1
-        before=checkbox.is_checked(); checkbox.click(force=True); page.wait_for_timeout(500); assert checkbox.is_checked() is (not before); checkbox.click(force=True); page.wait_for_timeout(300); assert checkbox.is_checked() is before
+        before=checkbox.is_checked()
+        if before:
+            checkbox.uncheck(force=True)
+        else:
+            checkbox.check(force=True)
+        page.wait_for_timeout(250)
+        assert checkbox.is_checked() is (not before)
+        if before:
+            checkbox.check(force=True)
+        else:
+            checkbox.uncheck(force=True)
+        page.wait_for_timeout(250)
+        assert checkbox.is_checked() is before
         scroll_state=page.evaluate("""()=>{const d=document.querySelector('#cs-layer-drawer');if(!d)return null;const all=[...d.querySelectorAll('*')];const s=all.map(el=>({el,rows:el.querySelectorAll('.fcc-layer-row').length})).sort((a,b)=>b.rows-a.rows)[0]?.el;if(!s)return null;return{rows:s.querySelectorAll('.fcc-layer-row').length,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,overflowY:getComputedStyle(s).overflowY}}""")
         assert scroll_state and scroll_state["rows"]>=4 and scroll_state["overflowY"] in ("auto","scroll")
         close=drawer.locator("button.horizon-drawer-close"); assert close.count()==1; close.click(); page.wait_for_timeout(220); assert drawer.get_attribute("aria-hidden")=="true"
