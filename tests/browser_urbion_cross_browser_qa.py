@@ -15,6 +15,9 @@ BROWSER_NAME = os.getenv("URBION_BROWSER", "chromium")
 ARTIFACT_DIR = Path(os.getenv("URBION_BROWSER_ARTIFACT_DIR", "/tmp/urbion-cross-browser"))
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
+LANDING_TITLE = "URBION HORIZON — Spatial Decision Intelligence"
+WORKSPACE_TITLE = "URBION HORIZON — Planning Command Centre"
+
 
 def main() -> None:
     with sync_playwright() as pw:
@@ -25,14 +28,15 @@ def main() -> None:
         # The public root is the welcome/landing page. The planning workspace is
         # reached through the same user-facing CTA that judges will use.
         page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
-        expect(page).to_have_title("URBION HORIZON — Smarter Places. Stronger Futures.")
-        expect(page.locator("#enter-platform")).to_be_visible()
-        expect(page.locator(".hero h1")).to_have_text("Smarter Places.Stronger Futures.")
-        page.locator("#enter-platform").click()
+        expect(page).to_have_title(LANDING_TITLE)
+        enter = page.locator('a[href="/championship.html"]')
+        expect(enter).to_be_visible()
+        expect(page.locator(".hero h1")).to_contain_text("From spatial evidence")
+        enter.click()
         page.wait_for_load_state("networkidle")
         expect(page).to_have_url(BASE_URL + "/championship.html")
 
-        expect(page).to_have_title("URBION HORIZON — Planning Command Centre")
+        expect(page).to_have_title(WORKSPACE_TITLE)
         expect(page.locator("#urbion-championship-shell")).to_have_count(1)
         expect(page.locator("#cs-map")).to_have_count(1)
         expect(page.locator(".case-panel")).to_have_count(1)
