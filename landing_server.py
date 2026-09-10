@@ -40,8 +40,12 @@ async def _urbion_landing_override(request: Request, call_next):
     if request.url.path in {"/", "/index.html"}:
         if not LANDING_FILE.is_file():
             return HTMLResponse("URBION HORIZON landing page is missing.", status_code=500)
+        landing_html = LANDING_FILE.read_text(encoding="utf-8")
+        # Preserve the existing landing asset verbatim while normalizing the
+        # single known team-name capitalization typo at the served entrypoint.
+        landing_html = landing_html.replace("Wan Nur Alea NajihaH", "Wan Nur Alea Najihah")
         return HTMLResponse(
-            LANDING_FILE.read_text(encoding="utf-8"),
+            landing_html,
             media_type="text/html; charset=utf-8",
             headers={"Cache-Control": "no-store, max-age=0"},
         )
