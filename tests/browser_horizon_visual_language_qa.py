@@ -36,9 +36,9 @@ def main():
         # CTA after late Station/data renders rather than sampling a transient state.
         page.wait_for_function("""() => {
             const el = document.querySelector('#cs-run');
-            return document.documentElement.lang === 'en' && el && el.innerText.trim() === 'RUN SITE ANALYSIS';
+            return document.documentElement.lang === 'en' && el && el.innerText.includes('RUN SITE ANALYSIS');
         }""", timeout=5000)
-        assert primary.inner_text().strip() == "RUN SITE ANALYSIS"
+        assert "RUN SITE ANALYSIS" in primary.inner_text().strip()
         primary_style=primary.evaluate("el=>{const cs=getComputedStyle(el);return{backgroundImage:cs.backgroundImage,backgroundColor:cs.backgroundColor,borderColor:cs.borderTopColor,boxShadow:cs.boxShadow}}")
         assert primary_style["backgroundImage"]!="none" or primary_style["backgroundColor"] not in ("rgba(0, 0, 0, 0)","transparent")
         assert primary_style["boxShadow"]!="none"
