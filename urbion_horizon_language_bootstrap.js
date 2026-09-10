@@ -36,10 +36,44 @@
     }
   };
 
+  const bindPlannerTabRaceGuard = () => {
+    if (!document.body || window.__URBION_PLANNER_TAB_RACE_GUARD__) return;
+    window.__URBION_PLANNER_TAB_RACE_GUARD__ = true;
+    let requestedTab = null;
+    let requestStamp = 0;
+    let replaying = false;
+
+    document.addEventListener("click", (event) => {
+      const button = event.target?.closest?.(".workbench-nav button[data-tab]");
+      if (!button || replaying) return;
+      requestedTab = button.dataset.tab || null;
+      requestStamp = Date.now();
+    }, true);
+
+    const reconcile = () => {
+      if (!requestedTab || replaying || Date.now() - requestStamp > 4000) return;
+      const active = document.querySelector(".workbench-nav button.active[data-tab]");
+      if (active?.dataset.tab === requestedTab) return;
+      const target = document.querySelector(`.workbench-nav button[data-tab="${CSS.escape(requestedTab)}"]`);
+      if (!target) return;
+      replaying = true;
+      try { target.click(); } finally {
+        setTimeout(() => { replaying = false; }, 0);
+      }
+    };
+
+    const observer = new MutationObserver(() => {
+      if (!replaying) requestAnimationFrame(reconcile);
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    window.__URBION_PLANNER_TAB_RACE_OBSERVER__ = observer;
+  };
+
   const bindLanguageSweep = () => {
     const setLang = window.__URBION_HORIZON_SET_LANG__;
     if (typeof setLang !== "function" || !document.body) return false;
     ensureVisualSafety();
+    bindPlannerTabRaceGuard();
     const stored = String(localStorage.getItem("urbion-language") || "en").toLowerCase();
     setLang(stored.startsWith("ms") ? "ms" : "en");
     sweepEnglishText();
