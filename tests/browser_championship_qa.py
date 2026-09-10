@@ -417,9 +417,14 @@ def main() -> None:
         expect(page.locator('button[data-tool="print"]')).to_be_visible()
         assert page.evaluate("typeof window.print") == "function"
         page.locator('button[data-tool="export"]').click()
+        page.evaluate("localStorage.setItem('urbion-theme','dark')")
+        page.reload(wait_until="networkidle")
+        expect(page).to_have_title("URBION HORIZON — Planning Command Centre")
+        assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is False
         page.locator("#cs-theme").click()
         assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is True
         page.locator("#cs-theme").click()
+        assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is False
         page.locator("#cs-lang").click()
         page.wait_for_load_state("networkidle")
         assert page.locator("#cs-lang").inner_text() in {"BM", "EN"}
