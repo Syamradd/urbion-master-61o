@@ -41,6 +41,7 @@ async def _urbion_landing_override(request: Request, call_next):
             return HTMLResponse(
                 html,
                 status_code=response.status_code,
-                headers={"Cache-Control": "no-store", "max-age": 0},
+                media_type="text/html; charset=utf-8",
+                headers={"Cache-Control": "no-store, max-age=0"},
             )
     return await call_next(request)
