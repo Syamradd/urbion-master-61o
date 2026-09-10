@@ -8,9 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / 'urbion_map_identify_runtime.js'
 
 
-def test_map_identify_runtime_is_served_by_canonical_root():
+def test_map_identify_runtime_is_served_by_canonical_workstation():
     client = TestClient(app)
-    html = client.get('/').text
+    html = client.get('/championship.html').text
     assert '/urbion_map_identify_runtime.js' in html
     response = client.get('/urbion_map_identify_runtime.js')
     assert response.status_code == 200
