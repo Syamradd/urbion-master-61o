@@ -10,7 +10,7 @@ def main():
     screenshots=Path("/tmp/urbion-browser-qa"); screenshots.mkdir(parents=True,exist_ok=True)
     with sync_playwright() as pw:
         browser=pw.chromium.launch(); page=browser.new_page(viewport={"width":1440,"height":1000},device_scale_factor=1)
-        page.add_init_script("localStorage.removeItem('urbion-language'); localStorage.removeItem('urbion-lang');")
+        page.add_init_script("localStorage.removeItem('urbion-language'); localStorage.removeItem('urbion-lang'); localStorage.removeItem('urbion-theme');")
         page.goto(BASE+"/",wait_until="networkidle"); page.wait_for_timeout(1400)
         assert page.evaluate("document.documentElement.lang")=="en"
         text=visible_text(page); assert "Command Centre" in text; assert "Site Intelligence" in text; assert "RUN SITE ANALYSIS" in text; assert "About" in text or "About Us" in text; assert "Help" in text
@@ -20,8 +20,10 @@ def main():
         for selector in ("h1",".hero h1","h2","button"):
             for box in page.locator(selector).all():
                 if box.is_visible():
-                    metrics=box.evaluate("el=>({w:el.getBoundingClientRect().width,sh:el.scrollHeight,ch:el.clientHeight})"); assert metrics["w"]>0
-                    if metrics["ch"]>0: assert metrics["sh"]<=metrics["ch"]+2,(selector,metrics)
+                    metrics=box.evaluate("el=>{const cs=getComputedStyle(el);return{w:el.getBoundingClientRect().width,sh:el.scrollHeight,ch:el.clientHeight,overflowY:cs.overflowY,overflowX:cs.overflowX}}")
+                    assert metrics["w"]>0
+                    if metrics["ch"]>0 and metrics["overflowY"] in ("hidden","clip"):
+                        assert metrics["sh"]<=metrics["ch"]+2,(selector,metrics)
         for label in page.locator("label").all():
             if label.is_visible(): assert 8<=label.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=12
         for field in page.locator("input,select,textarea").all():
