@@ -153,7 +153,7 @@ jobs:
             cat /tmp/urbion-browser-uvicorn.log || true
             exit 1
           fi
-          export URBION_APP_URL="http://127.0.0.1:8765/championship.html"
+          export URBION_APP_URL="http://127.0.0.1:8765"
           python tests/browser_urbion_landing_qa.py
           python tests/browser_championship_qa_render_entry.py
           python tests/browser_horizon_visual_language_qa_render_entry.py
