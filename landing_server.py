@@ -38,9 +38,10 @@ async def _urbion_landing_override(request: Request, call_next):
             script = '<script src="/urbion_horizon_language_bootstrap.js"></script>'
             if script not in html and marker in html:
                 html = html.replace(marker, script + marker, 1)
-            response.body = html.encode("utf-8")
-            if "content-length" in response.headers:
-                del response.headers["content-length"]
-            return response
+            headers = {"Cache-Control": "no-store, max-age=0"}
+            content_type = response.headers.get("content-type")
+            if content_type:
+                headers["content-type"] = content_type
+            return HTMLResponse(html, status_code=response.status_code, headers=headers)
         return response
     return await call_next(request)
