@@ -15,7 +15,8 @@ def toggle_layer_row(page, checkbox, target_checked: bool):
     assert layer_id, "layer checkbox missing data-layer"
     label = checkbox.locator("xpath=ancestor::label[contains(concat(' ', normalize-space(@class), ' '), ' fcc-layer-row ')][1]")
     assert label.count() == 1, "layer row label missing"
-    label.click(position={"x": 10, "y": label.bounding_box()['height']/2 if label.bounding_box() else 10}, force=True)
+    box = label.bounding_box()
+    label.click(position={"x": 10, "y": box["height"]/2 if box else 10}, force=True)
     page.wait_for_function("""(expected) => {
         const el = document.querySelector(`#cs-layer-drawer input[data-layer=\"${CSS.escape(expected.id)}\"]`);
         return !!el && el.checked === expected.checked;
@@ -43,7 +44,7 @@ def main():
         for label in page.locator("label").all():
             if label.is_visible(): assert 8<=label.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=12
         for field in page.locator("input,select,textarea").all():
-            if field.is_visible(): assert 12<=field.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=15
+            if field.is_visible(): assert 12<=field.evaluate("el=>parseFloat(getComputedStyle(el).fontSize")<=15
         for selector in ("#urbion-championship-shell","#cs-map","#cs-run","#cs-layer-drawer"):
             assert page.locator(selector).count()==1, selector
         primary=page.locator("#cs-run")
@@ -56,7 +57,7 @@ def main():
         primary_style=primary.evaluate("el=>{const cs=getComputedStyle(el);return{backgroundImage:cs.backgroundImage,backgroundColor:cs.backgroundColor,borderColor:cs.borderTopColor,boxShadow:cs.boxShadow}}")
         assert primary_style["backgroundImage"]!="none" or primary_style["backgroundColor"] not in ("rgba(0, 0, 0, 0)","transparent")
         assert primary_style["boxShadow"]!="none"
-        drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator('input[data-layer="tod"]'); assert checkbox.count()==1
+        drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator('input[data-layer="iplan-zoning"]'); assert checkbox.count()==1
         before=checkbox.is_checked()
         toggle_layer_row(page,checkbox,not before)
         toggle_layer_row(page,checkbox,before)
