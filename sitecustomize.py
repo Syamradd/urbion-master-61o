@@ -2,7 +2,7 @@
 
 This module is loaded by Python before the FastAPI application module. It keeps
 business/API routes intact while enforcing the intended public entry flow:
-landing page -> /championship.html workspace, plus the dedicated visual asset.
+landing page -> /championship.html workspace, plus the dedicated visual assets.
 """
 from pathlib import Path
 from fastapi.responses import FileResponse, HTMLResponse
@@ -15,12 +15,12 @@ _ALLOWED = {
     'urbion_public_spatial_v283.js', 'urbion_public_spatial_v284.js',
     'urbion_championship_visual_system_v1.js',
     'urbion_horizon_visual_overhaul.js',
+    'urbion_championship_visual_system_v2.js',
 }
 _BASE = Path(__file__).resolve().parent
 
 try:
     from fastapi import FastAPI
-
     _original_init = FastAPI.__init__
     _original_add_api_route = FastAPI.add_api_route
     _original_middleware = FastAPI.middleware
@@ -61,11 +61,14 @@ try:
         response = _frontend_root()
         body = response.body.decode('utf-8')
         marker = '<script src="/urbion_championship_horizon_ui.js"></script>'
-        inject = marker + '\n  <script src="/urbion_championship_visual_system_v1.js"></script>\n  <script src="/urbion_horizon_visual_overhaul.js"></script>'
-        if marker in body and 'urbion_championship_visual_system_v1.js' not in body:
+        inject = marker + '\n  <script src="/urbion_championship_visual_system_v1.js"></script>\n  <script src="/urbion_horizon_visual_overhaul.js"></script>\n  <script src="/urbion_championship_visual_system_v2.js"></script>'
+        if marker in body and 'urbion_championship_visual_system_v2.js' not in body:
             body = body.replace(marker, inject, 1)
-        elif 'urbion_horizon_visual_overhaul.js' not in body and '</body>' in body:
-            body = body.replace('</body>', '<script src="/urbion_horizon_visual_overhaul.js"></script></body>', 1)
+        else:
+            if 'urbion_horizon_visual_overhaul.js' not in body and '</body>' in body:
+                body = body.replace('</body>', '<script src="/urbion_horizon_visual_overhaul.js"></script></body>', 1)
+            if 'urbion_championship_visual_system_v2.js' not in body and '</body>' in body:
+                body = body.replace('</body>', '<script src="/urbion_championship_visual_system_v2.js"></script></body>', 1)
         return HTMLResponse(body, media_type='text/html; charset=utf-8', headers={'Cache-Control': 'no-store, max-age=0'})
 
     def _asset(asset: str):
