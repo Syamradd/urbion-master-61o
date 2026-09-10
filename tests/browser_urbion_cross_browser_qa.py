@@ -49,9 +49,11 @@ def main() -> None:
         panel = page.locator("#urbion-settings-backdrop")
         expect(panel).to_have_class("urbion-settings-backdrop open")
         page.locator('[data-setting-theme="light"]').click()
-        expect(page.locator("html")).to_have_class(lambda value: "cs-light" in value.split())
+        html_classes = (page.locator("html").get_attribute("class") or "").split()
+        assert "cs-light" in html_classes, html_classes
         page.locator('[data-setting-theme="dark"]').click()
-        expect(page.locator("html")).not_to_have_class(lambda value: "cs-light" in value.split())
+        html_classes = (page.locator("html").get_attribute("class") or "").split()
+        assert "cs-light" not in html_classes, html_classes
         page.locator(".urbion-settings-close").click()
         expect(panel).not_to_have_class("open")
 
