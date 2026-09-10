@@ -23,8 +23,8 @@ def assert_no_horizontal_overflow(page) -> None:
 def assert_visible_box(page, selector: str, *, min_width: float = 40, min_height: float = 20) -> None:
     box = page.locator(selector).bounding_box()
     assert box is not None, f"{selector}: missing bounding box"
-    assert box[2] >= min_width, f"{selector}: width {box[2]} < {min_width}"
-    assert box[3] >= min_height, f"{selector}: height {box[3]} < {min_height}"
+    assert box["width"] >= min_width, f"{selector}: width {box['width']} < {min_width}"
+    assert box["height"] >= min_height, f"{selector}: height {box['height']} < {min_height}"
 
 
 def main() -> None:
