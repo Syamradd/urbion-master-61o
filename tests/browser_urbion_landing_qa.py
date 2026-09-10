@@ -22,7 +22,7 @@ def main() -> None:
         expect(page).to_have_title("URBION HORIZON — Smarter Places. Stronger Futures.")
         expect(page.locator(".page")).to_have_count(1)
         expect(page.locator(".brand-name")).to_have_text("URBION HORIZON")
-        expect(page.locator(".eyebrow")).to_have_text("SPATIAL INTELLIGENCE FOR BETTER URBAN DECISIONS")
+        expect(page.locator(".hero .eyebrow")).to_have_text("SPATIAL INTELLIGENCE FOR BETTER URBAN DECISIONS")
         expect(page.locator(".hero h1")).to_contain_text("Smarter Places.")
         expect(page.locator(".hero h1")).to_contain_text("Stronger Futures.")
         expect(page.locator("#enter-platform")).to_be_visible()
