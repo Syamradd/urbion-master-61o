@@ -18,7 +18,7 @@ def toggle_layer_row(page, checkbox, target_checked: bool):
     page.wait_for_function("""(expected) => {
         const el = document.querySelector('#cs-layer-drawer input[data-layer]');
         return !!el && el.checked === expected;
-    }""", target_checked, timeout=3000)
+    }""", arg=target_checked, timeout=3000)
     assert checkbox.is_checked() is target_checked
 
 def main():
