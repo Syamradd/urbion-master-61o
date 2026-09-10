@@ -41,7 +41,11 @@ def main() -> None:
             expect(page.locator("#urbion-championship-shell")).to_have_count(1)
             expect(page.locator("#cs-map")).to_have_count(1)
             expect(page.locator("#cs-project_name")).to_have_count(1)
-            expect(page.locator(".nav")).to_be_visible()
+            # The canonical workstation exposes its navigation semantically as <nav>
+            # without relying on a private .nav CSS class, so the visual contract follows
+            # the actual accessibility/navigation contract and survives CSS refactors.
+            expect(page.get_by_role("navigation")).to_have_count(1)
+            expect(page.get_by_role("navigation")).to_be_visible()
             assert_no_horizontal_overflow(page)
             page.screenshot(path=ARTIFACT_DIR / f"workspace-responsive-{width}.png", full_page=True)
             page.close()
