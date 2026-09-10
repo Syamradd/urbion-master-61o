@@ -56,7 +56,7 @@ def main():
         primary_style=primary.evaluate("el=>{const cs=getComputedStyle(el);return{backgroundImage:cs.backgroundImage,backgroundColor:cs.backgroundColor,borderColor:cs.borderTopColor,boxShadow:cs.boxShadow}}")
         assert primary_style["backgroundImage"]!="none" or primary_style["backgroundColor"] not in ("rgba(0, 0, 0, 0)","transparent")
         assert primary_style["boxShadow"]!="none"
-        drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator("input[data-layer]").first; assert checkbox.count()==1
+        drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator('input[data-layer="tod"]'); assert checkbox.count()==1
         before=checkbox.is_checked()
         toggle_layer_row(page,checkbox,not before)
         toggle_layer_row(page,checkbox,before)
