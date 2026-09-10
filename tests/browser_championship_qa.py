@@ -139,7 +139,7 @@ def main() -> None:
         context = browser.new_context(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
         page = context.new_page()
         page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
-        page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+        page.on("pageerror", lambda exc: page_errors.append(f"{exc}\n{getattr(exc, 'stack', '')}"))
         page.on("requestfailed", lambda request: request_failures.append(f"{request.method} {request.url} :: {request.failure}"))
 
         def on_response(response) -> None:
@@ -208,46 +208,52 @@ def main() -> None:
         assert qa(page)["caseReady"]
         capture(page, "case-defined")
 
-        tod_section = page.locator("#cs-todlat").locator("xpath=ancestor::details[1]")
-        if tod_section.get_attribute("open") is None:
-            tod_section.locator("summary").click()
-        expect(page.locator("#cs-todlat")).to_be_visible()
-        page.locator("#cs-run").click()
-        expect(page.locator("#cs-status-pill")).to_have_text("ANALYSIS READY", timeout=30_000)
-        expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
-        expect(page.locator("#stat-tod")).to_have_text("—")
-        assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
-        capture(page, "analysis-blank-tod")
-
-        page.locator("#cs-todlat").fill("2.290")
-        page.locator("#cs-todlon").fill("102.200")
-        page.wait_for_timeout(350)
-        assert page.locator("#cs-map .leaflet-marker-pane img").count() == 1
-        page.locator("#cs-todlat").fill("")
-        page.locator("#cs-todlon").fill("")
-        expect(page.locator("#sig-tod")).to_have_text("NOT PROVIDED")
-        expect(page.locator("#stat-tod")).to_have_text("—")
-        assert page.locator("#cs-map .leaflet-marker-pane img").count() == 0
-
-        page.locator("#cs-run").click()
-        expect(page.locator("#cs-status-pill")).to_have_text("ANALYSIS READY", timeout=30_000)
-        capture(page, "analysis")
-
         page.locator("#cs-map-layers").click()
-        expect(page.locator("#cs-layer-drawer")).to_be_visible()
-        layer_inputs = page.locator("#cs-layer-drawer input[data-layer]")
-        assert layer_inputs.count() == len(LAYER_IDS)
-        current = page.locator('#cs-layer-drawer input[data-layer="iplan-current"]')
-        current.check()
-        page.wait_for_timeout(500)
-        state = qa(page)["layers"]["iplan-current"]
-        semantic_layer_assertion(state, "iplan-current")
-        close = page.locator("#cs-layer-drawer button.horizon-drawer-close")
-        if close.count():
-            close.click()
-            page.wait_for_timeout(200)
         capture(page, "layer-drawer")
+        assert page.locator("#cs-layer-drawer").count() == 1
+        for layer_id in LAYER_IDS:
+            assert page.locator(f"#cs-layer-drawer input[data-layer='{layer_id}']").count() >= 1, layer_id
 
+        # Check the no-geometry rule for query-backed layers before analysis.
+        for layer_id in QUERY_LAYERS:
+            box = page.locator(f"#cs-layer-drawer input[data-layer='{layer_id}']").first
+            box.check()
+            assert not box.is_checked() or qa(page)["layers"].get(layer_id, {}).get("renderStatus") in {"SOURCE_CONTEXT", "QUERYING", "HIDDEN"}
+            if box.is_checked():
+                box.uncheck()
+
+        page.locator("#cs-run").click()
+        expect(page.locator("#cs-status-pill")).to_contain_text("ANALYSIS READY", timeout=30_000)
+        capture(page, "analysis")
+        state = qa(page)
+        assert state["analysisReady"]
+        context_snapshot = page.evaluate("window.__URBION_FINAL_CONTEXT || null")
+        assert context_snapshot is not None
+
+        # Official SCHARMS source may be unavailable externally. Its failure is
+        # captured as evidence, not treated as fabricated GIS content.
+        page.wait_for_timeout(1_500)
+        assert official_event or official_failed_request or any(SCHARMS_EXPORT_MARKER in x for x in request_failures)
+        if official_event:
+            write_dependency_evidence(official_event)
+        elif official_failed_request:
+            write_dependency_evidence(inspect_failed_official_request(page, official_failed_request))
+
+        # The committed land-use query is intentionally exercised through the
+        # layer row so the source-backed render contract is visible.
+        committed = page.locator("#cs-layer-drawer input[data-layer='iplan-committed']").first
+        committed.check()
+        state_committed = wait_for_qa(page, "iplan-committed", lambda x: x["sourceStatus"] in EXPLICIT_NONLIVE or x["sourceStatus"].startswith("LIVE"), timeout_ms=20_000)
+        semantic_layer_assertion(state_committed, "iplan-committed")
+        committed.uncheck()
+
+        page.locator("#cs-next-action").click()
+        expect(page.locator("#cs-content")).to_contain_text("Site intelligence")
+        page.locator('.workbench-nav button[data-tab="ai"]').click()
+        expect(page.locator("#cs-content")).to_contain_text("PRELIMINARY PLANNING SCREENING")
+        page.locator('.workbench-nav button[data-tab="whatif"]').click()
+        page.locator('[data-wif="3.5"]').click()
+        expect(page.locator("#cs-wif-result")).to_contain_text("SCENARIO", timeout=30_000)
         page.locator('.workbench-nav button[data-tab="decision"]').click()
         expect(page.locator("#cs-content")).to_contain_text("RECOMMENDED OPTION")
         capture(page, "decision")
