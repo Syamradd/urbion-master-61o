@@ -9,11 +9,30 @@ from pathlib import Path
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 
-from championship_server import app
+from championship_server import _frontend_root, app
 
 BASE_DIR = Path(__file__).resolve().parent
 LANDING_FILE = BASE_DIR / "landing.html"
 LANGUAGE_BOOTSTRAP = BASE_DIR / "urbion_horizon_language_bootstrap.js"
+
+
+def _canonical_championship_page() -> HTMLResponse:
+    """Return the exact canonical workstation HTML plus the language bootstrap."""
+    response = _frontend_root()
+    body = getattr(response, "body", b"")
+    if not isinstance(body, bytes):
+        body = str(body).encode("utf-8")
+    html = body.decode("utf-8")
+    marker = "</body>"
+    script = '<script src="/urbion_horizon_language_bootstrap.js"></script>'
+    if script not in html and marker in html:
+        html = html.replace(marker, script + marker, 1)
+    return HTMLResponse(
+        html,
+        status_code=response.status_code,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 @app.middleware("http")
@@ -26,22 +45,6 @@ async def _urbion_landing_override(request: Request, call_next):
             media_type="text/html; charset=utf-8",
             headers={"Cache-Control": "no-store, max-age=0"},
         )
-    if request.url.path == "/championship.html" and LANGUAGE_BOOTSTRAP.is_file():
-        response = await call_next(request)
-        if response.status_code == 200:
-            body = getattr(response, "body", b"")
-            if isinstance(body, bytes):
-                html = body.decode("utf-8")
-            else:
-                html = str(body)
-            marker = "</body>"
-            script = '<script src="/urbion_horizon_language_bootstrap.js"></script>'
-            if script not in html and marker in html:
-                html = html.replace(marker, script + marker, 1)
-            headers = {"Cache-Control": "no-store, max-age=0"}
-            content_type = response.headers.get("content-type")
-            if content_type:
-                headers["content-type"] = content_type
-            return HTMLResponse(html, status_code=response.status_code, headers=headers)
-        return response
+    if request.url.path == "/championship.html":
+        return _canonical_championship_page()
     return await call_next(request)
