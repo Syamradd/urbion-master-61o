@@ -47,8 +47,6 @@
     return true;
   };
 
-  // Keep the latest explicit user tab choice authoritative over asynchronous
-  // station/data callbacks. A later user click replaces this preference.
   const bindPlannerTabRaceGuard = () => {
     if (!document.body || window.__URBION_PLANNER_TAB_RACE_GUARD__) return;
     window.__URBION_PLANNER_TAB_RACE_GUARD__ = true;
@@ -85,11 +83,38 @@
     window.__URBION_PLANNER_TAB_RACE_OBSERVER__ = observer;
   };
 
+  const bindAuthoritativeThemeToggle = () => {
+    if (!document.body || window.__URBION_AUTHORITATIVE_THEME_CAPTURE_GUARD__) return false;
+    window.__URBION_AUTHORITATIVE_THEME_CAPTURE_GUARD__ = true;
+
+    const applyTheme = (light) => {
+      const html = document.documentElement;
+      localStorage.setItem("urbion-theme", light ? "light" : "dark");
+      html.classList.toggle("cs-light", light);
+      const logo = document.querySelector("#cs-logo");
+      if (logo) logo.src = light ? "/urbion_logo_light.svg" : "/urbion_logo_dark.svg";
+    };
+
+    applyTheme(localStorage.getItem("urbion-theme") === "light");
+
+    document.addEventListener("click", (event) => {
+      const button = event.target?.closest?.("#cs-theme");
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      applyTheme(!document.documentElement.classList.contains("cs-light"));
+    }, true);
+
+    return true;
+  };
+
   const bindLanguageSweep = () => {
     const setLang = window.__URBION_HORIZON_SET_LANG__;
     if (typeof setLang !== "function" || !document.body) return false;
     ensureVisualSafety();
     bindPlannerTabRaceGuard();
+    bindAuthoritativeThemeToggle();
     const stored = String(localStorage.getItem("urbion-language") || "en").toLowerCase();
     setLang(stored.startsWith("ms") ? "ms" : "en");
     sweepEnglishText();
