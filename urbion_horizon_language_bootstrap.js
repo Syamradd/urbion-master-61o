@@ -36,6 +36,17 @@
     }
   };
 
+  const findActivePlannerTab = () =>
+    document.querySelector(".workbench-nav button.active[data-tab]")?.dataset.tab || null;
+
+  const clickPlannerTab = (tab) => {
+    if (!tab) return false;
+    const target = document.querySelector(`.workbench-nav button[data-tab="${CSS.escape(tab)}"]`);
+    if (!target) return false;
+    target.click();
+    return true;
+  };
+
   const bindPlannerTabRaceGuard = () => {
     if (!document.body || window.__URBION_PLANNER_TAB_RACE_GUARD__) return;
     window.__URBION_PLANNER_TAB_RACE_GUARD__ = true;
@@ -52,12 +63,10 @@
 
     const reconcile = () => {
       if (!requestedTab || replaying || Date.now() - requestStamp > 4000) return;
-      const active = document.querySelector(".workbench-nav button.active[data-tab]");
-      if (active?.dataset.tab === requestedTab) return;
-      const target = document.querySelector(`.workbench-nav button[data-tab="${CSS.escape(requestedTab)}"]`);
-      if (!target) return;
+      const active = findActivePlannerTab();
+      if (active === requestedTab) return;
       replaying = true;
-      try { target.click(); } finally {
+      try { clickPlannerTab(requestedTab); } finally {
         setTimeout(() => { replaying = false; }, 0);
       }
     };
@@ -69,11 +78,42 @@
     window.__URBION_PLANNER_TAB_RACE_OBSERVER__ = observer;
   };
 
+  const bindStationCompletionGuard = () => {
+    if (!document.body || window.__URBION_STATION_COMPLETION_GUARD__) return;
+    window.__URBION_STATION_COMPLETION_GUARD__ = true;
+    let stationWindowUntil = 0;
+    let requestedTab = null;
+
+    document.addEventListener("click", (event) => {
+      const tab = event.target?.closest?.(".workbench-nav button[data-tab]");
+      if (tab) requestedTab = tab.dataset.tab || null;
+      const station = event.target?.closest?.("#cs-station");
+      if (station) {
+        requestedTab = findActivePlannerTab() || "site";
+        stationWindowUntil = Date.now() + 4500;
+      }
+    }, true);
+
+    const reconcile = () => {
+      if (!stationWindowUntil || Date.now() > stationWindowUntil || !requestedTab) {
+        if (Date.now() > stationWindowUntil) stationWindowUntil = 0;
+        return;
+      }
+      const active = findActivePlannerTab();
+      if (active === requestedTab) return;
+      clickPlannerTab(requestedTab);
+    };
+
+    const timer = window.setInterval(reconcile, 60);
+    window.__URBION_STATION_COMPLETION_GUARD_TIMER__ = timer;
+  };
+
   const bindLanguageSweep = () => {
     const setLang = window.__URBION_HORIZON_SET_LANG__;
     if (typeof setLang !== "function" || !document.body) return false;
     ensureVisualSafety();
     bindPlannerTabRaceGuard();
+    bindStationCompletionGuard();
     const stored = String(localStorage.getItem("urbion-language") || "en").toLowerCase();
     setLang(stored.startsWith("ms") ? "ms" : "en");
     sweepEnglishText();
