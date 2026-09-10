@@ -28,8 +28,11 @@ def main():
             if label.is_visible(): assert 8<=label.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=12
         for field in page.locator("input,select,textarea").all():
             if field.is_visible(): assert 12<=field.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=15
-        primary=page.get_by_role("button",name="RUN SITE ANALYSIS",exact=True).first
+        for selector in ("#urbion-championship-shell","#cs-map","#cs-run","#cs-layer-drawer"):
+            assert page.locator(selector).count()==1, selector
+        primary=page.locator("#cs-run")
         assert primary.count()==1 and primary.is_visible()
+        assert primary.inner_text().strip() == "RUN SITE ANALYSIS"
         primary_style=primary.evaluate("el=>{const cs=getComputedStyle(el);return{backgroundImage:cs.backgroundImage,backgroundColor:cs.backgroundColor,borderColor:cs.borderTopColor,boxShadow:cs.boxShadow}}")
         assert primary_style["backgroundImage"]!="none" or primary_style["backgroundColor"] not in ("rgba(0, 0, 0, 0)","transparent")
         assert primary_style["boxShadow"]!="none"
