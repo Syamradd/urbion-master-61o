@@ -38,7 +38,9 @@ def main() -> None:
         expect(page.locator(".case-panel")).to_have_count(1)
         expect(page.locator(".map-panel-canonical")).to_have_count(1)
         expect(page.locator(".intel-panel")).to_have_count(1)
-        expect(page.locator("#horizon-status")).to_be_visible()
+        status = page.get_by_role("status")
+        expect(status).to_have_count(1)
+        expect(status).to_be_visible()
         expect(page.locator(".horizon-metrics")).to_be_visible()
 
         settings = page.locator("#urbion-settings-btn")
