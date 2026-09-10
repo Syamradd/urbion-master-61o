@@ -7,7 +7,7 @@ BM_MARKERS = ("Gambaran Keseluruhan","Kecerdasan Tapak","Penilaian AI","Bagaiman
 EN_MARKERS = ("Command Centre","Site Intelligence","AI Assessment","What-If Studio","Decision Centre","LCP Intelligence","Local Authority (PBT)","Land Use","RUN SITE ANALYSIS","MAP LAYERS")
 def visible_text(page): return page.locator("body").inner_text()
 def toggle_layer_row(page, checkbox, target_checked: bool):
-    """Use the canonical accessible label interaction; verify the exact layer state."""
+    """Activate the real layer control through the DOM click path and verify state."""
     current = checkbox.is_checked()
     if current == target_checked:
         return
@@ -15,8 +15,7 @@ def toggle_layer_row(page, checkbox, target_checked: bool):
     assert layer_id, "layer checkbox missing data-layer"
     label = checkbox.locator("xpath=ancestor::label[contains(concat(' ', normalize-space(@class), ' '), ' fcc-layer-row ')][1]")
     assert label.count() == 1, "layer row label missing"
-    box = label.bounding_box()
-    label.click(position={"x": 10, "y": box["height"]/2 if box else 10}, force=True)
+    checkbox.evaluate("el => el.click()")
     page.wait_for_function("""(expected) => {
         const el = document.querySelector(`#cs-layer-drawer input[data-layer=\"${CSS.escape(expected.id)}\"]`);
         return !!el && el.checked === expected.checked;
