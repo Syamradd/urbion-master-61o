@@ -1,0 +1,59 @@
+name: URBION Cross-Browser Visual QA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    name: browser-${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt playwright
+      - name: Install browser
+        run: python -m playwright install --with-deps ${{ matrix.browser }}
+      - name: Launch Render-equivalent Uvicorn command
+        env:
+          PYTHONPATH: .
+          PORT: 8765
+          URBION_BROWSER: ${{ matrix.browser }}
+          URBION_BROWSER_ARTIFACT_DIR: /tmp/urbion-cross-browser
+        run: |
+          set -euo pipefail
+          python -m uvicorn landing_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-cross-browser-uvicorn.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          ready=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/health >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/urbion-cross-browser-uvicorn.log || true
+            exit 1
+          fi
+          python tests/browser_urbion_cross_browser_qa.py
+      - name: Upload cross-browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urbion-cross-browser-${{ matrix.browser }}
+          path: /tmp/urbion-cross-browser/
+          if-no-files-found: warn
