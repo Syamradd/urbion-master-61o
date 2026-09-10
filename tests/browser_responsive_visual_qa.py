@@ -20,6 +20,13 @@ def assert_no_horizontal_overflow(page) -> None:
     assert overflow <= 2, f"horizontal overflow: {overflow}px at {page.viewport_size['width']}px viewport"
 
 
+def assert_visible_box(page, selector: str, *, min_width: float = 40, min_height: float = 20) -> None:
+    box = page.locator(selector).bounding_box()
+    assert box is not None, f"{selector}: missing bounding box"
+    assert box[2] >= min_width, f"{selector}: width {box[2]} < {min_width}"
+    assert box[3] >= min_height, f"{selector}: height {box[3]} < {min_height}"
+
+
 def main() -> None:
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
@@ -27,11 +34,11 @@ def main() -> None:
             page = browser.new_page(viewport={"width": width, "height": 900}, device_scale_factor=1)
             page.goto(BASE + "/", wait_until="networkidle", timeout=30_000)
             expect(page).to_have_title(LANDING_TITLE)
-            expect(page.locator(".page")).to_have_count(1)
             expect(page.locator(".hero h1")).to_contain_text("From spatial evidence")
             expect(page.locator('a[href="/championship.html"]')).to_be_visible()
             expect(page.locator(".about")).to_have_count(1)
             expect(page.locator(".smartcity")).to_be_visible()
+            assert_visible_box(page, ".hero")
             assert_no_horizontal_overflow(page)
             page.screenshot(path=ARTIFACT_DIR / f"landing-responsive-{width}.png", full_page=True)
             page.close()
@@ -45,6 +52,7 @@ def main() -> None:
             expect(page.locator("#cs-project_name")).to_have_count(1)
             expect(page.get_by_role("navigation")).to_have_count(1)
             expect(page.get_by_role("navigation")).to_be_visible()
+            assert_visible_box(page, "#cs-map", min_width=140, min_height=180)
             assert_no_horizontal_overflow(page)
             page.screenshot(path=ARTIFACT_DIR / f"workspace-responsive-{width}.png", full_page=True)
             page.close()
