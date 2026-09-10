@@ -5,9 +5,9 @@ from championship_server import app
 
 def test_championship_workstation_ui_asset_is_served_and_injected():
     client = TestClient(app)
-    root = client.get('/')
-    assert root.status_code == 200
-    assert '/urbion_championship_workstation_v2.js' in root.text
+    workstation = client.get('/championship.html')
+    assert workstation.status_code == 200
+    assert '/urbion_championship_workstation_v2.js' in workstation.text
     asset = client.get('/urbion_championship_workstation_v2.js')
     assert asset.status_code == 200
     assert 'Decision chain control' in asset.text
