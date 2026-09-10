@@ -6,6 +6,21 @@ BASE = "http://127.0.0.1:8765"
 BM_MARKERS = ("Gambaran Keseluruhan","Kecerdasan Tapak","Penilaian AI","Bagaimana Jika","Pusat Keputusan","Kecerdasan LCP","Pihak Berkuasa Tempatan","Guna Tanah","JALANKAN ANALISIS TAPAK","LAPISAN PETA")
 EN_MARKERS = ("Command Centre","Site Intelligence","AI Assessment","What-If Studio","Decision Centre","LCP Intelligence","Local Authority (PBT)","Land Use","RUN SITE ANALYSIS","MAP LAYERS")
 def visible_text(page): return page.locator("body").inner_text()
+def toggle_layer_row(page, checkbox, target_checked: bool):
+    """Use the canonical layer-row control; the checkbox input is custom-wired and may cancel native click state changes."""
+    current = checkbox.is_checked()
+    if current == target_checked:
+        return
+    row = checkbox.locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' fcc-layer-row ')][1]")
+    assert row.count() == 1, "layer row missing"
+    row.click(force=True)
+    page.wait_for_timeout(300)
+    page.wait_for_function("""(expected) => {
+        const el = document.querySelector('#cs-layer-drawer input[data-layer]');
+        return !!el && el.checked === expected;
+    }""", target_checked, timeout=3000)
+    assert checkbox.is_checked() is target_checked
+
 def main():
     screenshots=Path("/tmp/urbion-browser-qa"); screenshots.mkdir(parents=True,exist_ok=True)
     with sync_playwright() as pw:
@@ -32,8 +47,6 @@ def main():
             assert page.locator(selector).count()==1, selector
         primary=page.locator("#cs-run")
         assert primary.count()==1 and primary.is_visible()
-        # The workspace hydrates asynchronously; wait for the canonical English
-        # CTA after late Station/data renders rather than sampling a transient state.
         page.wait_for_function("""() => {
             const el = document.querySelector('#cs-run');
             return document.documentElement.lang === 'en' && el && el.innerText.includes('RUN SITE ANALYSIS');
@@ -44,18 +57,8 @@ def main():
         assert primary_style["boxShadow"]!="none"
         drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator("input[data-layer]").first; assert checkbox.count()==1
         before=checkbox.is_checked()
-        if before:
-            checkbox.uncheck(force=True)
-        else:
-            checkbox.check(force=True)
-        page.wait_for_timeout(250)
-        assert checkbox.is_checked() is (not before)
-        if before:
-            checkbox.check(force=True)
-        else:
-            checkbox.uncheck(force=True)
-        page.wait_for_timeout(250)
-        assert checkbox.is_checked() is before
+        toggle_layer_row(page,checkbox,not before)
+        toggle_layer_row(page,checkbox,before)
         scroll_state=page.evaluate("""()=>{const d=document.querySelector('#cs-layer-drawer');if(!d)return null;const all=[...d.querySelectorAll('*')];const s=all.map(el=>({el,rows:el.querySelectorAll('.fcc-layer-row').length})).sort((a,b)=>b.rows-a.rows)[0]?.el;if(!s)return null;return{rows:s.querySelectorAll('.fcc-layer-row').length,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,overflowY:getComputedStyle(s).overflowY}}""")
         assert scroll_state and scroll_state["rows"]>=4 and scroll_state["overflowY"] in ("auto","scroll")
         close=drawer.locator("button.horizon-drawer-close"); assert close.count()==1; close.click(); page.wait_for_timeout(220); assert drawer.get_attribute("aria-hidden")=="true"
