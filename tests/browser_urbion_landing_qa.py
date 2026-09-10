@@ -26,6 +26,17 @@ def main() -> None:
         expect(page.locator(".hero h1")).to_contain_text("Smarter Places.")
         expect(page.locator(".hero h1")).to_contain_text("Stronger Futures.")
         expect(page.locator("#enter-platform")).to_be_visible()
+        expect(page.locator("#about-us")).to_have_count(1)
+        expect(page.locator("#about-title")).to_contain_text("One planning intelligence vision.")
+        team_photo = page.locator(".team-photo")
+        expect(team_photo).to_have_count(1)
+        expect(team_photo).to_be_visible()
+        expect(team_photo).to_have_attribute("alt", "URBION HORIZON team: Muhammad Syamir Aidid, Wan Nur Alea Najihah and Nur Isam Fahmi")
+        assert team_photo.evaluate("img => img.complete && img.naturalWidth > 0"), "About Us team image did not load"
+        assert page.locator(".member").count() == 3
+        expect(page.locator(".member").nth(0)).to_contain_text("MUHAMMAD SYAMIR AIDID")
+        expect(page.locator(".member").nth(1)).to_contain_text("WAN NUR ALEA NAJIHAH")
+        expect(page.locator(".member").nth(2)).to_contain_text("NUR ISAM FAHMI")
         assert page.locator("#urbion-championship-shell").count() == 0
         assert page.locator("#cs-map").count() == 0
         assert page.locator("#cs-project_name").count() == 0
