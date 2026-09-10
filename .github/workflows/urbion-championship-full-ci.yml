@@ -68,7 +68,7 @@ jobs:
           PORT: 8765
         run: |
           set -euo pipefail
-          python -m uvicorn championship_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-uvicorn.log 2>&1 &
+          python -m uvicorn landing_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-uvicorn.log 2>&1 &
           PID=$!
           trap 'kill "$PID" 2>/dev/null || true' EXIT
           python - <<'PY'
@@ -76,21 +76,30 @@ jobs:
           base = 'http://127.0.0.1:8765'
           for _ in range(30):
               try:
-                  for path in ['/health', '/metadata', '/championship-gate', '/']:
+                  for path in ['/health', '/metadata', '/championship-gate']:
                       with urllib.request.urlopen(base + path, timeout=3) as response:
                           body = response.read()
                           assert response.status == 200 and body
-                          if path != '/': json.loads(body.decode('utf-8'))
-                          if path == '/':
-                              html = body.decode('utf-8')
-                              assert 'URBION HORIZON — Championship Workstation' in html
-                              assert 'window.__URBION_FRONTEND_BOOT__' in html
-                              assert 'release:"MASTER-331"' in html
-                              assert 'id="urbion-championship"' in html
-                              assert 'Site + Development Inputs' not in html
-                              assert 'Decision OS' not in html
-                              assert 'Planner Workstation' not in html
-                  for asset in ['/urbion_championship_final_command_center.js','/urbion_championship_final_command_center_hotfix.js','/urbion_championship_final_command_center_polish.js','/urbion_championship_final_command_center_policy.js','/urbion_championship_champion_review.js','/urbion_championship_final_runtime_enforcer.js','/urbion_championship_premium_v3.js','/urbion_championship_premium_v4.js']:
+                          json.loads(body.decode('utf-8'))
+                  with urllib.request.urlopen(base + '/', timeout=3) as response:
+                      landing = response.read().decode('utf-8')
+                      assert response.status == 200
+                      assert 'URBION HORIZON — Smarter Places. Stronger Futures.' in landing
+                      assert 'id="enter-platform"' in landing
+                      assert '/championship.html' in landing
+                      assert 'id="urbion-championship-shell"' not in landing
+                  with urllib.request.urlopen(base + '/championship.html', timeout=3) as response:
+                      html = response.read().decode('utf-8')
+                      assert response.status == 200
+                      assert 'URBION HORIZON — Championship Workstation' in html
+                      assert 'window.__URBION_FRONTEND_BOOT__' in html
+                      assert 'release:"MASTER-331"' in html
+                      assert 'id="urbion-championship"' in html
+                      assert 'Site + Development Inputs' not in html
+                      assert 'Decision OS' not in html
+                      assert 'Planner Workstation' not in html
+                      assert 'urbion_horizon_language_bootstrap.js' in html
+                  for asset in ['/urbion_championship_final_command_center.js','/urbion_championship_final_command_center_hotfix.js','/urbion_championship_final_command_center_polish.js','/urbion_championship_final_command_center_policy.js','/urbion_championship_champion_review.js','/urbion_championship_final_runtime_enforcer.js','/urbion_championship_premium_v3.js','/urbion_championship_premium_v4.js','/urbion_horizon_language_bootstrap.js']:
                       with urllib.request.urlopen(base + asset, timeout=3) as response:
                           assert response.status == 200 and response.read()
                   print('RUNTIME_SMOKE_OK')
@@ -124,7 +133,7 @@ jobs:
           PORT: 8765
         run: |
           set -euo pipefail
-          python -m uvicorn championship_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-browser-uvicorn.log 2>&1 &
+          python -m uvicorn landing_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-browser-uvicorn.log 2>&1 &
           PID=$!
           trap 'kill "$PID" 2>/dev/null || true' EXIT
           ready=0
@@ -140,9 +149,11 @@ jobs:
             cat /tmp/urbion-browser-uvicorn.log || true
             exit 1
           fi
-          python tests/browser_championship_qa_stable.py
-          python tests/browser_horizon_visual_language_qa.py
-          python tests/browser_horizon_controls_qa.py
+          export URBION_APP_URL="http://127.0.0.1:8765/championship.html"
+          python tests/browser_urbion_landing_qa.py
+          python tests/browser_championship_qa_render_entry.py
+          python tests/browser_horizon_visual_language_qa_render_entry.py
+          python tests/browser_horizon_controls_qa_render_entry.py
       - name: Upload browser QA evidence
         if: always()
         uses: actions/upload-artifact@v4
