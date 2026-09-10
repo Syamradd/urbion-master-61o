@@ -44,7 +44,7 @@ def main():
         for label in page.locator("label").all():
             if label.is_visible(): assert 8<=label.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=12
         for field in page.locator("input,select,textarea").all():
-            if field.is_visible(): assert 12<=field.evaluate("el=>parseFloat(getComputedStyle(el).fontSize")<=15
+            if field.is_visible(): assert 12<=field.evaluate("el=>parseFloat(getComputedStyle(el).fontSize)")<=15
         for selector in ("#urbion-championship-shell","#cs-map","#cs-run","#cs-layer-drawer"):
             assert page.locator(selector).count()==1, selector
         primary=page.locator("#cs-run")
