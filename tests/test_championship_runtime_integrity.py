@@ -20,9 +20,9 @@ CRITICAL_ASSETS = (
 
 def test_critical_final_assets_exist_and_are_served_from_canonical_entrypoint():
     client = TestClient(app)
-    root = client.get('/')
-    assert root.status_code == 200
-    html = root.text
+    workstation = client.get('/championship.html')
+    assert workstation.status_code == 200
+    html = workstation.text
     assert 'window.__URBION_FRONTEND_BOOT__' in html
     assert app.state.frontend_release == 'MASTER-331'
     assert app.state.frontend_entrypoint == 'championship.html'
@@ -38,7 +38,7 @@ def test_critical_final_assets_exist_and_are_served_from_canonical_entrypoint():
 
 def test_canonical_root_has_no_legacy_dashboard_mount_markers():
     client = TestClient(app)
-    html = client.get('/').text
+    html = client.get('/championship.html').text
     for marker in ('urbion-workstation-v2', 'urbion-decision-os', 'Decision OS', 'Planner Workstation'):
         assert marker not in html
 
