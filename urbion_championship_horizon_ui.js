@@ -108,3 +108,25 @@ document.addEventListener("click",event=>{
   window.setTimeout(apply,0);
 },false);
 })();
+
+/* Final runtime theme guard: re-assert persisted theme after any competing button handler. */
+(()=>{
+"use strict";
+if(window.__URBION_HORIZON_THEME_RUNTIME_GUARD__)return;
+window.__URBION_HORIZON_THEME_RUNTIME_GUARD__=true;
+const apply=()=>{
+  const html=document.documentElement;
+  const stored=localStorage.getItem("urbion-theme");
+  const light=stored==="light";
+  html.classList.toggle("cs-light",light);
+  const logo=document.querySelector("#cs-logo");
+  if(logo)logo.src=light?"/urbion_logo_light.svg":"/urbion_logo_dark.svg";
+};
+apply();
+document.addEventListener("click",event=>{
+  const button=event.target?.closest?.("#cs-theme");
+  if(!button)return;
+  window.setTimeout(apply,0);
+},false);
+})();
+
