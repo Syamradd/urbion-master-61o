@@ -422,6 +422,7 @@ def main() -> None:
         expect(page).to_have_title("URBION HORIZON — Planning Command Centre")
         assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is False
         page.locator("#cs-theme").click()
+        page.wait_for_timeout(250)
         assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is True
         page.locator("#cs-theme").click()
         assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is False
