@@ -7,7 +7,7 @@ BM_MARKERS = ("Gambaran Keseluruhan","Kecerdasan Tapak","Penilaian AI","Bagaiman
 EN_MARKERS = ("Command Centre","Site Intelligence","AI Assessment","What-If Studio","Decision Centre","LCP Intelligence","Local Authority (PBT)","Land Use","RUN SITE ANALYSIS","MAP LAYERS")
 def visible_text(page): return page.locator("body").inner_text()
 def toggle_layer_row(page, checkbox, target_checked: bool):
-    """Use the canonical layer-row control; the checkbox input is custom-wired and may cancel native click state changes."""
+    """Use the canonical layer-row control; scope state verification to the selected layer."""
     current = checkbox.is_checked()
     if current == target_checked:
         return
@@ -18,7 +18,7 @@ def toggle_layer_row(page, checkbox, target_checked: bool):
     row.click(force=True)
     page.wait_for_timeout(300)
     page.wait_for_function("""(expected) => {
-        const el = document.querySelector(`#cs-layer-drawer input[data-layer="${CSS.escape(expected.id)}"]`);
+        const el = document.querySelector(`#cs-layer-drawer input[data-layer=\"${CSS.escape(expected.id)}\"]`);
         return !!el && el.checked === expected.checked;
     }""", arg={"id": layer_id, "checked": target_checked}, timeout=5000)
     assert checkbox.is_checked() is target_checked
