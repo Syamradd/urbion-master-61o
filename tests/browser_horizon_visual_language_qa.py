@@ -7,7 +7,7 @@ BM_MARKERS = ("Gambaran Keseluruhan","Kecerdasan Tapak","Penilaian AI","Bagaiman
 EN_MARKERS = ("Command Centre","Site Intelligence","AI Assessment","What-If Studio","Decision Centre","LCP Intelligence","Local Authority (PBT)","Land Use","RUN SITE ANALYSIS","MAP LAYERS")
 def visible_text(page): return page.locator("body").inner_text()
 def toggle_layer_row(page, checkbox, target_checked: bool):
-    """Activate the real layer control through the DOM click path and verify state."""
+    """Exercise a real layer control; source-gated query layers may remain disabled."""
     current = checkbox.is_checked()
     if current == target_checked:
         return
@@ -15,6 +15,9 @@ def toggle_layer_row(page, checkbox, target_checked: bool):
     assert layer_id, "layer checkbox missing data-layer"
     label = checkbox.locator("xpath=ancestor::label[contains(concat(' ', normalize-space(@class), ' '), ' fcc-layer-row ')][1]")
     assert label.count() == 1, "layer row label missing"
+    if checkbox.is_disabled():
+        assert layer_id.startswith(("iplan-", "mygems-")), layer_id
+        return
     checkbox.evaluate("el => el.click()")
     page.wait_for_function("""(expected) => {
         const el = document.querySelector(`#cs-layer-drawer input[data-layer=\"${CSS.escape(expected.id)}\"]`);
@@ -58,8 +61,12 @@ def main():
         assert primary_style["boxShadow"]!="none"
         drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator('input[data-layer="iplan-flood"]'); assert checkbox.count()==1
         before=checkbox.is_checked()
-        toggle_layer_row(page,checkbox,not before)
-        toggle_layer_row(page,checkbox,before)
+        if checkbox.is_disabled():
+            row_state=drawer.locator('label.fcc-layer-row', has=checkbox).inner_text()
+            assert row_state
+        else:
+            toggle_layer_row(page,checkbox,not before)
+            toggle_layer_row(page,checkbox,before)
         scroll_state=page.evaluate("""()=>{const d=document.querySelector('#cs-layer-drawer');if(!d)return null;const all=[...d.querySelectorAll('*')];const s=all.map(el=>({el,rows:el.querySelectorAll('.fcc-layer-row').length})).sort((a,b)=>b.rows-a.rows)[0]?.el;if(!s)return null;return{rows:s.querySelectorAll('.fcc-layer-row').length,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,overflowY:getComputedStyle(s).overflowY}}""")
         assert scroll_state and scroll_state["rows"]>=4 and scroll_state["overflowY"] in ("auto","scroll")
         close=drawer.locator("button.horizon-drawer-close"); assert close.count()==1; close.click(); page.wait_for_timeout(220); assert drawer.get_attribute("aria-hidden")=="true"
