@@ -29,9 +29,36 @@ def main() -> None:
         expect(page.locator("#urbion-settings-title")).to_have_text("Settings")
 
         page.locator('[data-setting-theme="light"]').click()
-        assert page.locator("html").evaluate("el => el.classList.contains('cs-light')") is True
+        expect(page.locator("html")).to_have_class(lambda value: "cs-light" in value.split())
+        light_visual = page.evaluate("""() => {
+            const body = getComputedStyle(document.body);
+            const panel = document.querySelector('.case-panel, .card, .panel, .sidebar');
+            const ps = panel ? getComputedStyle(panel) : null;
+            return {
+                bodyBg: body.backgroundImage + '|' + body.backgroundColor,
+                bodyColor: body.color,
+                panelBg: ps ? ps.backgroundImage + '|' + ps.backgroundColor : '',
+                panelColor: ps ? ps.color : '',
+            };
+        }""")
+        page.screenshot(path=ARTIFACT_DIR / "theme-light.png", full_page=True)
+
         page.locator('[data-setting-theme="dark"]').click()
-        assert page.locator("html").evaluate("el => !el.classList.contains('cs-light')") is True
+        expect(page.locator("html")).not_to_have_class(lambda value: "cs-light" in value.split())
+        dark_visual = page.evaluate("""() => {
+            const body = getComputedStyle(document.body);
+            const panel = document.querySelector('.case-panel, .card, .panel, .sidebar');
+            const ps = panel ? getComputedStyle(panel) : null;
+            return {
+                bodyBg: body.backgroundImage + '|' + body.backgroundColor,
+                bodyColor: body.color,
+                panelBg: ps ? ps.backgroundImage + '|' + ps.backgroundColor : '',
+                panelColor: ps ? ps.color : '',
+            };
+        }""")
+        page.screenshot(path=ARTIFACT_DIR / "theme-dark.png", full_page=True)
+        assert light_visual != dark_visual, (light_visual, dark_visual)
+        assert any(light_visual[key] != dark_visual[key] for key in ("bodyBg", "bodyColor", "panelBg", "panelColor")), (light_visual, dark_visual)
 
         motion = page.locator("#urbion-setting-motion")
         motion.click()
@@ -39,6 +66,16 @@ def main() -> None:
         motion.click()
         assert page.evaluate("localStorage.getItem('urbion-reduced-motion')") == "0"
         page.locator(".urbion-settings-close").click()
+        expect(panel).not_to_have_class("open")
+
+        # Keyboard contract: settings must remain reachable without pointer input
+        # and Escape must dismiss an open modal surface.
+        page.keyboard.press("Tab")
+        focused = page.evaluate("document.activeElement?.id || document.activeElement?.getAttribute('aria-label') || document.activeElement?.tagName")
+        assert focused, "Keyboard focus did not move to an actionable element"
+        settings.press("Enter")
+        expect(panel).to_have_class("urbion-settings-backdrop open")
+        page.keyboard.press("Escape")
         expect(panel).not_to_have_class("open")
 
         file_input = page.locator("#urbion-file-input")
