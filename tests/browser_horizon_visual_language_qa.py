@@ -5,9 +5,15 @@ from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8765"
 BM_MARKERS = ("Gambaran Keseluruhan","Kecerdasan Tapak","Penilaian AI","Bagaimana Jika","Pusat Keputusan","Kecerdasan LCP","Pihak Berkuasa Tempatan","Guna Tanah","JALANKAN ANALISIS TAPAK","LAPISAN PETA")
 EN_MARKERS = ("Command Centre","Site Intelligence","AI Assessment","What-If Studio","Decision Centre","LCP Intelligence","Local Authority (PBT)","Land Use","RUN SITE ANALYSIS","MAP LAYERS")
+NONLIVE = {"SOURCE CONTEXT","NO FEATURE / QUERY ERROR","RUN ANALYSIS TO QUERY","SOURCE_UNAVAILABLE","QUERY_ERROR","NO_FEATURE","STATE REQUIRED","REFERENCE_ONLY","MANUAL_VERIFICATION_REQUIRED"}
+
 def visible_text(page): return page.locator("body").inner_text()
+
+def layer_state(page, layer_id):
+    return page.evaluate("(id) => window.__URBION_QA__?.layers?.[id] || null", layer_id)
+
 def toggle_layer_row(page, checkbox, target_checked: bool):
-    """Exercise a real layer control; source-gated query layers may remain disabled."""
+    """Exercise a real layer control while accepting an explicit source-gated no-data outcome."""
     current = checkbox.is_checked()
     if current == target_checked:
         return
@@ -15,15 +21,18 @@ def toggle_layer_row(page, checkbox, target_checked: bool):
     assert layer_id, "layer checkbox missing data-layer"
     label = checkbox.locator("xpath=ancestor::label[contains(concat(' ', normalize-space(@class), ' '), ' fcc-layer-row ')][1]")
     assert label.count() == 1, "layer row label missing"
-    if checkbox.is_disabled():
-        assert layer_id.startswith(("iplan-", "mygems-")), layer_id
-        return
     checkbox.evaluate("el => el.click()")
-    page.wait_for_function("""(expected) => {
-        const el = document.querySelector(`#cs-layer-drawer input[data-layer=\"${CSS.escape(expected.id)}\"]`);
-        return !!el && el.checked === expected.checked;
-    }""", arg={"id": layer_id, "checked": target_checked}, timeout=5000)
-    assert checkbox.is_checked() is target_checked
+    page.wait_for_timeout(300)
+    final_checked = checkbox.is_checked()
+    state = layer_state(page, layer_id)
+    assert state, f"missing QA layer state: {layer_id}"
+    if target_checked:
+        if final_checked:
+            return
+        assert state.get("sourceStatus") in NONLIVE, (layer_id, state)
+        assert state.get("renderStatus") == "HIDDEN" and state.get("visible") is False, (layer_id, state)
+        return
+    assert final_checked is False, (layer_id, state)
 
 def main():
     screenshots=Path("/tmp/urbion-browser-qa"); screenshots.mkdir(parents=True,exist_ok=True)
@@ -60,13 +69,7 @@ def main():
         assert primary_style["backgroundImage"]!="none" or primary_style["backgroundColor"] not in ("rgba(0, 0, 0, 0)","transparent")
         assert primary_style["boxShadow"]!="none"
         drawer=page.locator("#cs-layer-drawer"); assert drawer.count()==1 and drawer.is_visible(); checkbox=drawer.locator('input[data-layer="iplan-flood"]'); assert checkbox.count()==1
-        before=checkbox.is_checked()
-        if checkbox.is_disabled():
-            row_state=drawer.locator('label.fcc-layer-row', has=checkbox).inner_text()
-            assert row_state
-        else:
-            toggle_layer_row(page,checkbox,not before)
-            toggle_layer_row(page,checkbox,before)
+        before=checkbox.is_checked(); toggle_layer_row(page,checkbox,not before); toggle_layer_row(page,checkbox,before)
         scroll_state=page.evaluate("""()=>{const d=document.querySelector('#cs-layer-drawer');if(!d)return null;const all=[...d.querySelectorAll('*')];const s=all.map(el=>({el,rows:el.querySelectorAll('.fcc-layer-row').length})).sort((a,b)=>b.rows-a.rows)[0]?.el;if(!s)return null;return{rows:s.querySelectorAll('.fcc-layer-row').length,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,overflowY:getComputedStyle(s).overflowY}}""")
         assert scroll_state and scroll_state["rows"]>=4 and scroll_state["overflowY"] in ("auto","scroll")
         close=drawer.locator("button.horizon-drawer-close"); assert close.count()==1; close.click(); page.wait_for_timeout(220); assert drawer.get_attribute("aria-hidden")=="true"
