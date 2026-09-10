@@ -16,8 +16,8 @@ LANDING_FILE = BASE_DIR / "landing.html"
 LANGUAGE_BOOTSTRAP = BASE_DIR / "urbion_horizon_language_bootstrap.js"
 HORIZON_UI_ASSET = BASE_DIR / "urbion_championship_horizon_ui.js"
 HORIZON_H1_CONTRACT = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.03!important;"
-HORIZON_H1_SAFE = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.12!important;"
-HORIZON_H1_STYLE = "body.horizon-ui .hero h1{line-height:1.12!important;height:auto!important;min-height:0!important;overflow:visible!important;box-sizing:border-box!important;}"
+HORIZON_H1_SAFE = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.2!important;"
+HORIZON_H1_STYLE = "body.horizon-ui .hero h1{line-height:1.2!important;height:auto!important;min-height:0!important;overflow:visible!important;box-sizing:border-box!important;}"
 
 
 def _canonical_championship_page() -> HTMLResponse:
@@ -71,8 +71,7 @@ async def _urbion_landing_override(request: Request, call_next):
             return Response("URBION HORIZON UI asset is missing.", status_code=500, media_type="text/plain; charset=utf-8")
         payload = HORIZON_UI_ASSET.read_text(encoding="utf-8")
         # Keep the canonical UI asset unchanged on disk; only the production
-        # entrypoint applies this surgical visual guard against 4px heading
-        # clipping reported by the browser acceptance contract.
+        # entrypoint applies this surgical visual guard against heading clipping.
         if HORIZON_H1_CONTRACT not in payload:
             return Response("URBION HORIZON heading visual contract is missing.", status_code=500, media_type="text/plain; charset=utf-8")
         payload = payload.replace(HORIZON_H1_CONTRACT, HORIZON_H1_SAFE, 1)
