@@ -9,6 +9,8 @@ BASE = os.getenv("BASE_URL", "http://127.0.0.1:8765")
 ARTIFACT_DIR = Path(os.getenv("URBION_BROWSER_ARTIFACT_DIR", "/tmp/urbion-browser-qa"))
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
+LANDING_TITLE = "URBION HORIZON — Spatial Decision Intelligence"
+WORKSPACE_TITLE = "URBION HORIZON — Planning Command Centre"
 LANDING_VIEWPORTS = (375, 390, 430, 768, 820, 1280, 1440, 1600, 1920)
 WORKSPACE_VIEWPORTS = (375, 768, 1280, 1600)
 
@@ -24,12 +26,12 @@ def main() -> None:
         for width in LANDING_VIEWPORTS:
             page = browser.new_page(viewport={"width": width, "height": 900}, device_scale_factor=1)
             page.goto(BASE + "/", wait_until="networkidle", timeout=30_000)
-            expect(page).to_have_title("URBION HORIZON — Smarter Places. Stronger Futures.")
+            expect(page).to_have_title(LANDING_TITLE)
             expect(page.locator(".page")).to_have_count(1)
-            expect(page.locator(".hero h1")).to_contain_text("Smarter Places.")
-            expect(page.locator("#enter-platform")).to_be_visible()
-            expect(page.locator("#about-us")).to_have_count(1)
-            expect(page.locator(".team-photo")).to_be_visible()
+            expect(page.locator(".hero h1")).to_contain_text("From spatial evidence")
+            expect(page.locator('a[href="/championship.html"]')).to_be_visible()
+            expect(page.locator(".about")).to_have_count(1)
+            expect(page.locator(".smartcity")).to_be_visible()
             assert_no_horizontal_overflow(page)
             page.screenshot(path=ARTIFACT_DIR / f"landing-responsive-{width}.png", full_page=True)
             page.close()
@@ -37,13 +39,10 @@ def main() -> None:
         for width in WORKSPACE_VIEWPORTS:
             page = browser.new_page(viewport={"width": width, "height": 900}, device_scale_factor=1)
             page.goto(BASE + "/championship.html", wait_until="networkidle", timeout=30_000)
-            expect(page).to_have_title("URBION HORIZON — Planning Command Centre")
+            expect(page).to_have_title(WORKSPACE_TITLE)
             expect(page.locator("#urbion-championship-shell")).to_have_count(1)
             expect(page.locator("#cs-map")).to_have_count(1)
             expect(page.locator("#cs-project_name")).to_have_count(1)
-            # The canonical workstation exposes its navigation semantically as <nav>
-            # without relying on a private .nav CSS class, so the visual contract follows
-            # the actual accessibility/navigation contract and survives CSS refactors.
             expect(page.get_by_role("navigation")).to_have_count(1)
             expect(page.get_by_role("navigation")).to_be_visible()
             assert_no_horizontal_overflow(page)
