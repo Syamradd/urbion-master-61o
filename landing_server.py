@@ -29,10 +29,11 @@ async def _urbion_landing_override(request: Request, call_next):
     if request.url.path == "/championship.html" and LANGUAGE_BOOTSTRAP.is_file():
         response = await call_next(request)
         if response.status_code == 200:
-            body = b""
-            async for chunk in response.body_iterator:
-                body += chunk
-            html = body.decode("utf-8")
+            body = getattr(response, "body", b"")
+            if isinstance(body, bytes):
+                html = body.decode("utf-8")
+            else:
+                html = str(body)
             marker = "</body>"
             script = '<script src="/urbion_horizon_language_bootstrap.js"></script>'
             if script not in html and marker in html:
@@ -40,6 +41,6 @@ async def _urbion_landing_override(request: Request, call_next):
             return HTMLResponse(
                 html,
                 status_code=response.status_code,
-                headers={"Cache-Control": "no-store, max-age=0"},
+                headers={"Cache-Control": "no-store", "max-age": 0},
             )
     return await call_next(request)
