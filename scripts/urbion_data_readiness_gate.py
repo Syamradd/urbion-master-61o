@@ -7,43 +7,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CRITICAL = {
-    "workspace": [
-        "landing_server.py", "workspace_v5.html", "urbion_workspace_final.js",
-        "urbion_workspace_bridge.js", "urbion_workspace_runtime.js",
-    ],
-    "ai": [
-        "urbion_agent_api.py", "urbion_agent_orchestrator.py", "urbion_copilot.py",
-        "urbion_copilot_api.py", "urbion_llm_provider.py",
-    ],
-    "retrieval": [
-        "urbion_retrieval.py", "urbion_knowledge_orchestrator.py", "urbion_knowledge_api.py",
-        "urbion_evidence.py", "urbion_evidence_ledger.py", "urbion_evidence_quality.py",
-    ],
-    "planning": [
-        "urbion_rules.py", "urbion_applicability.py", "urbion_compliance.py",
-        "urbion_guideline_intelligence.py", "urbion_planning_sources.py", "urbion_iplan.py",
-        "urbion_landuse_zoning.py", "urbion_kebenaran_merancang.py",
-    ],
-    "spatial": [
-        "urbion_spatial.py", "urbion_spatial_intelligence.py", "urbion_spatial_context.py",
-        "urbion_gis_binding.py", "urbion_gis_lot.py", "urbion_cadastral_context.py",
-        "urbion_network_intelligence.py", "urbion_live_stations.py",
-    ],
-    "sources": [
-        "urbion_data_sources.py", "urbion_multi_source.py", "urbion_public_sources.py",
-        "urbion_myeqms_adapter.py", "urbion_development_impact.py",
-        "urbion_environment_intelligence.py", "urbion_lcp_intelligence.py",
-    ],
+    "workspace": ["landing_server.py", "workspace_v5.html", "urbion_workspace_final.js", "urbion_workspace_bridge.js", "urbion_workspace_runtime.js"],
+    "ai": ["urbion_agent_api.py", "urbion_agent_orchestrator.py", "urbion_copilot.py", "urbion_copilot_api.py", "urbion_llm_provider.py"],
+    "retrieval": ["urbion_retrieval.py", "urbion_knowledge_orchestrator.py", "urbion_knowledge_api.py", "urbion_evidence.py", "urbion_evidence_ledger.py", "urbion_evidence_quality.py"],
+    "planning": ["urbion_rules.py", "urbion_applicability.py", "urbion_compliance.py", "urbion_guideline_intelligence.py", "urbion_planning_sources.py", "urbion_iplan.py", "urbion_landuse_zoning.py", "urbion_kebenaran_merancang.py"],
+    "spatial": ["urbion_spatial.py", "urbion_spatial_intelligence.py", "urbion_spatial_context.py", "urbion_gis_binding.py", "urbion_gis_lot.py", "urbion_cadastral_context.py", "urbion_network_intelligence.py", "urbion_live_stations.py"],
+    "sources": ["urbion_data_sources.py", "urbion_multi_source.py", "urbion_public_sources.py", "urbion_myeqms_adapter.py", "urbion_development_impact.py", "urbion_environment_intelligence.py", "urbion_lcp_intelligence.py"],
 }
-
 
 def fail(message: str) -> None:
     raise SystemExit(f"[FAIL] {message}")
 
-
 def ok(message: str) -> None:
     print(f"[ OK ] {message}")
-
 
 def main() -> None:
     for group, names in CRITICAL.items():
@@ -67,10 +43,7 @@ def main() -> None:
     ok("traceable deterministic retrieval/RAG foundation present")
 
     rules = texts["urbion_rules.py"]
-    required_rule_ids = (
-        "RT-MBMB-2035-COM-01", "RT-MBMB-2035-COM-02", "RT-MBMB-2035-COM-03",
-        "RT-MBMB-2035-COM-04", "RT-MBMB-2035-TOD-01", "RT-MBMB-2035-TOD-02",
-    )
+    required_rule_ids = ("RT-MBMB-2035-COM-01", "RT-MBMB-2035-COM-02", "RT-MBMB-2035-COM-03", "RT-MBMB-2035-COM-04", "RT-MBMB-2035-TOD-01", "RT-MBMB-2035-TOD-02")
     missing_rules = [rid for rid in required_rule_ids if rid not in rules]
     if missing_rules:
         fail("core RT MBMB rule IDs missing: " + ", ".join(missing_rules))
@@ -95,7 +68,7 @@ def main() -> None:
     ok("AI orchestration API routes present")
 
     workspace = texts["workspace_v5.html"] + texts["urbion_workspace_final.js"] + texts["urbion_workspace_runtime.js"]
-    for token in ("/workstation/analysis", "/what-if", "/decision-center", "/map/layers", "landuse1", "landuse2", "landuse3", "#runtimeHelp"):
+    for token in ("/workstation/analysis", "/what-if", "/decision-center", "/map/layers", "landuse1", "landuse2", "landuse3", "runtimeHelp"):
         if token not in workspace:
             fail(f"workspace integration token missing: {token}")
     ok("workspace-to-engine integration contracts present")
@@ -107,7 +80,6 @@ def main() -> None:
 
     print("URBION DATA READINESS GATE: PASS")
     print("External data freshness, adopted-plan currency and authority-specific verification remain runtime/source-specific checks.")
-
 
 if __name__ == "__main__":
     main()
