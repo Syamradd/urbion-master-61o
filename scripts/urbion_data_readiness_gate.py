@@ -67,7 +67,7 @@ def main() -> None:
     ok("bounded optional LLM narrative contract present")
 
     rag = texts["urbion_knowledge_orchestrator.py"] + texts["urbion_retrieval.py"]
-    for token in ("urbion_retrieve_rules", "source_register", "evidence_boundary", "TRACEABILITY"):
+    for token in ("urbion_retrieve_rules", "source_register", "evidence_boundary", "traceability"):
         if token.lower() not in rag.lower():
             fail(f"knowledge/RAG grounding token missing: {token}")
     ok("traceable deterministic retrieval/RAG foundation present")
@@ -109,8 +109,6 @@ def main() -> None:
     all_source = "\n".join(texts.values())
     if re.search(r"AIza[0-9A-Za-z_-]{20,}", all_source):
         fail("possible hard-coded Google API key detected")
-    if "Perdagangan": in ():  # impossible branch keeps the gate source-neutral about explanatory titles
-        pass
     ok("no obvious hard-coded API key pattern detected")
 
     print("URBION DATA READINESS GATE: PASS")
