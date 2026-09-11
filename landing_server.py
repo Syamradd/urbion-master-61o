@@ -8,9 +8,11 @@ from pathlib import Path
 import json
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, JSONResponse
 
 from championship_server import app
+from server import AssessmentRequest
+from urbion_decision_center import build_decision_center
 
 BASE_DIR = Path(__file__).resolve().parent
 WELCOME_FILE = BASE_DIR / "welcome.html"
@@ -65,28 +67,30 @@ def _workspace() -> HTMLResponse:
 @app.middleware("http")
 async def _urbion_canonical_presentation(request: Request, call_next):
     path = request.url.path
-    # The canonical workspace sends its decision payload as
-    # {"assessment": <AssessmentRequest>, "analysis": <last result>}.
-    # The production /decision-center route accepts AssessmentRequest directly.
-    # Normalize only this exact compatibility shape at the presentation boundary;
-    # the planning engine and decision semantics remain unchanged.
+
+    # Hard compatibility boundary for the canonical workspace decision action.
+    # The workspace sends {"assessment": {...}, "analysis": {...}}, while the
+    # production engine route in server.py accepts AssessmentRequest directly.
+    # Intercept this exact presentation payload before FastAPI route validation,
+    # run the same deterministic decision engine, and return its decision-center
+    # packet. No alternate approval logic is introduced.
     if path == "/decision-center" and request.method == "POST":
         try:
             raw = await request.body()
             payload = json.loads(raw.decode("utf-8")) if raw else None
-            if isinstance(payload, dict) and isinstance(payload.get("assessment"), dict):
-                normalized = json.dumps(payload["assessment"], separators=(",", ":")).encode("utf-8")
-                sent = False
-
-                async def receive():
-                    nonlocal sent
-                    if sent:
-                        return {"type": "http.request", "body": b"", "more_body": False}
-                    sent = True
-                    return {"type": "http.request", "body": normalized, "more_body": False}
-
-                request = Request(request.scope, receive=receive)
+            assessment = payload.get("assessment") if isinstance(payload, dict) else None
+            if isinstance(assessment, dict):
+                result = build_decision_center(
+                    assessment=__import__("server").assess_core(
+                        AssessmentRequest.model_validate(assessment)
+                    )
+                )
+                return JSONResponse(result)
         except (UnicodeDecodeError, json.JSONDecodeError):
+            pass
+        except Exception:
+            # Fall through to the normal route so invalid payloads retain the
+            # backend's ordinary validation/error semantics.
             pass
 
     if path in {"/", "/index.html"}:
