@@ -79,7 +79,7 @@ def main() -> int:
         check(page.locator("#aiSynthesisCard").is_visible(), "bounded AI planning synthesis surfaced")
         ai_text = page.locator("#aiSynthesisCard").inner_text()
         check("SOURCE OF TRUTH" in ai_text.upper(), "AI synthesis states deterministic source-of-truth boundary")
-        check(page.locator("#evidenceHealth").inner_text().contains("AI / COPILOT") if False else "AI / COPILOT" in page.locator("#evidenceHealth").inner_text(), "AI/coplanar status surfaced in evidence health")
+        check("AI / COPILOT" in page.locator("#evidenceHealth").inner_text(), "AI/copilot status surfaced in evidence health")
 
         for selector, title in [("#evidenceBtn", "EVIDENCE CHAIN"), ("#whatifBtn", "WHAT-IF STUDIO"), ("#decisionBtn", "DECISION SUPPORT"), ("#outputBtn", "URBION PLANNER-READY OUTPUT")]:
             page.locator(selector).click()
