@@ -6,12 +6,12 @@
 ❌ confirmed defect
 
 ## Current checkpoint
-Branch: `feature/canonical-workspace-v2`
-Latest source checkpoint: `2ec9d216c3686c02479bd31aeb6c95532a8b1c08`.
+Branch: `feature/canonical-workspace-v2`.
+Latest source checkpoint: `5f8eed1f54db32f6b39f3176a655a1b3b0c9c96d`.
 Render: **LOCKED — no deployment / no iteration**.
 
 ## Current source trace
-The canonical judge path is now explicitly chained as:
+The canonical judge path is explicitly chained as:
 
 `workspace_v5.html` → `urbion_workspace_final.js` → `urbion_workspace_bridge.js` → `urbion_workspace_runtime.js`
 
@@ -20,79 +20,79 @@ The presentation adapter injects the bridge between the planning function layer 
 PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancangan Pemajuan Versi 3.0 / Versi 3 (2025)** for the Guna Tanah 1 / 2 / 3 hierarchy. Legacy `Perdagangan` is not used as the commercial GT1 label; runtime uses `Komersial`.
 
 ## 1. Canonical runtime
-- [x] ✅ `/` → `welcome.html`
-- [x] ✅ `/about` → `urbion_horizon_about.html`
-- [x] ✅ `/workspace` → `workspace_v5.html`
-- [x] ✅ Legacy championship frontend injection removed from canonical routes
-- [x] ✅ Existing FastAPI planning engines preserved
-- [x] ✅ `urbion_workspace_final.js` remains the canonical planning function layer
-- [x] ✅ `urbion_workspace_bridge.js` exposes the existing core functions through `window.URBION_FINAL`
-- [x] ✅ Bridge waits for the actual core functions before publishing the API
-- [x] ✅ `urbion_workspace_runtime.js` remains the final visible-control takeover layer
-- [x] ✅ Duplicate runtime boot is guarded
-- [x] ✅ Runtime map/global access is defensive
-- [x] ✅ Competing listeners on visible buttons/selectors are stripped before final bindings are attached
+- [x] `/` → `welcome.html`
+- [x] `/about` → `urbion_horizon_about.html`
+- [x] `/workspace` → `workspace_v5.html`
+- [x] Legacy championship frontend injection removed from canonical routes
+- [x] Existing FastAPI planning engines preserved
+- [x] `urbion_workspace_final.js` remains the canonical planning function layer
+- [x] `urbion_workspace_bridge.js` exposes the existing core functions through `window.URBION_FINAL`
+- [x] Bridge waits for the actual core functions before publishing the API
+- [x] `urbion_workspace_runtime.js` remains the final visible-control takeover layer
+- [x] Duplicate runtime boot is guarded
+- [x] Runtime map/global access is defensive
+- [x] Competing listeners on visible buttons/selectors are stripped before final bindings are attached
 
 ## 2. Guna Tanah 1 / 2 / 3 — latest classification
-- [x] ✅ Canonical GT hierarchy is taken from the Version 3-aligned taxonomy
-- [x] ✅ GT1 → GT2 → GT3 is cascading and internally consistent
-- [x] ✅ `Komersial` is the commercial GT1 term
-- [x] ✅ Legacy `Perdagangan` is excluded from the visible runtime selectors
-- [x] ✅ Selected GT1/GT2/GT3 values are included in the assessment payload
-- [x] ✅ Runtime selector takeover prevents the older inline taxonomy from overriding the canonical taxonomy after load
+- [x] Canonical GT hierarchy is Version 3-aligned
+- [x] GT1 → GT2 → GT3 is cascading
+- [x] `Komersial` is the commercial GT1 term
+- [x] Legacy `Perdagangan` is excluded from visible runtime selectors
+- [x] Selected GT1/GT2/GT3 values are included in the assessment payload
+- [x] Runtime selector takeover prevents older inline bindings from overriding the visible taxonomy after load
 
 ## 3. Map / GIS controls
-- [x] ✅ Leaflet map
-- [x] ✅ MAP / OSM
-- [x] ✅ SATELLITE / Esri World Imagery
-- [x] ✅ HYBRID / imagery + reference labels
-- [x] ✅ Site marker + map click
-- [x] ✅ Locate / recenter
-- [x] ✅ 400 m / 800 m / 1 km rings
-- [x] ✅ Ring visibility toggles
-- [x] ✅ Search → coordinates → map update
-- [x] ✅ Road / transit context toggle
-- [x] ✅ Basemap switch removes existing workspace basemap first, preventing stacking over OSM
+- [x] Leaflet map
+- [x] MAP / OSM
+- [x] SATELLITE / Esri World Imagery
+- [x] HYBRID / imagery + reference labels
+- [x] Site marker + map click
+- [x] Locate / recenter
+- [x] 400 m / 800 m / 1 km rings
+- [x] Ring visibility toggles
+- [x] Search → coordinates → map update
+- [x] Road / transit context toggle
+- [x] Basemap switching removes the previous workspace basemap first
 
 ## 4. i-Plan layer drawer
-- [x] ✅ `/map/layers?state=...`
-- [x] ✅ Dynamic groups / source / type
-- [x] ✅ GeoServer WMS renderer
-- [x] ✅ TILE renderer
-- [x] ✅ ArcGIS MapServer renderer
-- [x] ✅ ON = real Leaflet layer added
-- [x] ✅ OFF = real Leaflet layer removed
-- [x] ✅ Error state / portal-only handling
-- [x] ✅ Current land use / zoning / committed land use
-- [x] ✅ Topography / heritage / CFS / ecology / KSAS / disaster-risk pathways through live catalogue
+- [x] `/map/layers?state=...`
+- [x] Dynamic groups / source / type
+- [x] GeoServer WMS renderer
+- [x] TILE renderer
+- [x] ArcGIS MapServer renderer
+- [x] ON = real Leaflet layer added
+- [x] OFF = real Leaflet layer removed
+- [x] Error state / portal-only handling
+- [x] Current land use / zoning / committed land use pathways
+- [x] Topography / heritage / CFS / ecology / KSAS / disaster-risk pathways through live catalogue
 
 ## 5. Planning analysis
-- [x] ✅ `/workstation/analysis`
-- [x] ✅ Case payload includes GT1 / GT2 / GT3
-- [x] ✅ Readiness derived from returned state
-- [x] ✅ Spatial findings
-- [x] ✅ Planning implications
-- [x] ✅ Review gaps
-- [x] ✅ RT rule cards with proposed / requirement / status / reason / source
-- [x] ✅ GP/GPP candidates
-- [x] ✅ Evidence health / register hooks
+- [x] `/workstation/analysis`
+- [x] Case payload includes GT1 / GT2 / GT3
+- [x] Readiness derived from returned state
+- [x] Spatial findings
+- [x] Planning implications
+- [x] Review gaps
+- [x] RT rule cards with proposed / requirement / status / reason / source
+- [x] GP/GPP candidates
+- [x] Evidence health / register hooks
 
 ## 6. What-If / Decision / Output
-- [x] ✅ `/what-if` baseline + scenario
-- [x] ✅ `/decision-center` status + rationale + planner action
-- [x] ✅ Planner-ready Output with land-use hierarchy / RT / GP / gaps / authority boundary
-- [x] ✅ Print / PDF
-- [x] ✅ No APPROVED / REJECTED statutory claim
+- [x] `/what-if` baseline + scenario
+- [x] `/decision-center` status + rationale + planner action
+- [x] Planner-ready Output with land-use hierarchy / RT / GP / gaps / authority boundary
+- [x] Print / PDF
+- [x] No APPROVED / REJECTED statutory claim
 
 ## 7. Utilities
-- [x] ✅ About
-- [x] ✅ Help
-- [x] ✅ Sources
-- [x] ✅ Status
-- [x] ✅ Fullscreen
-- [x] ✅ Reset
-- [x] ✅ BM/EN visible toggle
-- [x] ✅ Dark/light toggle
+- [x] About
+- [x] Help
+- [x] Sources
+- [x] Status
+- [x] Fullscreen
+- [x] Reset
+- [x] BM/EN visible toggle
+- [x] Dark/light toggle
 
 ## 8. Source-side hardening completed
 ### Defect A — canonical runtime bridge missing
@@ -131,10 +131,12 @@ The runtime now self-guards and checks map/base/ring globals before using them.
 - [ ] 🟡 Dark/light does not clip or destroy contrast
 - [ ] 🟡 Welcome / Workspace / About visual check against locked references
 
+**Browser limitation:** source/connector inspection is available in this working environment, but a full interactive browser session with console inspection is not exposed here. Therefore the browser gate remains honestly marked 🟡 rather than falsely marked PASS.
+
 ## 10. Source-side verdict
 ### **SOURCE FUNCTION SET: WIRED + HARDENED ✅**
 
-The canonical chain is now explicitly bridged and the runtime takeover is protected against duplicate boot and missing map globals.
+The canonical chain is explicitly bridged and the runtime takeover is protected against duplicate boot and missing map globals.
 
 ### **RUNTIME VERDICT: PENDING BROWSER PROOF 🟡**
 
