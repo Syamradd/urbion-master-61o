@@ -32,6 +32,8 @@ WORKSPACE_JS = BASE_DIR / 'urbion_workspace_final.js'
 WORKSPACE_BRIDGE = BASE_DIR / 'urbion_workspace_bridge.js'
 WORKSPACE_RUNTIME = BASE_DIR / 'urbion_workspace_runtime.js'
 LAYER_RUNTIME = BASE_DIR / 'urbion_layer_runtime_fix.js'
+LAYER_RUNTIME_V2 = BASE_DIR / 'urbion_layer_runtime_fix_v2.js'
+ABOUT_CITY_IMAGE = BASE_DIR / 'about_city_reference.jpg'
 
 
 def _read(path: Path) -> str:
@@ -47,27 +49,45 @@ def _workspace() -> str:
         '<script src="/urbion_workspace_bridge.js"></script>'
         '<script src="/urbion_workspace_runtime.js"></script>'
         '<script src="/urbion_layer_runtime_fix.js"></script>'
+        '<script src="/urbion_layer_runtime_fix_v2.js"></script>'
     )
     if '/urbion_workspace_final.js' not in html and '</body>' in html:
         html = html.replace('</body>', scripts + '</body>', 1)
-    elif '/urbion_layer_runtime_fix.js' not in html and '</body>' in html:
-        html = html.replace('</body>', '<script src="/urbion_layer_runtime_fix.js"></script></body>', 1)
+    else:
+        for tag in ['<script src="/urbion_workspace_bridge.js"></script>','<script src="/urbion_workspace_runtime.js"></script>','<script src="/urbion_layer_runtime_fix.js"></script>','<script src="/urbion_layer_runtime_fix_v2.js"></script>']:
+            if tag not in html and '</body>' in html:
+                html = html.replace('</body>', tag + '</body>', 1)
     atmosphere = '<style id="urbion-presentation-atmosphere">html,body{background-color:#020b12!important}body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.42;background-image:radial-gradient(circle at 7% 14%,rgba(255,255,255,.65) 0 1px,transparent 1.7px),radial-gradient(circle at 18% 24%,rgba(81,224,244,.5) 0 1px,transparent 1.7px),radial-gradient(circle at 53% 17%,rgba(92,232,205,.42) 0 1px,transparent 1.8px),radial-gradient(ellipse at 73% -10%,rgba(42,231,236,.12),transparent 40%)}.top,.layout{position:relative;z-index:1}</style>'
     if 'urbion-presentation-atmosphere' not in html and '</head>' in html:
         html = html.replace('</head>', atmosphere + '</head>', 1)
     return html
 
 
+def _about() -> HTMLResponse:
+    html = _read(ABOUT_FILE)
+    enhance = '''<style id="urbion-about-reference-enhance">
+.city{background-image:url('/about_city_reference.jpg');background-size:cover;background-position:center;border-left:0;mask-image:linear-gradient(90deg,transparent 0,#000 9%,#000 100%);box-shadow:inset 0 0 80px rgba(2,10,17,.45)}
+.city:before{inset:0!important;background:linear-gradient(180deg,rgba(2,10,17,.15),rgba(2,10,17,.70))!important;transform:none!important}
+.city:after{left:8%!important;right:4%!important;bottom:15%!important}
+.city .tower{opacity:.16}.city .route{opacity:.65}.citylabel{z-index:2}
+.panel{backdrop-filter:blur(2px)}
+.teamPhoto{width:min(850px,78%)!important;height:auto!important;max-height:330px!important;object-fit:cover!important;object-position:center!important;margin:14px auto 0!important;display:block!important}
+.teamNames{margin-top:8px!important}
+</style>'''
+    if '</head>' in html: html = html.replace('</head>', enhance + '</head>', 1)
+    # Make About layout mirror the reference more closely by adding a third journey card.
+    if '<section class="grid">' in html and 'Our Journey' not in html:
+        html = html.replace('</article></section><section class="panel team">', '</article><article class="panel"><h2>Our Journey</h2><p>A student initiative driven by a shared interest in planning, spatial data and real-world urban impact.</p><div class="features"><div class="feat"><strong>PEOPLE</strong><span>Planning-led thinking.</span></div><div class="feat"><strong>PLACES</strong><span>Spatial evidence at the centre.</span></div><div class="feat"><strong>POSSIBILITIES</strong><span>Technology for better decisions.</span></div></div></article></section><section class="panel team">',1)
+    return HTMLResponse(html, media_type='text/html; charset=utf-8', headers={'Cache-Control':'no-store, max-age=0','X-URBION-UI':'CANONICAL-ABOUT'})
+
 @app.get('/', include_in_schema=False)
 @app.get('/index.html', include_in_schema=False)
 def root() -> HTMLResponse:
     return HTMLResponse(_read(WELCOME_FILE), media_type='text/html; charset=utf-8', headers={'Cache-Control':'no-store, max-age=0', 'X-URBION-UI':'CANONICAL-WELCOME'})
 
-
 @app.get('/about', include_in_schema=False)
 def about() -> HTMLResponse:
-    return HTMLResponse(_read(ABOUT_FILE), media_type='text/html; charset=utf-8', headers={'Cache-Control':'no-store, max-age=0', 'X-URBION-UI':'CANONICAL-ABOUT'})
-
+    return _about()
 
 @app.get('/workspace', include_in_schema=False)
 @app.get('/workspace-v5.html', include_in_schema=False)
@@ -80,26 +100,21 @@ def _js(path: Path, message: str) -> Response:
         return Response(message, status_code=500, media_type='text/plain; charset=utf-8')
     return Response(path.read_text(encoding='utf-8'), media_type='application/javascript; charset=utf-8', headers={'Cache-Control':'no-store, max-age=0'})
 
-
 @app.get('/urbion_workspace_final.js', include_in_schema=False)
-def workspace_final_js():
-    return _js(WORKSPACE_JS, 'URBION HORIZON function layer missing.')
-
-
+def workspace_final_js(): return _js(WORKSPACE_JS, 'URBION HORIZON function layer missing.')
 @app.get('/urbion_workspace_bridge.js', include_in_schema=False)
-def workspace_bridge_js():
-    return _js(WORKSPACE_BRIDGE, 'URBION HORIZON workspace bridge missing.')
-
-
+def workspace_bridge_js(): return _js(WORKSPACE_BRIDGE, 'URBION HORIZON workspace bridge missing.')
 @app.get('/urbion_workspace_runtime.js', include_in_schema=False)
-def workspace_runtime_js():
-    return _js(WORKSPACE_RUNTIME, 'URBION HORIZON runtime layer missing.')
-
-
+def workspace_runtime_js(): return _js(WORKSPACE_RUNTIME, 'URBION HORIZON runtime layer missing.')
 @app.get('/urbion_layer_runtime_fix.js', include_in_schema=False)
-def layer_runtime_fix_js():
-    return _js(LAYER_RUNTIME, 'URBION HORIZON live layer renderer missing.')
+def layer_runtime_fix_js(): return _js(LAYER_RUNTIME, 'URBION HORIZON live layer renderer missing.')
+@app.get('/urbion_layer_runtime_fix_v2.js', include_in_schema=False)
+def layer_runtime_fix_v2_js(): return _js(LAYER_RUNTIME_V2, 'URBION HORIZON V2 live layer renderer missing.')
 
+@app.get('/about_city_reference.jpg', include_in_schema=False)
+def about_city_reference():
+    if not ABOUT_CITY_IMAGE.is_file(): raise HTTPException(status_code=404, detail='About city image is missing')
+    return FileResponse(ABOUT_CITY_IMAGE, media_type='image/jpeg', headers={'Cache-Control':'no-store, max-age=0'})
 
 @app.get('/urbion_logo_dark.svg', include_in_schema=False)
 def logo_dark():
@@ -107,13 +122,11 @@ def logo_dark():
     if not target.is_file(): raise HTTPException(status_code=404, detail='Dark logo is missing')
     return FileResponse(target, media_type='image/svg+xml')
 
-
 @app.get('/urbion_logo_light.svg', include_in_schema=False)
 def logo_light():
     target = BASE_DIR / 'urbion_logo_light.svg'
     if not target.is_file(): raise HTTPException(status_code=404, detail='Light logo is missing')
     return FileResponse(target, media_type='image/svg+xml')
-
 
 @app.get('/team_photo.svg', include_in_schema=False)
 def team_photo():
@@ -121,7 +134,6 @@ def team_photo():
     if not target.is_file(): raise HTTPException(status_code=404, detail='Team photo asset is missing')
     return FileResponse(target, media_type='image/svg+xml')
 
-
 @app.get('/__urbion_runtime_identity', include_in_schema=False)
 def runtime_identity():
-    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'CANONICAL-ABOUT','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py'}
+    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'CANONICAL-ABOUT','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'V2'}
