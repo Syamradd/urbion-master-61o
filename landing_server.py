@@ -15,7 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent
 ROUTES = {
     "/": BASE_DIR / "welcome.html",
     "/index.html": BASE_DIR / "welcome.html",
-    "/about": BASE_DIR / "about.html",
+    "/about": BASE_DIR / "urbion_horizon_about.html",
     "/workspace": BASE_DIR / "workspace_v5.html",
 }
 
