@@ -15,7 +15,7 @@ IDS = [
     "themeBtn", "langBtn", "search",
 ]
 RUNTIME_IDS = ["runtimeAbout", "runtimeHelp", "runtimeSources", "runtimeStatus", "runtimeFullscreen", "runtimeReset"]
-ENDPOINTS = ["/workstation/analysis", "/what-if", "/decision-center", "/metadata", "/map/layers"]
+ENDPOINTS = ["/workstation/analysis", "/what-if", "/decision-center", "/map/layers", "/copilot/explain", "/knowledge/retrieve"]
 
 
 def fail(message: str) -> None:
@@ -72,7 +72,6 @@ def main() -> None:
         fail("runtime owned-control takeover contract missing")
     ok("runtime takeover scope protected")
 
-    # Runtime-generated utility controls must have their own handlers and stable IDs.
     for control_id in RUNTIME_IDS:
         if control_id not in runtime:
             fail(f"runtime utility control missing: {control_id}")
@@ -81,13 +80,11 @@ def main() -> None:
             fail(f"runtime utility handler missing: {token}")
     ok("runtime utility controls wired")
 
-    # Basic visual contract: preserve the intended three-column command-centre layout.
     for token in ("grid-template-columns:330px minmax(0,1fr) 380px", ".layout", ".left", ".center", ".right", "#map"):
         if token not in workspace:
             fail(f"presentation layout contract missing: {token}")
     ok("three-column presentation contract present")
 
-    # Basic source integrity without depending on a runner-specific Node install.
     for name in ("urbion_workspace_final.js", "urbion_workspace_bridge.js", "urbion_workspace_runtime.js"):
         text = texts[name]
         if text.count("{") != text.count("}") or text.count("(") != text.count(")"):
