@@ -16,7 +16,7 @@ function arcgisGridLayer(info){
     createTile(coords,done){
       const tile=document.createElement('img');tile.width=256;tile.height=256;tile.alt='';tile.setAttribute('role','presentation');tile.crossOrigin='anonymous';
       const [xmin,ymin,xmax,ymax]=webMercatorBounds(coords.x,coords.y,coords.z);
-      const u=String(info.url||'').replace(/\\/$/,'')+'/export?bbox='+[xmin,ymin,xmax,ymax].join(',')+'&bboxSR=3857&imageSR=3857&size=256,256&imageDisplay=256,256,96&dpi=96&format=png32&transparent=true&f=image&layers=show:0';
+      const u=String(info.url||'').replace(/\\/$/,'')+'/export?bbox='+[xmin,ymin,xmax,ymax].join(',')+'&bboxSR=3857&imageSR=3857&size=256,256&imageDisplay=256,256,96&dpi=96&format=png32&transparent=true&f=image&layers=show';
       tile.onload=()=>done(null,tile);tile.onerror=e=>done(e,tile);tile.src=u;return tile;
     }
   });
