@@ -74,7 +74,7 @@ def main() -> int:
         # canonical workspace. Execute the real analysis journey before testing them.
         page.locator("#run").click()
         page.wait_for_function("document.querySelector('#run') && document.querySelector('#run').textContent.includes('RUN SITE ANALYSIS')", timeout=30000)
-        check(page.locator("#mapStatus").inner_text().includes("ANALYSIS COMPLETE"), "site analysis completes")
+        check("ANALYSIS COMPLETE" in page.locator("#mapStatus").inner_text(), "site analysis completes")
         check(page.locator("#readyLabel").inner_text().strip() != "PRE-RUN", "decision readiness updates after analysis")
 
         for selector, title in [("#evidenceBtn", "EVIDENCE CHAIN"), ("#whatifBtn", "WHAT-IF STUDIO"), ("#decisionBtn", "DECISION SUPPORT"), ("#outputBtn", "URBION PLANNER-READY OUTPUT")]:
