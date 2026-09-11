@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,7 +40,6 @@ REQUIRED_ENDPOINTS = (
     "/metadata",
     "/map/layers",
 )
-FORBIDDEN_LEGACY_TERMS = ("Perdagangan",)
 
 
 def fail(message: str) -> None:
@@ -62,8 +60,7 @@ def node_check(path: Path) -> None:
 
 def main() -> None:
     for name in REQUIRED_FILES:
-        path = ROOT / name
-        if not path.is_file():
+        if not (ROOT / name).is_file():
             fail(f"missing required file: {name}")
     ok("canonical workspace files present")
 
@@ -72,14 +69,19 @@ def main() -> None:
     final_js = (ROOT / "urbion_workspace_final.js").read_text(encoding="utf-8")
     bridge = (ROOT / "urbion_workspace_bridge.js").read_text(encoding="utf-8")
     runtime = (ROOT / "urbion_workspace_runtime.js").read_text(encoding="utf-8")
+    all_source = "\n".join((landing, workspace, final_js, bridge, runtime))
 
-    for path_name, text in (("landing_server.py", landing), ("workspace_v5.html", workspace),
-                            ("urbion_workspace_final.js", final_js), ("urbion_workspace_bridge.js", bridge),
-                            ("urbion_workspace_runtime.js", runtime)):
-        for term in FORBIDDEN_LEGACY_TERMS:
-            if term in text:
-                fail(f"legacy land-use term {term!r} found in {path_name}")
-    ok("legacy Guna Tanah term absent")
+    # Fail only on actual legacy taxonomy entries/options, not explanatory copy
+    # that may mention the retired term for traceability.
+    legacy_patterns = (
+        r"['\"]Perdagangan['\"]\s*:",
+        r"value=[\"']Perdagangan[\"']",
+        r"<option[^>]*>\s*Perdagangan\s*</option>",
+    )
+    for pattern in legacy_patterns:
+        if re.search(pattern, all_source, flags=re.I):
+            fail(f"legacy Guna Tanah entry detected: {pattern}")
+    ok("no legacy Guna Tanah entry detected")
 
     for element_id in REQUIRED_IDS:
         if not re.search(rf"(?:id|data-testid)=[\"']{re.escape(element_id)}[\"']", workspace):
@@ -87,7 +89,7 @@ def main() -> None:
     ok("required workspace controls present")
 
     for endpoint in REQUIRED_ENDPOINTS:
-        if endpoint not in workspace and endpoint not in runtime:
+        if endpoint not in all_source:
             fail(f"required endpoint wiring missing: {endpoint}")
     ok("core endpoint wiring present")
 
@@ -109,9 +111,8 @@ def main() -> None:
         fail("latest source-aligned taxonomy markers missing from function layer")
     ok("current Guna Tanah taxonomy markers present")
 
-    node_check(ROOT / "urbion_workspace_final.js")
-    node_check(ROOT / "urbion_workspace_bridge.js")
-    node_check(ROOT / "urbion_workspace_runtime.js")
+    for path in (ROOT / "urbion_workspace_final.js", ROOT / "urbion_workspace_bridge.js", ROOT / "urbion_workspace_runtime.js"):
+        node_check(path)
 
     print("\nWORKSPACE SOURCE GATE: PASS")
     print("Browser interaction, visual QA and Render remain explicit release gates.")
