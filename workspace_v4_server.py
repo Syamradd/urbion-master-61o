@@ -15,10 +15,10 @@ app: FastAPI = backend_app
 BASE_DIR = Path(__file__).resolve().parent
 @app.get('/', include_in_schema=False)
 def root() -> HTMLResponse:
-    target = BASE_DIR / 'workspace_v4.html'
+    target = BASE_DIR / 'workspace_v5.html'
     if not target.is_file():
-        raise HTTPException(status_code=404, detail='Workspace V4 frontend is missing')
+        raise HTTPException(status_code=404, detail='Workspace V5 frontend is missing')
     return HTMLResponse(target.read_text(encoding='utf-8'), media_type='text/html; charset=utf-8', headers={'Cache-Control':'no-store, max-age=0'})
-@app.get('/workspace-v4.html', include_in_schema=False)
+@app.get('/workspace-v5.html', include_in_schema=False)
 def workspace() -> HTMLResponse:
     return root()
