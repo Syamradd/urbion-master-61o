@@ -33,6 +33,7 @@ WORKSPACE_BRIDGE = BASE_DIR / 'urbion_workspace_bridge.js'
 WORKSPACE_RUNTIME = BASE_DIR / 'urbion_workspace_runtime.js'
 LAYER_RUNTIME = BASE_DIR / 'urbion_layer_runtime_fix.js'
 ABOUT_CITY_IMAGE = BASE_DIR / 'about_city_reference.jpg'
+ABOUT_INTERACTIONS = BASE_DIR / 'urbion_about_interactions.js'
 
 def _read(path: Path) -> str:
     if not path.is_file():
@@ -71,7 +72,9 @@ def _about() -> HTMLResponse:
 </style>'''
     if '</head>' in html: html = html.replace('</head>', enhance + '</head>', 1)
     if '<section class="grid">' in html and 'Our Journey' not in html:
-        html = html.replace('</article></section><section class="panel team">', '</article><article class="panel"><h2>Our Journey</h2><p>A student initiative driven by a shared interest in planning, spatial data and real-world urban impact.</p><div class="features"><div class="feat"><strong>PEOPLE</strong><span>Planning-led thinking.</span></div><div class="feat"><strong>PLACES</strong><span>Spatial evidence at the centre.</span></div><div class="feat"><strong>POSSIBILITIES</strong><span>Technology for better decisions.</span></div></div></article></section><section class="panel team">',1)
+        html = html.replace('</article></section><section class="panel team">', '</article><article class="panel"><h2>Our Journey</h2><p>A student initiative driven by a shared interest in planning, spatial data and real-world impact.</p><div class="features"><div class="feat"><strong>PEOPLE</strong><span>Planning-led thinking.</span></div><div class="feat"><strong>PLACES</strong><span>Spatial evidence at the centre.</span></div><div class="feat"><strong>POSSIBILITIES</strong><span>Technology for better decisions.</span></div></div></article></section><section class="panel team">',1)
+    if ABOUT_INTERACTIONS.is_file() and '</body>' in html and '/urbion_about_interactions.js' not in html:
+        html = html.replace('</body>', '<script src="/urbion_about_interactions.js"></script></body>', 1)
     return HTMLResponse(html, media_type='text/html; charset=utf-8', headers={'Cache-Control':'no-store, max-age=0','X-URBION-UI':'CANONICAL-ABOUT'})
 
 @app.get('/', include_in_schema=False)
@@ -98,9 +101,11 @@ def workspace_final_js(): return _js(WORKSPACE_JS, 'URBION HORIZON function laye
 @app.get('/urbion_workspace_bridge.js', include_in_schema=False)
 def workspace_bridge_js(): return _js(WORKSPACE_BRIDGE, 'URBION HORIZON workspace bridge missing.')
 @app.get('/urbion_workspace_runtime.js', include_in_schema=False)
-def workspace_runtime_js(): return _js(WORKSPACE_RUNTIME, 'URBION HORIZON runtime layer missing.')
+def workspace_runtime_js(): return _js(WORKSPACE_RUNTIME, 'URBION HORIZON workspace runtime missing.')
 @app.get('/urbion_layer_runtime_fix.js', include_in_schema=False)
 def layer_runtime_fix_js(): return _js(LAYER_RUNTIME, 'URBION HORIZON live layer renderer missing.')
+@app.get('/urbion_about_interactions.js', include_in_schema=False)
+def about_interactions_js(): return _js(ABOUT_INTERACTIONS, 'URBION HORIZON About Us interaction layer missing.')
 
 @app.get('/about_city_reference.jpg', include_in_schema=False)
 def about_city_reference():
@@ -127,4 +132,4 @@ def team_photo():
 
 @app.get('/__urbion_runtime_identity', include_in_schema=False)
 def runtime_identity():
-    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'CANONICAL-ABOUT','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1'}
+    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'CANONICAL-ABOUT','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_interactions':'CANONICAL-ABOUT-V1'}
