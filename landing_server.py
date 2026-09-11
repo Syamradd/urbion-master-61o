@@ -5,6 +5,7 @@ adapter owns only the judge-facing presentation routes so legacy championship
 frontend layers cannot be injected into the canonical pages.
 """
 from pathlib import Path
+import json
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, Response
@@ -64,6 +65,30 @@ def _workspace() -> HTMLResponse:
 @app.middleware("http")
 async def _urbion_canonical_presentation(request: Request, call_next):
     path = request.url.path
+    # The canonical workspace sends its decision payload as
+    # {"assessment": <AssessmentRequest>, "analysis": <last result>}.
+    # The production /decision-center route accepts AssessmentRequest directly.
+    # Normalize only this exact compatibility shape at the presentation boundary;
+    # the planning engine and decision semantics remain unchanged.
+    if path == "/decision-center" and request.method == "POST":
+        try:
+            raw = await request.body()
+            payload = json.loads(raw.decode("utf-8")) if raw else None
+            if isinstance(payload, dict) and isinstance(payload.get("assessment"), dict):
+                normalized = json.dumps(payload["assessment"], separators=(",", ":")).encode("utf-8")
+                sent = False
+
+                async def receive():
+                    nonlocal sent
+                    if sent:
+                        return {"type": "http.request", "body": b"", "more_body": False}
+                    sent = True
+                    return {"type": "http.request", "body": normalized, "more_body": False}
+
+                request = Request(request.scope, receive=receive)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            pass
+
     if path in {"/", "/index.html"}:
         return _html(WELCOME_FILE)
     if path == "/about":
