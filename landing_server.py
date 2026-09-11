@@ -11,7 +11,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse, Response, JSONResponse
 
 from championship_server import app
-from server import AssessmentRequest
+from server import AssessmentRequest, assess_core
 from urbion_decision_center import build_decision_center
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -57,6 +57,14 @@ def _workspace() -> HTMLResponse:
             '<script src="/urbion_workspace_runtime.js"></script></body>',
             1,
         )
+    atmosphere = '''<style id="urbion-presentation-atmosphere">
+html,body{background-color:#020b12!important}
+body{position:relative}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.42;background-image:radial-gradient(circle at 7% 14%,rgba(255,255,255,.65) 0 1px,transparent 1.7px),radial-gradient(circle at 18% 24%,rgba(81,224,244,.5) 0 1px,transparent 1.7px),radial-gradient(circle at 34% 10%,rgba(255,255,255,.48) 0 1px,transparent 1.7px),radial-gradient(circle at 53% 17%,rgba(92,232,205,.42) 0 1px,transparent 1.8px),radial-gradient(circle at 71% 8%,rgba(255,255,255,.54) 0 1px,transparent 1.7px),radial-gradient(circle at 89% 18%,rgba(86,220,242,.5) 0 1px,transparent 1.8px),radial-gradient(ellipse at 73% -10%,rgba(42,231,236,.12),transparent 40%)}
+.top,.layout{position:relative;z-index:1}
+</style>'''
+    if "urbion-presentation-atmosphere" not in html and "</head>" in html:
+        html = html.replace("</head>", atmosphere + "</head>", 1)
     return HTMLResponse(
         html,
         media_type="text/html; charset=utf-8",
@@ -70,27 +78,21 @@ async def _urbion_canonical_presentation(request: Request, call_next):
 
     # Hard compatibility boundary for the canonical workspace decision action.
     # The workspace sends {"assessment": {...}, "analysis": {...}}, while the
-    # production engine route in server.py accepts AssessmentRequest directly.
-    # Intercept this exact presentation payload before FastAPI route validation,
-    # run the same deterministic decision engine, and return its decision-center
-    # packet. No alternate approval logic is introduced.
+    # production engine route accepts AssessmentRequest directly. Handle this
+    # exact presentation shape before FastAPI route validation and reuse the same
+    # deterministic decision engine. No alternate approval logic is introduced.
     if path == "/decision-center" and request.method == "POST":
         try:
             raw = await request.body()
             payload = json.loads(raw.decode("utf-8")) if raw else None
             assessment = payload.get("assessment") if isinstance(payload, dict) else None
             if isinstance(assessment, dict):
-                result = build_decision_center(
-                    assessment=__import__("server").assess_core(
-                        AssessmentRequest.model_validate(assessment)
-                    )
-                )
+                validated = AssessmentRequest.model_validate(assessment)
+                result = build_decision_center(assessment=assess_core(validated))
                 return JSONResponse(result)
         except (UnicodeDecodeError, json.JSONDecodeError):
             pass
         except Exception:
-            # Fall through to the normal route so invalid payloads retain the
-            # backend's ordinary validation/error semantics.
             pass
 
     if path in {"/", "/index.html"}:
@@ -128,7 +130,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
             return Response(
                 "URBION HORIZON runtime layer missing.",
                 status_code=500,
-                media_type="text/plain; charset=utf-8",
+                media_type="application/javascript; charset=utf-8",
             )
         return Response(
             WORKSPACE_RUNTIME.read_text(encoding="utf-8"),
