@@ -7,7 +7,7 @@
 
 ## Current checkpoint
 Branch: `feature/canonical-workspace-v2`.
-Latest source repair: `8f8751a5bddebf40ac03bc98e75b09f8b90b315a`.
+Latest source repair: `2b98dc1441c7cd4d044a5295d610b5e0a5d9dfe1`.
 Render: **LOCKED — no deployment / no iteration**.
 
 ## Current source trace
@@ -27,11 +27,11 @@ PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancan
 - [x] Existing FastAPI planning engines preserved
 - [x] `urbion_workspace_final.js` remains the canonical planning function layer
 - [x] `urbion_workspace_bridge.js` exposes the existing core functions through `window.URBION_FINAL`
-- [x] Bridge waits for the actual core functions before publishing the API
+- [x] Bridge waits for the actual function definitions before publishing the API
 - [x] `urbion_workspace_runtime.js` remains the final visible-control runtime layer
 - [x] Duplicate runtime boot is guarded
 - [x] Runtime map/global access is defensive
-- [x] Runtime takeover is now scoped only to runtime-owned controls; canonical case-builder handlers are preserved
+- [x] Runtime takeover is scoped only to runtime-owned controls; canonical case-builder handlers are preserved
 
 ## 2. Guna Tanah 1 / 2 / 3 — latest classification
 - [x] Canonical GT hierarchy is Version 3-aligned
@@ -113,7 +113,12 @@ The runtime now self-guards and checks map/base/ring globals before using them.
 ### Defect D — runtime takeover could destroy unrelated case-builder handlers
 **Status: REPAIRED ✅**
 
-The runtime previously cloned every button on the page before rebinding its own controls. The takeover is now scoped to runtime-owned controls only, preserving native case-builder interactions and preventing silent handler loss. A source-gate regression check now protects this contract.
+The runtime previously cloned every button on the page before rebinding its own controls. The takeover is now scoped to runtime-owned controls only, preserving native case-builder interactions and preventing silent handler loss.
+
+### Defect E — release gate did not fully protect the repaired control contract
+**Status: REPAIRED ✅**
+
+The source gate now checks the runtime takeover scope, all critical map/planning controls, generated utility-control wiring, the three-column presentation contract, and JavaScript delimiter integrity. This is a regression guard, not a substitute for live browser QA.
 
 ## 9. Browser proof gate — NOT CLAIMED UNTIL EXECUTED
 - [ ] 🟡 Open `/workspace`
@@ -141,7 +146,7 @@ The runtime previously cloned every button on the page before rebinding its own 
 ## 10. Source-side verdict
 ### **SOURCE FUNCTION SET: WIRED + HARDENED ✅**
 
-The canonical chain is explicitly bridged and the runtime takeover is protected against duplicate boot, missing map globals, and unrelated case-builder handler loss.
+The canonical chain is explicitly bridged and the runtime takeover is protected against duplicate boot, missing map globals, unrelated case-builder handler loss, and regression of the control contract.
 
 ### **RUNTIME VERDICT: PENDING BROWSER PROOF 🟡**
 
