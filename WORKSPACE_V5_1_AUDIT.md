@@ -7,13 +7,13 @@
 
 ## Current checkpoint
 Branch: `feature/canonical-workspace-v2`
-Latest source checkpoint: `a98fd47d4a44127d68eeed7731c19a69f816c304`
+Latest source checkpoint: `c0ac08c025c8511ae10deeeed364b5b9ba105b3a`.
 Render: **LOCKED — no deployment / no iteration**.
 
 ## Latest source trace
 PLANMalaysia currently publishes **Manual Sistem Maklumat Geografi (GIS) Rancangan Pemajuan Versi 3.0 / Versi 3 (2025)**. The official Version 3 manual contains the updated Guna Tanah 1 / 2 / 3 classification tables.
 
-The public i-Plan analysis module still contains explanatory text referencing Version 2.0 for Level 1/2/3 terminology. The project therefore uses the latest official PLANMalaysia publication as the taxonomy source while recording that public-page distinction instead of falsely claiming the public analysis page has already migrated.
+The public i-Plan analysis module may still contain explanatory text referencing Version 2.0 for Level 1/2/3 terminology. The project therefore uses the latest official PLANMalaysia publication as the taxonomy source while recording that public-page distinction instead of falsely claiming the public analysis page has already migrated.
 
 ## 1. Canonical runtime
 - [x] ✅ `/` → `welcome.html`
@@ -21,12 +21,14 @@ The public i-Plan analysis module still contains explanatory text referencing Ve
 - [x] ✅ `/workspace` → `workspace_v5.html`
 - [x] ✅ Legacy championship frontend injection removed from canonical routes
 - [x] ✅ Existing FastAPI planning engines preserved
-- [x] ✅ `urbion_workspace_final.js` is the canonical planning function layer
-- [x] ✅ `urbion_workspace_runtime.js` is the final visible-control takeover layer
+- [x] ✅ `urbion_workspace_final.js` remains the canonical planning function layer
+- [x] ✅ `urbion_workspace_bridge.js` now exposes the existing core functions through `window.URBION_FINAL` without duplicating planning engines
+- [x] ✅ `urbion_workspace_runtime.js` remains the final visible-control takeover layer
+- [x] ✅ Duplicate runtime boot is guarded
 - [x] ✅ Competing listeners on visible buttons/selectors are stripped before final bindings are attached
 
 ## 2. Guna Tanah 1 / 2 / 3 — latest classification
-- [x] ✅ Canonical GT hierarchy is taken from `URBION_FINAL.GT`
+- [x] ✅ Canonical GT hierarchy is taken from the Version 3-aligned taxonomy
 - [x] ✅ GT1 → GT2 → GT3 is cascading and internally consistent
 - [x] ✅ `Komersial` is the commercial GT1 term
 - [x] ✅ Legacy `Perdagangan` is excluded from the visible runtime selectors
@@ -44,7 +46,7 @@ The public i-Plan analysis module still contains explanatory text referencing Ve
 - [x] ✅ Ring visibility toggles
 - [x] ✅ Search → coordinates → map update
 - [x] ✅ Road / transit context toggle
-- [x] ✅ Basemap switch now removes existing workspace basemap first, preventing Satellite/Hybrid stacking over OSM
+- [x] ✅ Basemap switch removes existing workspace basemap first, preventing stacking over OSM
 
 ## 4. i-Plan layer drawer
 - [x] ✅ `/map/layers?state=...`
@@ -86,8 +88,27 @@ The public i-Plan analysis module still contains explanatory text referencing Ve
 - [x] ✅ BM/EN visible toggle
 - [x] ✅ Dark/light toggle
 
-## 8. Release checklist — browser proof only
+## 8. Release blocker found and repaired in source
+### Defect: canonical runtime bridge was missing
+The canonical `urbion_workspace_runtime.js` waits for `window.URBION_FINAL`, while the existing planning function file defines its functions and taxonomy without publishing that object. This meant the takeover layer could time out and never bind its final handlers.
+
+### Repair
+Added `urbion_workspace_bridge.js` and inserted it between the canonical function layer and runtime takeover. The bridge publishes:
+
+- `GT`
+- `analyse`
+- `whatif`
+- `decision`
+- `output`
+- `loadLayers`
+- `refreshMap`
+- read-only `URBION_LAST` access for evidence rendering
+
+No planning engine was duplicated or rewritten.
+
+## 9. Browser proof gate
 - [ ] 🟡 Open `/workspace`
+- [ ] 🟡 No console boot error
 - [ ] 🟡 GT1 list matches canonical latest taxonomy
 - [ ] 🟡 Selecting GT1 changes valid GT2 choices
 - [ ] 🟡 Selecting GT2 changes valid GT3 activity choices
@@ -106,16 +127,16 @@ The public i-Plan analysis module still contains explanatory text referencing Ve
 - [ ] 🟡 Dark/light does not clip or destroy contrast
 - [ ] 🟡 Welcome / Workspace / About visual check against locked references
 
-## 9. Source-side verdict
-### **FUNCTION SET: 100% WIRED IN SOURCE ✅**
+## 10. Source-side verdict
+### **FUNCTION SET: SOURCE-WIRED ✅**
 
-The latest source pass specifically addressed the previous risk of multiple competing click listeners. The runtime now takes ownership of the visible controls after the canonical core loads and uses the workspace's actual Leaflet objects for basemap/ring/site operations.
+The missing bridge is now explicitly repaired. The runtime takeover also contains a duplicate-boot guard and defensive map-global access.
 
 ### **RUNTIME VERDICT: PENDING BROWSER PROOF 🟡**
 
 No claim of 100% runtime-tested acceptance is made until the browser/judge journey above has been executed.
 
-## 10. Render rule
+## 11. Render rule
 **DO NOT TOUCH RENDER.**
 
 After every browser-gate item passes, and only after explicit user authorization, perform one final Render deployment. No preview-service iteration and no automatic deployment loop.
