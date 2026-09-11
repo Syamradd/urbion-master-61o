@@ -7,7 +7,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = ["landing_server.py", "workspace_v5.html", "urbion_workspace_final.js", "urbion_workspace_bridge.js", "urbion_workspace_runtime.js"]
-IDS = ["run", "layerBtn", "landuse1", "landuse2", "landuse3", "map", "evidenceBtn", "whatifBtn", "decisionBtn", "outputBtn", "themeBtn", "langBtn"]
+IDS = [
+    "run", "layerBtn", "landuse1", "landuse2", "landuse3", "map",
+    "evidenceBtn", "whatifBtn", "decisionBtn", "outputBtn", "generateOutput",
+    "printBtn", "closeModal", "useMap", "locate", "context400", "context800",
+    "context1000", "ring400", "ring800", "ring1000", "roadCtx", "roadCtxMap",
+    "themeBtn", "langBtn", "search",
+]
+RUNTIME_IDS = ["runtimeAbout", "runtimeHelp", "runtimeSources", "runtimeStatus", "runtimeFullscreen", "runtimeReset"]
 ENDPOINTS = ["/workstation/analysis", "/what-if", "/decision-center", "/metadata", "/map/layers"]
 
 
@@ -64,6 +71,21 @@ def main() -> None:
     if "const owned=[" not in runtime or "#run" not in runtime or "#langBtn" not in runtime:
         fail("runtime owned-control takeover contract missing")
     ok("runtime takeover scope protected")
+
+    # Runtime-generated utility controls must have their own handlers and stable IDs.
+    for control_id in RUNTIME_IDS:
+        if control_id not in runtime:
+            fail(f"runtime utility control missing: {control_id}")
+    for token in ("help.onclick", "sources.onclick", "status.onclick", "fs.onclick", "reset.onclick"):
+        if token not in runtime:
+            fail(f"runtime utility handler missing: {token}")
+    ok("runtime utility controls wired")
+
+    # Basic visual contract: preserve the intended three-column command-centre layout.
+    for token in ("grid-template-columns:330px minmax(0,1fr) 380px", ".layout", ".left", ".center", ".right", "#map"):
+        if token not in workspace:
+            fail(f"presentation layout contract missing: {token}")
+    ok("three-column presentation contract present")
 
     # Basic source integrity without depending on a runner-specific Node install.
     for name in ("urbion_workspace_final.js", "urbion_workspace_bridge.js", "urbion_workspace_runtime.js"):
