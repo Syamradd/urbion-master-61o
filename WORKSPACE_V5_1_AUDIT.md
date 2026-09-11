@@ -7,7 +7,8 @@
 
 ## Current checkpoint
 Branch: `feature/canonical-workspace-v2`.
-Latest source repair: `2b98dc1441c7cd4d044a5295d610b5e0a5d9dfe1`.
+Latest source hardening: `2b98dc1441c7cd4d044a5295d610b5e0a5d9dfe1`.
+Latest browser-gate tooling: `cb9ecfd0a686f7cb82b2805bb20fa42dbcdcc339`.
 Render: **LOCKED — no deployment / no iteration**.
 
 ## Current source trace
@@ -118,41 +119,40 @@ The runtime previously cloned every button on the page before rebinding its own 
 ### Defect E — release gate did not fully protect the repaired control contract
 **Status: REPAIRED ✅**
 
-The source gate now checks the runtime takeover scope, all critical map/planning controls, generated utility-control wiring, the three-column presentation contract, and JavaScript delimiter integrity. This is a regression guard, not a substitute for live browser QA.
+The source gate now checks the runtime takeover scope, critical workspace controls, endpoint wiring, canonical script order and JavaScript source integrity.
+
+### Defect F — browser gate was only documented, not executable
+**Status: REPAIRED AS TEST INFRASTRUCTURE ✅**
+
+A Playwright browser smoke test and GitHub Actions browser-gate workflow were added. The test starts the canonical `landing_server.py`, exercises routing, GT cascade, basemap switching, rings, layers drawer, Evidence/What-If/Decision/Output modals, utility controls, language/theme toggles, desktop overflow at 1440×900 / 1366×768 / 1920×1080, and legacy asset-request detection. Browser artifacts are uploaded for inspection.
 
 ## 9. Browser proof gate — NOT CLAIMED UNTIL EXECUTED
-- [ ] 🟡 Open `/workspace`
-- [ ] 🟡 No console boot error
-- [ ] 🟡 GT1 list matches canonical latest taxonomy
-- [ ] 🟡 Selecting GT1 changes valid GT2 choices
-- [ ] 🟡 Selecting GT2 changes valid GT3 activity choices
+- [ ] 🟡 Browser workflow passes on the canonical branch
+- [ ] 🟡 Open `/workspace` without boot error
+- [ ] 🟡 GT1/GT2/GT3 cascade passes
 - [ ] 🟡 `Perdagangan` never appears
 - [ ] 🟡 MAP → SATELLITE → HYBRID → MAP
-- [ ] 🟡 Layer catalogue loads and at least one real WMS/TILE layer paints
-- [ ] 🟡 Layer OFF removes the painted layer
-- [ ] 🟡 Map click / Locate moves marker and rings
-- [ ] 🟡 Search selects a location and recentres map
-- [ ] 🟡 Run Site Analysis populates RT / GP / evidence / intelligence
-- [ ] 🟡 What-If returns a baseline/scenario result
-- [ ] 🟡 Decision Support returns status/rationale/action
-- [ ] 🟡 Output contains the case + GT hierarchy + planning results + gaps
-- [ ] 🟡 Print/PDF launches print flow
-- [ ] 🟡 BM/EN does not leave mixed labels or broken controls
-- [ ] 🟡 Dark/light does not clip or destroy contrast
-- [ ] 🟡 Welcome / Workspace / About visual check against locked references
+- [ ] 🟡 Rings and Layers interactions pass
+- [ ] 🟡 Planning intelligence modals pass
+- [ ] 🟡 Utilities pass
+- [ ] 🟡 Zero uncaught browser console errors
+- [ ] 🟡 Zero critical workspace request failures
+- [ ] 🟡 No legacy frontend assets requested
+- [ ] 🟡 No page overflow at all three judge desktop sizes
+- [ ] 🟡 Browser screenshots visually acceptable
 
-**Browser limitation:** source/connector inspection is available in this working environment, but a full interactive browser session with console inspection is not exposed here. Therefore the browser gate remains honestly marked 🟡 rather than falsely marked PASS.
+The browser workflow is now executable, but its result has not been falsely marked PASS until an actual workflow run completes.
 
 ## 10. Source-side verdict
 ### **SOURCE FUNCTION SET: WIRED + HARDENED ✅**
 
 The canonical chain is explicitly bridged and the runtime takeover is protected against duplicate boot, missing map globals, unrelated case-builder handler loss, and regression of the control contract.
 
-### **RUNTIME VERDICT: PENDING BROWSER PROOF 🟡**
+### **BROWSER VERDICT: PENDING ACTUAL WORKFLOW RUN 🟡**
 
-No claim of 100% runtime-tested acceptance is made until the browser/judge journey above has been executed.
+### **VISUAL VERDICT: PENDING CURRENT-BUILD SCREENSHOT REVIEW 🟡**
 
 ## 11. Render rule
 **DO NOT TOUCH RENDER.**
 
-Only after the browser gate passes, and only after explicit user authorization, perform one final Render deployment. No preview-service iteration and no automatic deployment loop.
+Only after the browser gate passes, visual review is green, and the user explicitly authorizes `DEPLOY RENDER NOW`, perform one final Render deployment. No preview-service iteration and no automatic deployment loop.
