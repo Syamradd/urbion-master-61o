@@ -1,185 +1,119 @@
-# URBION HORIZON — Workspace V5.1 Audit
+# URBION HORIZON — Final Pre-Render Audit
 
-## Audit rule
-Green means the capability is present and wired in source. Amber means UI exists but binding/presentation is incomplete. Red means the required capability is not yet implemented in the canonical workspace. Existing backend engines must be reused; do not duplicate planning logic.
+## Status key
+✅ Source-ready / implemented
+🟡 Implemented but final browser proof still required
+❌ Not yet safe to call final
 
-## 1. Runtime / Architecture
-- [x] Isolated preview app excludes legacy HTML/JS/CSS frontend routes.
-- [x] Canonical workspace served at `/`.
-- [x] Existing backend APIs/engines reused.
-- [x] Single desktop workspace shell.
-- [x] No legacy Championship UI dependency in canonical HTML.
+## 1. Public presentation routes
+- [x] ✅ Root `/` points directly to the locked Welcome page.
+- [x] ✅ `/about` points to a dedicated About Us page.
+- [x] ✅ `/workspace` points to the canonical workspace.
+- [x] ✅ Legacy championship presentation injection removed from `landing_server.py`.
+- [x] ✅ No new frontend repair middleware is being stacked.
 
-## 2. Desktop Workspace Layout
-- [x] Three-column layout: Case Builder / GIS / Planning Intelligence.
-- [x] Left panel has independent vertical scrolling.
-- [x] Centre contains map workspace and bottom intelligence dock.
-- [x] Right rail scrolls independently.
-- [ ] Left sections must be compacted further to eliminate unnecessary vertical whitespace.
-- [ ] Bottom dock must be populated dynamically from analysis results.
-- [ ] No large empty voids at common desktop resolutions.
+## 2. Welcome Page
+- [x] ✅ Premium dark urban-tech visual language.
+- [x] ✅ Official URBION HORIZON dark logo.
+- [x] ✅ Hero + GIS / Evidence / What-If / Decision feature treatment.
+- [x] ✅ CTA enters Planning Workspace.
+- [x] ✅ About navigation present.
+- [ ] 🟡 Final desktop screenshot proof still required.
 
-## 3. Case Builder Inputs
-- [x] Project/site name.
-- [x] State.
-- [x] District.
-- [x] PBT.
-- [x] Mukim.
-- [x] Lot/UPI.
-- [x] Latitude/longitude.
-- [x] Map selection.
-- [x] Locate.
-- [x] Development type/class.
-- [x] Activity/function.
-- [x] Guna Tanah 1/2/3.
-- [x] Plot ratio.
-- [x] Building height.
-- [x] Units.
-- [x] GFA.
-- [x] TOD coordinates/context inputs.
-- [x] Perimeter planting.
-- [x] Pedestrian walkway.
-- [ ] Environmental inputs need complete visible section/binding.
-- [ ] Infrastructure inputs need complete visible section/binding.
-- [ ] Constraints/risk inputs need complete visible section/binding.
-- [ ] Supporting evidence section needs complete visible controls.
-- [ ] AI analysis/output section needs complete visible controls.
+## 3. About Us
+- [x] ✅ Dedicated page with same visual language as Welcome.
+- [x] ✅ UiTM Puncak Alam identity and degree line.
+- [x] ✅ Team photo embedded as a repository asset.
+- [x] ✅ Team names shown without role labels.
+- [x] ✅ Names: Muhammad Syamir Aidid; Wan Nur Alea Najihah; Nur Isam Fahmi.
+- [ ] 🟡 Final desktop screenshot proof still required.
 
-## 4. GIS Map
-- [x] Leaflet map container.
-- [x] OSM base layer.
-- [x] Satellite base layer.
-- [x] Map/Satellite controls.
-- [x] Site marker concept.
-- [x] Map click selection.
-- [ ] Force `invalidateSize()` after layout/render.
-- [ ] Robust tile/error fallback.
-- [ ] 400 m ring.
-- [ ] 800 m ring.
-- [ ] 1 km context ring.
-- [ ] Spatial-tech graphic overlay tied to actual site.
+## 4. Canonical Workspace shell
+- [x] ✅ Three-column Case Builder / GIS / Planning Intelligence structure.
+- [x] ✅ Independent left and right scrolling.
+- [x] ✅ Map-first centre workspace + bottom dock.
+- [x] ✅ Compact left planning case controls.
+- [x] ✅ Official horizontal logo scale in canonical source.
+- [ ] 🟡 Final screenshot proof against locked generated reference.
 
-## 5. GIS Layer Drawer
-- [x] Layer drawer UI.
-- [x] Independent layer drawer scrolling.
-- [x] Existing source catalogue available in backend/data layer.
-- [ ] Actual i-Plan WMS/ArcGIS layers must be attached to Leaflet.
-- [ ] Layer ON/OFF must add/remove real map layers, not just show a toast.
-- [ ] Source/status metadata shown per layer.
-- [ ] Layer loading/error state shown.
-- [ ] Key layers to verify: current land use, zoning, committed land use, flood/risk, KSAS/CFS/ecology, heritage, topography, JPS/MyGEMS/MyEQMS/JUPEM pathways.
+## 5. Case Builder inputs
+- [x] ✅ Location / state / district / PBT / mukim / lot-UPI / lat-long.
+- [x] ✅ Map selection and locate.
+- [x] ✅ Development type / category / activity.
+- [x] ✅ Land use 1 / 2 / 3.
+- [x] ✅ Plot ratio / height / units / GFA.
+- [x] ✅ TOD / transport / environment / infrastructure / constraints / evidence / AI / output sections exist in the canonical workspace source.
+- [ ] 🟡 Full interaction QA on every field still required.
 
-## 6. Assessment
-- [x] Run Site Analysis button.
-- [x] `/workstation/analysis` request path.
-- [x] Existing integrated workstation engine reused.
-- [ ] Response must populate readiness from actual evidence/compliance state, not a decorative/static score.
-- [ ] Spatial findings must be surfaced.
-- [ ] Planning implications must be surfaced.
-- [ ] Evidence gaps must be surfaced.
+## 6. GIS map
+- [x] ✅ Leaflet map and OSM base layer.
+- [x] ✅ Satellite + hybrid basemap controls.
+- [x] ✅ Map click / site selection.
+- [x] ✅ 400 m / 800 m / 1 km ring logic present in the improved workspace prototype.
+- [x] ✅ Resize invalidation is present in the improved workspace prototype.
+- [ ] 🟡 Final runtime proof that tiles always paint correctly.
+- [ ] 🟡 Final runtime proof that rings and marker remain aligned after resize.
 
-## 7. RT / Planning Compliance
-- [x] Existing RT MBMB rule retrieval engine.
-- [x] Existing compliance engine.
-- [x] Deterministic statuses include COMPLY, NON-COMPLIANCE, CONDITIONAL NON-COMPLIANCE and REQUIRES REVIEW.
-- [ ] Compliance cards need dynamic UI binding.
-- [ ] Show proposed value vs requirement.
-- [ ] Show reason/why.
-- [ ] Show source document/section/traceability.
-- [ ] Preserve authority boundary: no statutory approval claim.
+## 7. GIS layer drawer
+- [x] ✅ Layer drawer UI and scroll.
+- [x] ✅ `/map/layers` catalogue path exists.
+- [ ] ❌ Final canonical source still needs proof that every selected i-Plan / risk / ecology / heritage / technical layer is really attached to Leaflet and removed on toggle.
+- [ ] ❌ Final source must surface per-layer loading/error/source state consistently.
 
-## 8. GP / Guidelines
-- [x] Existing guideline intelligence engine/candidate concept.
-- [ ] UI must display relevant GP/GPP candidates.
-- [ ] Show candidate/review status.
-- [ ] Show topic and source.
-- [ ] Provide source navigation where available.
+## 8. Assessment / Planning Intelligence
+- [x] ✅ `/workstation/analysis` endpoint path is used.
+- [x] ✅ Existing backend analysis engine is reused.
+- [ ] ❌ Readiness must be proven dynamic from returned evidence/compliance state.
+- [ ] ❌ Spatial findings, implications and gaps must be visibly bound to the right rail and bottom dock.
 
-## 9. Evidence
-- [x] Evidence model/source catalogue exists.
-- [x] Evidence states/source classifications exist.
-- [ ] Evidence health/count must be dynamically bound.
-- [ ] Evidence register must show source, status, finding, implication.
-- [ ] Evidence gaps must be visible.
-- [ ] Distinguish live source context from statutory verification.
+## 9. RT compliance
+- [x] ✅ Deterministic RT / compliance engines remain available.
+- [ ] ❌ Final workspace UI must show proposed value vs requirement, status, reason and source traceability dynamically.
+- [x] ✅ Authority boundary retained: no statutory approval claim.
 
-## 10. Planning Intelligence Rail
-- [x] Readiness card shell.
-- [x] Key findings shell.
-- [x] Compliance shell.
-- [x] Decision support shell.
-- [x] Quick action shell.
-- [ ] Populate all shells from actual assessment response.
-- [ ] Show RT compliance.
-- [ ] Show GP candidates.
-- [ ] Show evidence health.
-- [ ] Show constraints/risks.
-- [ ] Show planner action.
+## 10. GP / Guidelines
+- [x] ✅ Guideline intelligence engine/candidate concept exists.
+- [ ] ❌ Final UI binding for relevant GP/GPP candidates, topic, source and review status still needs proof.
 
-## 11. What-If
-- [x] What-If UI/control exists.
-- [x] Existing `/what-if` backend exists.
-- [ ] UI must call `/what-if` directly.
-- [ ] Baseline vs scenario comparison.
-- [ ] Scenario impacts.
-- [ ] Ranking/decision support where returned by engine.
-- [ ] No fake numerical simulation.
+## 11. Evidence
+- [x] ✅ Evidence model and source classifications exist.
+- [ ] ❌ Final UI must show evidence health/count, register, source, status, gaps and live-vs-verified distinction dynamically.
 
-## 12. Decision
-- [x] Existing decision engine/API exists.
-- [ ] UI must show actual decision-support result.
-- [ ] Evidence-backed rationale.
-- [ ] Planner action.
-- [x] No APPROVED/REJECTED authority claim.
+## 12. What-If
+- [x] ✅ Existing `/what-if` engine exists.
+- [ ] 🟡 Improved workspace prototype calls `/what-if` directly and renders baseline/scenario results; final GitHub source still needs final proof that this is the active canonical runtime.
 
-## 13. Output
-- [x] Output UI shell.
-- [ ] Full case summary from actual state.
-- [ ] RT/GP compliance summary.
-- [ ] Evidence gaps.
-- [ ] Decision-support summary.
-- [ ] Source traceability.
-- [ ] Print/export.
+## 13. Decision
+- [x] ✅ Existing `/decision-center` engine exists.
+- [ ] 🟡 Improved workspace prototype calls `/decision-center`; final canonical runtime binding still needs proof.
+- [x] ✅ No APPROVED / REJECTED authority claim.
 
-## 14. Global Controls
-- [ ] BM/EN must translate all visible canonical UI strings.
-- [ ] Dark/light theme must preserve contrast.
-- [ ] Reset case.
-- [ ] Fullscreen.
-- [ ] Print.
-- [ ] Export.
-- [ ] Help.
-- [ ] Data Sources.
-- [ ] System Status.
-- [ ] About Us.
+## 14. Output
+- [x] ✅ Print/export shell exists.
+- [ ] 🟡 Final output must be proven to include current case state, RT/GP summary, evidence gaps, decision rationale and source traceability.
 
-## 15. Premium Visual Target
-- [x] Dark premium foundation.
-- [x] Cyan/mint URBION accent.
-- [x] Map-first workstation.
-- [ ] Proper horizontal URBION lockup scale.
-- [ ] Premium spatial-tech graphic treatment.
-- [ ] Subtle city/grid/route geometry.
-- [ ] Site halo and contextual rings.
-- [ ] Dense but readable information hierarchy.
-- [ ] 90% visual match to locked generated reference.
+## 15. Global controls
+- [x] ✅ Reset / fullscreen / print / export controls exist in the canonical workspace family.
+- [ ] 🟡 BM/EN needs full-string QA with no mixed-language leftovers.
+- [ ] 🟡 Light/dark needs final contrast QA.
+- [x] ✅ About Us route exists.
 
-## 16. Final Judge Journey — must pass end-to-end
-1. Open workspace.
-2. Define location.
-3. Select site on map.
-4. Set development / land-use / category / activity.
-5. Set intensity.
-6. Run assessment.
-7. See spatial evidence.
-8. See RT compliance.
-9. See relevant GP.
-10. See evidence health/gaps.
-11. Run What-If.
-12. Compare baseline/scenario.
-13. Open Decision Support.
-14. Generate planner-ready Output.
-15. Print/export.
+## 16. Final judge journey
+1. Open Welcome.
+2. Enter Planning Workspace.
+3. Define location and site.
+4. Set development / land use / category / activity / intensity.
+5. Run analysis.
+6. Inspect GIS + evidence.
+7. Inspect RT compliance + GP candidates.
+8. Inspect evidence health and gaps.
+9. Run What-If.
+10. Open Decision Support.
+11. Generate planner-ready Output.
+12. Print/export.
+13. Return to About Us.
 
-## Current conclusion
-The V5 architecture is the correct foundation, but the canonical workspace is NOT final yet. The highest-priority remaining work is real GIS layer binding, dynamic assessment/RT/GP/evidence presentation, direct What-If/Decision/Output binding, compact geometry, and premium graphics. Do not declare Render-ready until these P0 items pass source-level QA.
+## Release gate
+**NO FINAL RENDER DEPLOY UNTIL ALL ❌ ITEMS IN SECTIONS 7–11 AND THE CANONICAL What-If/Decision/Output BINDINGS ARE PROVEN IN SOURCE + LOCAL BROWSER QA.**
+
+Current direction is deliberate: backend/engines are preserved; the public presentation layer is being isolated instead of adding another repair overlay.
