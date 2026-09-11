@@ -7,13 +7,17 @@
 
 ## Current checkpoint
 Branch: `feature/canonical-workspace-v2`
-Latest source checkpoint: `c0ac08c025c8511ae10deeeed364b5b9ba105b3a`.
+Latest source checkpoint: `2ec9d216c3686c02479bd31aeb6c95532a8b1c08`.
 Render: **LOCKED — no deployment / no iteration**.
 
-## Latest source trace
-PLANMalaysia currently publishes **Manual Sistem Maklumat Geografi (GIS) Rancangan Pemajuan Versi 3.0 / Versi 3 (2025)**. The official Version 3 manual contains the updated Guna Tanah 1 / 2 / 3 classification tables.
+## Current source trace
+The canonical judge path is now explicitly chained as:
 
-The public i-Plan analysis module may still contain explanatory text referencing Version 2.0 for Level 1/2/3 terminology. The project therefore uses the latest official PLANMalaysia publication as the taxonomy source while recording that public-page distinction instead of falsely claiming the public analysis page has already migrated.
+`workspace_v5.html` → `urbion_workspace_final.js` → `urbion_workspace_bridge.js` → `urbion_workspace_runtime.js`
+
+The presentation adapter injects the bridge between the planning function layer and the final visible-control takeover. The bridge is timing-safe and exposes the existing core functions without cloning the planning engines.
+
+PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancangan Pemajuan Versi 3.0 / Versi 3 (2025)** for the Guna Tanah 1 / 2 / 3 hierarchy. Legacy `Perdagangan` is not used as the commercial GT1 label; runtime uses `Komersial`.
 
 ## 1. Canonical runtime
 - [x] ✅ `/` → `welcome.html`
@@ -22,9 +26,11 @@ The public i-Plan analysis module may still contain explanatory text referencing
 - [x] ✅ Legacy championship frontend injection removed from canonical routes
 - [x] ✅ Existing FastAPI planning engines preserved
 - [x] ✅ `urbion_workspace_final.js` remains the canonical planning function layer
-- [x] ✅ `urbion_workspace_bridge.js` now exposes the existing core functions through `window.URBION_FINAL` without duplicating planning engines
+- [x] ✅ `urbion_workspace_bridge.js` exposes the existing core functions through `window.URBION_FINAL`
+- [x] ✅ Bridge waits for the actual core functions before publishing the API
 - [x] ✅ `urbion_workspace_runtime.js` remains the final visible-control takeover layer
 - [x] ✅ Duplicate runtime boot is guarded
+- [x] ✅ Runtime map/global access is defensive
 - [x] ✅ Competing listeners on visible buttons/selectors are stripped before final bindings are attached
 
 ## 2. Guna Tanah 1 / 2 / 3 — latest classification
@@ -88,25 +94,23 @@ The public i-Plan analysis module may still contain explanatory text referencing
 - [x] ✅ BM/EN visible toggle
 - [x] ✅ Dark/light toggle
 
-## 8. Release blocker found and repaired in source
-### Defect: canonical runtime bridge was missing
-The canonical `urbion_workspace_runtime.js` waits for `window.URBION_FINAL`, while the existing planning function file defines its functions and taxonomy without publishing that object. This meant the takeover layer could time out and never bind its final handlers.
+## 8. Source-side hardening completed
+### Defect A — canonical runtime bridge missing
+**Status: REPAIRED ✅**
 
-### Repair
-Added `urbion_workspace_bridge.js` and inserted it between the canonical function layer and runtime takeover. The bridge publishes:
+The visible-control takeover waits for `window.URBION_FINAL`, while the original planning function layer defined the required functions without publishing that object. A canonical bridge was added without rewriting the planning engines.
 
-- `GT`
-- `analyse`
-- `whatif`
-- `decision`
-- `output`
-- `loadLayers`
-- `refreshMap`
-- read-only `URBION_LAST` access for evidence rendering
+### Defect B — bridge timing could race the core
+**Status: REPAIRED ✅**
 
-No planning engine was duplicated or rewritten.
+The bridge now waits for the actual function definitions and publishes the stable API only when those functions exist. It also has its own boot guard.
 
-## 9. Browser proof gate
+### Defect C — runtime duplicate boot / undefined map globals
+**Status: REPAIRED ✅**
+
+The runtime now self-guards and checks map/base/ring globals before using them.
+
+## 9. Browser proof gate — NOT CLAIMED UNTIL EXECUTED
 - [ ] 🟡 Open `/workspace`
 - [ ] 🟡 No console boot error
 - [ ] 🟡 GT1 list matches canonical latest taxonomy
@@ -128,9 +132,9 @@ No planning engine was duplicated or rewritten.
 - [ ] 🟡 Welcome / Workspace / About visual check against locked references
 
 ## 10. Source-side verdict
-### **FUNCTION SET: SOURCE-WIRED ✅**
+### **SOURCE FUNCTION SET: WIRED + HARDENED ✅**
 
-The missing bridge is now explicitly repaired. The runtime takeover also contains a duplicate-boot guard and defensive map-global access.
+The canonical chain is now explicitly bridged and the runtime takeover is protected against duplicate boot and missing map globals.
 
 ### **RUNTIME VERDICT: PENDING BROWSER PROOF 🟡**
 
@@ -139,4 +143,4 @@ No claim of 100% runtime-tested acceptance is made until the browser/judge journ
 ## 11. Render rule
 **DO NOT TOUCH RENDER.**
 
-After every browser-gate item passes, and only after explicit user authorization, perform one final Render deployment. No preview-service iteration and no automatic deployment loop.
+Only after the browser gate passes, and only after explicit user authorization, perform one final Render deployment. No preview-service iteration and no automatic deployment loop.
