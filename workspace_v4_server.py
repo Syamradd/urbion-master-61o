@@ -27,6 +27,7 @@ for route in backend_app.router.routes:
 
 WELCOME_FILE = BASE_DIR / 'welcome.html'
 ABOUT_FILE = BASE_DIR / 'urbion_horizon_about.html'
+ABOUT_MASTER_FILE = BASE_DIR / 'about_master.webp'
 WORKSPACE_FILE = BASE_DIR / 'workspace_v5.html'
 WORKSPACE_JS = BASE_DIR / 'urbion_workspace_final.js'
 WORKSPACE_BRIDGE = BASE_DIR / 'urbion_workspace_bridge.js'
@@ -100,6 +101,19 @@ def workspace_runtime_js(): return _js(WORKSPACE_RUNTIME, 'URBION HORIZON worksp
 @app.get('/urbion_layer_runtime_fix.js', include_in_schema=False)
 def layer_runtime_fix_js(): return _js(LAYER_RUNTIME, 'URBION HORIZON live layer renderer missing.')
 
+@app.get('/about_master.webp', include_in_schema=False)
+def about_master():
+    if not ABOUT_MASTER_FILE.is_file():
+        raise HTTPException(status_code=404, detail='About master image is missing')
+    return FileResponse(
+        ABOUT_MASTER_FILE,
+        media_type='image/webp',
+        headers={
+            'Cache-Control':'no-store, max-age=0, must-revalidate',
+            'X-URBION-ABOUT-MASTER':'CANONICAL-1600X900',
+        },
+    )
+
 @app.get('/about_city_reference.jpg', include_in_schema=False)
 def about_city_reference():
     if not ABOUT_CITY_IMAGE.is_file(): raise HTTPException(status_code=404, detail='About city image is missing')
@@ -125,4 +139,4 @@ def team_photo():
 
 @app.get('/__urbion_runtime_identity', include_in_schema=False)
 def runtime_identity():
-    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'ABOUT-CANONICAL-V2','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_mode':'SINGLE-SOURCE'}
+    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'ABOUT-CANONICAL-V2','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_mode':'SINGLE-SOURCE','about_master':'CANONICAL-1600X900'}
