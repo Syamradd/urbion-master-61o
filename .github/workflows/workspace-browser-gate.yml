@@ -1,0 +1,45 @@
+name: URBION Workspace Browser Gate
+
+on:
+  push:
+    branches:
+      - feature/canonical-workspace-v2
+  pull_request:
+    branches:
+      - feature/canonical-workspace-v2
+
+jobs:
+  browser-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Install Playwright
+        run: pip install playwright && playwright install --with-deps chromium
+      - name: Start canonical presentation server
+        run: |
+          nohup uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/workspace >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/workspace >/dev/null
+      - name: Run browser smoke gate
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+          URBION_ARTIFACT_DIR: artifacts/workspace-browser
+        run: python scripts/workspace_browser_smoke.py
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urbion-workspace-browser-evidence
+          path: artifacts/workspace-browser/
+          if-no-files-found: ignore
