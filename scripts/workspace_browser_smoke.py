@@ -18,7 +18,7 @@ ARTIFACT = Path(os.environ.get("URBION_ARTIFACT_DIR", "artifacts/workspace-brows
 ARTIFACT.mkdir(parents=True, exist_ok=True)
 
 
-def check(page, condition: bool, message: str) -> None:
+def check(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
     print(f"[ OK ] {message}")
@@ -37,7 +37,7 @@ def main() -> int:
         page.goto(f"{BASE}/workspace", wait_until="domcontentloaded")
         page.wait_for_selector("#map")
         page.wait_for_timeout(900)
-        check(page, "Planning Workspace" in page.title(), "workspace route/title")
+        check("Planning Workspace" in page.title(), "workspace route/title")
         check(page.locator("#map").is_visible(), "GIS map container visible")
         check(page.locator("#run").is_visible(), "Run Site Analysis visible")
         check(page.locator("#landuse1").count() == 1, "GT1 control present")
