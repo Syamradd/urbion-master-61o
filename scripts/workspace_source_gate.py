@@ -58,6 +58,13 @@ def main() -> None:
             fail(f"runtime contract token missing: {token}")
     ok("bridge/runtime contract verified")
 
+    runtime = texts["urbion_workspace_runtime.js"]
+    if "document.querySelectorAll('button').forEach(replaceNode)" in runtime:
+        fail("runtime takeover must not clone every button")
+    if "const owned=[" not in runtime or "#run" not in runtime or "#langBtn" not in runtime:
+        fail("runtime owned-control takeover contract missing")
+    ok("runtime takeover scope protected")
+
     # Basic source integrity without depending on a runner-specific Node install.
     for name in ("urbion_workspace_final.js", "urbion_workspace_bridge.js", "urbion_workspace_runtime.js"):
         text = texts[name]
