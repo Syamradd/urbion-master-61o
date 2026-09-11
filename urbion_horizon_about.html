@@ -5,75 +5,62 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>URBION HORIZON — About Us</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;background:#020b12;min-height:100%;font-family:Inter,system-ui,sans-serif}
-.stage{position:relative;width:min(1600px,100vw);aspect-ratio:1600/900;margin:auto;overflow:hidden}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020b12;font-family:Inter,system-ui,sans-serif}
+.stage{position:relative;width:100vw;height:100vh;overflow:hidden;background:#020b12}
 .master{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:fill}
-.hit-layer{position:absolute;inset:0;z-index:5;pointer-events:none}
-.hit{position:absolute;pointer-events:auto;border:0;background:transparent;padding:0;cursor:pointer}
+.hit-layer{position:absolute;inset:0;z-index:5;pointer-events:none}.hit{position:absolute;pointer-events:auto;border:0;background:transparent;padding:0;cursor:pointer}
 .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(1,7,12,.82);backdrop-filter:blur(10px)}
 .modal.open{display:flex}.dialog{width:min(780px,92vw);max-height:82vh;overflow:auto;border:1px solid rgba(69,224,227,.3);border-radius:16px;background:linear-gradient(145deg,#061923,#031018);box-shadow:0 30px 90px rgba(0,0,0,.55);color:#eafcff}
 .dh{display:flex;justify-content:space-between;gap:18px;padding:17px 20px;border-bottom:1px solid rgba(70,210,224,.13);position:sticky;top:0;background:rgba(5,18,27,.95);backdrop-filter:blur(12px)}
 .dk{font-size:8px;letter-spacing:.2em;color:#56e7c1;font-weight:900}.dt{font:700 23px/1.05 Inter,system-ui;margin:5px 0 0}
-.close{border:1px solid rgba(71,218,226,.18);border-radius:8px;background:#081c26;color:#e9ffff;padding:7px 10px;font-size:8px;font-weight:900;cursor:pointer}.db{padding:20px}.dl{font-size:12px;line-height:1.7;color:#c2d2d7;margin:0 0 15px}
-.dg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.dc{padding:13px;border:1px solid rgba(77,208,221,.12);border-radius:10px;background:rgba(255,255,255,.018)}.dc h3{margin:0 0 5px;font-size:10px}.dc p{margin:0;color:#9eb6bf;font-size:9px;line-height:1.55}
-.toast{position:fixed;left:50%;bottom:18px;z-index:120;transform:translate(-50%,14px);opacity:0;pointer-events:none;padding:9px 12px;border-radius:9px;border:1px solid rgba(71,218,226,.18);background:#061a24;color:#e9ffff;font-size:8px;font-weight:800;transition:.18s}.toast.show{opacity:1;transform:translate(-50%,0)}
+.close{border:1px solid rgba(71,218,226,.18);border-radius:8px;background:#081c26;color:#e9ffff;padding:7px 10px;font-size:8px;font-weight:900;cursor:pointer}.db{padding:20px}
+.dl{font-size:12px;line-height:1.7;color:#c2d2d7;margin:0 0 15px}.dg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.dc{padding:13px;border:1px solid rgba(77,208,221,.12);border-radius:10px;background:rgba(255,255,255,.018)}.dc h3{margin:0 0 5px;font-size:10px}.dc p{margin:0;color:#9eb6bf;font-size:9px;line-height:1.55}
 @media(max-width:760px){.dialog{max-height:88vh}.dg{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="stage" id="stage">
-<img class="master" src="/about_master.webp" alt="URBION HORIZON About Us">
+<img class="master" src="/about_master.png" alt="URBION HORIZON About Us">
 <div class="hit-layer">
-<nav class="hit-layer" aria-label="Primary navigation">
-<button class="hit" data-action="nav-logo" style="left:5.45%;top:1.35%;width:15.5%;height:6.2%"></button>
-<button class="hit" data-action="nav-home" style="left:32.4%;top:1.35%;width:4.55%;height:6.2%"></button>
-<button class="hit" data-action="nav-about" style="left:37.2%;top:1.35%;width:4.55%;height:6.2%"></button>
-<button class="hit" data-action="nav-how" style="left:42%;top:1.35%;width:6.85%;height:6.2%"></button>
-<button class="hit" data-action="nav-features" style="left:49%;top:1.35%;width:4.8%;height:6.2%"></button>
-<button class="hit" data-action="nav-sources" style="left:53.8%;top:1.35%;width:6.3%;height:6.2%"></button>
-<button class="hit" data-action="nav-contact" style="left:60.2%;top:1.35%;width:4.95%;height:6.2%"></button>
-</nav>
-<button id="themeBtn" class="hit" aria-label="Toggle theme" style="left:81.6%;top:1.05%;width:3.45%;height:6.6%"></button>
-<button class="hit" data-action="workspace" style="left:85.2%;top:1.15%;width:9.8%;height:6.5%"></button>
-<button class="hit" data-modal="mission" style="left:5.5%;top:34%;width:28.8%;height:13.3%"></button>
-<button class="hit" data-modal="vision" style="left:35.5%;top:34%;width:28.8%;height:13.3%"></button>
-<button class="hit" data-modal="journey" style="left:65.7%;top:34%;width:28.9%;height:13.3%"></button>
-<button class="hit" data-modal="syamir" style="left:14%;top:59.4%;width:14%;height:32%"></button>
-<button class="hit" data-modal="alea" style="left:28.55%;top:59.4%;width:14.45%;height:32%"></button>
-<button class="hit" data-modal="fahmi" style="left:43.45%;top:59.4%;width:14.65%;height:32%"></button>
-<button class="hit" data-modal="education" style="left:67.7%;top:64%;width:20%;height:21.8%"></button>
-<div aria-label="Footer navigation">
-<button class="hit" data-action="nav-home" style="left:35.2%;top:96.15%;width:3.6%;height:2.8%"></button>
-<button class="hit" data-action="nav-about" style="left:39.3%;top:96.15%;width:3.6%;height:2.8%"></button>
-<button class="hit" data-action="nav-how" style="left:43.2%;top:96.15%;width:5.4%;height:2.8%"></button>
-<button class="hit" data-action="nav-features" style="left:49%;top:96.15%;width:4.8%;height:2.8%"></button>
-<button class="hit" data-action="nav-sources" style="left:54%;top:96.15%;width:6%;height:2.8%"></button>
-<button class="hit" data-action="nav-contact" style="left:60.8%;top:96.15%;width:5.1%;height:2.8%"></button>
-</div>
+<button class="hit" data-href="/" aria-label="URBION HORIZON home" style="left:5.45%;top:1.35%;width:15.5%;height:6.2%"></button>
+<button class="hit" data-href="/" aria-label="Home" style="left:32.4%;top:1.35%;width:4.55%;height:6.2%"></button>
+<button class="hit" data-href="/about" aria-label="About" style="left:37.2%;top:1.35%;width:4.55%;height:6.2%"></button>
+<button class="hit" data-modal="how" aria-label="How It Works" style="left:42%;top:1.35%;width:6.85%;height:6.2%"></button>
+<button class="hit" data-modal="features" aria-label="Features" style="left:49%;top:1.35%;width:4.8%;height:6.2%"></button>
+<button class="hit" data-modal="sources" aria-label="Data Sources" style="left:53.8%;top:1.35%;width:6.3%;height:6.2%"></button>
+<button class="hit" data-modal="contact" aria-label="Contact" style="left:60.2%;top:1.35%;width:4.95%;height:6.2%"></button>
+<button class="hit" data-href="/workspace" aria-label="Open Workspace" style="left:85.2%;top:1.15%;width:9.8%;height:6.5%"></button>
+<button class="hit" data-modal="mission" aria-label="Mission" style="left:5.5%;top:34%;width:28.8%;height:13.3%"></button>
+<button class="hit" data-modal="vision" aria-label="Vision" style="left:35.5%;top:34%;width:28.8%;height:13.3%"></button>
+<button class="hit" data-modal="journey" aria-label="Our Journey" style="left:65.7%;top:34%;width:28.9%;height:13.3%"></button>
+<button class="hit" data-modal="syamir" aria-label="Muhammad Syamir Aidid" style="left:14%;top:59.4%;width:14%;height:32%"></button>
+<button class="hit" data-modal="alea" aria-label="Wan Nur Alea Najihah" style="left:28.55%;top:59.4%;width:14.45%;height:32%"></button>
+<button class="hit" data-modal="fahmi" aria-label="Nur Isam Fahmi" style="left:43.45%;top:59.4%;width:14.65%;height:32%"></button>
+<button class="hit" data-modal="education" aria-label="Universiti Teknologi MARA" style="left:67.7%;top:64%;width:20%;height:21.8%"></button>
 </div>
 </div>
 <div class="modal" id="modal"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="dh"><div><div class="dk" id="modalKicker">URBION HORIZON</div><div class="dt" id="modalTitle"></div></div><button class="close" id="close">CLOSE</button></div><div class="db" id="modalBody"></div></div></div>
-<div class="toast" id="toast"></div>
 <script>
 const content={
 mission:["MISSION","Planning with people at the centre.","URBION HORIZON connects planning knowledge, spatial intelligence and practical decision support to help create places that are more inclusive, resilient and people-focused.",["People-first planning","Evidence-led decisions","Actionable urban strategies"]],
 vision:["VISION","Planning for a better tomorrow.","We imagine a future where planning decisions are clearer, faster and more connected—bringing people, places, policies and possibilities together.",["Smarter decisions","Sustainable places","Connected futures"]],
 journey:["OUR JOURNEY","From planning knowledge to planning intelligence.","URBION HORIZON turns planning workflows into an accessible digital experience that supports analysis, communication and better decisions.",["GIS + planning","AI-assisted insight","Human-centred delivery"]],
+how:["HOW IT WORKS","From question to planning decision.","The platform brings planning inputs, spatial evidence and intelligence into one connected workflow so users can move from a planning question to an evidence-supported action.",["Define the planning task","Connect spatial evidence","Review insight and act"]],
+features:["FEATURES","One planning intelligence workspace.","URBION HORIZON combines spatial analysis, evidence, planning intelligence and decision support in a single workflow.",["Spatial intelligence","Planning & policy intelligence","Decision support"]],
+sources:["DATA SOURCES","Evidence from connected planning sources.","The workspace is designed to connect authoritative planning documents, spatial datasets, live information and project evidence while preserving source context.",["Planning documents","Spatial datasets","Live & project evidence"]],
+contact:["CONTACT","Connect with URBION HORIZON.","Use the platform's workspace for the main planning workflow, or return to the home surface to continue exploring the project.",["Open Workspace","Explore the platform","Continue the journey"]],
 syamir:["TEAM","Muhammad Syamir Aidid","Town & Regional Planning student with a focus on spatial planning, GIS, research and digital planning workflows.",["Planning","GIS","Product direction"]],
 alea:["TEAM","Wan Nur Alea Najihah","Town & Regional Planning student supporting research, communication, design and collaborative development.",["Research","Communication","Design"]],
-fahmi:["TEAM","TPr. Fahmi","Urban planning practitioner and mentor perspective supporting the project’s connection to real planning practice.",["Planning practice","Mentorship","Industry insight"]],
+fahmi:["TEAM","Nur Isam Fahmi","Town & Regional Planning team member supporting the project's planning, research and development workflow.",["Planning","Research","Development"]],
 education:["EDUCATION","Universiti Teknologi MARA","Our planning foundation comes from UiTM and the Town & Regional Planning learning environment, strengthened through studio work, research and applied planning practice.",["Planning education","Applied research","Future-ready planners"]]
 };
-const modal=document.getElementById("modal"),title=document.getElementById("modalTitle"),kicker=document.getElementById("modalKicker"),body=document.getElementById("modalBody"),toast=document.getElementById("toast");
+const modal=document.getElementById("modal"),title=document.getElementById("modalTitle"),kicker=document.getElementById("modalKicker"),body=document.getElementById("modalBody");
 function openModal(key){const c=content[key];if(!c)return;kicker.textContent=c[0];title.textContent=c[1];body.innerHTML='<p class="dl">'+c[2]+'</p><div class="dg">'+c[3].map((x,i)=>'<div class="dc"><h3>'+x+'</h3><p>'+["Turning planning principles into clear action.","Supporting evidence-based thinking and practical decisions.","Building better outcomes through collaboration."][i]+'</p></div>').join("")+'</div>';modal.classList.add("open");document.body.style.overflow="hidden"}
 function closeModal(){modal.classList.remove("open");document.body.style.overflow=""}
-function notify(t){toast.textContent=t;toast.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>toast.classList.remove("show"),1400)}
 document.querySelectorAll("[data-modal]").forEach(b=>b.addEventListener("click",()=>openModal(b.dataset.modal)));
-document.getElementById("close").addEventListener("click",closeModal);
-modal.addEventListener("click",e=>{if(e.target===modal)closeModal()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
-document.getElementById("themeBtn").addEventListener("click",()=>{const on=document.body.dataset.theme!=="light";document.body.dataset.theme=on?"light":"";document.body.setAttribute("aria-theme",on?"light":"dark");notify(on?"Light mode enabled":"Dark mode enabled")});
-document.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click",()=>{const a=b.dataset.action;if(a==="workspace")notify("Opening Workspace…");else if(a==="nav-logo")notify("URBION HORIZON");else notify(a.replace("nav-","").toUpperCase()+" selected")}));
+document.querySelectorAll("[data-href]").forEach(b=>b.addEventListener("click",()=>{window.location.href=b.dataset.href}));
+document.getElementById("close").addEventListener("click",closeModal);modal.addEventListener("click",e=>{if(e.target===modal)closeModal()});document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
 window.URBION_ABOUT={openModal,closeModal};
 </script>
 </body></html>
