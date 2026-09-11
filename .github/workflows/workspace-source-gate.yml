@@ -20,5 +20,7 @@ jobs:
           python-version: '3.12'
       - name: Verify canonical workspace source
         run: python scripts/workspace_source_gate.py
+      - name: Compile data readiness gate
+        run: python -m py_compile scripts/urbion_data_readiness_gate.py
       - name: Verify AI, data and planning readiness
         run: python scripts/urbion_data_readiness_gate.py
