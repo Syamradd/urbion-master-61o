@@ -93,6 +93,7 @@ def main() -> int:
             check(page.locator(selector).count() == 1, f"{selector} injected")
         for selector in ["#runtimeHelp", "#runtimeSources", "#runtimeStatus"]:
             page.locator(selector).click()
+            page.wait_for_selector("#modal.show", timeout=5000)
             check(page.locator("#modal.show").count() == 1, f"{selector} works")
             page.locator("#closeModal").click()
 
