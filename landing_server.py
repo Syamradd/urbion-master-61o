@@ -16,6 +16,7 @@ WELCOME_FILE = BASE_DIR / "welcome.html"
 ABOUT_FILE = BASE_DIR / "urbion_horizon_about.html"
 WORKSPACE_FILE = BASE_DIR / "workspace_v5.html"
 WORKSPACE_JS = BASE_DIR / "urbion_workspace_final.js"
+WORKSPACE_RUNTIME = BASE_DIR / "urbion_workspace_runtime.js"
 
 
 def _html(path: Path) -> HTMLResponse:
@@ -32,20 +33,25 @@ def _html(path: Path) -> HTMLResponse:
 
 
 def _workspace() -> HTMLResponse:
-    if not WORKSPACE_FILE.is_file():
-        return HTMLResponse(
-            "URBION HORIZON workspace asset missing: workspace_v5.html",
-            status_code=500,
-        )
-    if not WORKSPACE_JS.is_file():
-        return HTMLResponse(
-            "URBION HORIZON function layer missing: urbion_workspace_final.js",
-            status_code=500,
-        )
+    for path in (WORKSPACE_FILE, WORKSPACE_JS, WORKSPACE_RUNTIME):
+        if not path.is_file():
+            return HTMLResponse(
+                f"URBION HORIZON workspace asset missing: {path.name}",
+                status_code=500,
+            )
     html = WORKSPACE_FILE.read_text(encoding="utf-8")
-    script = '<script src="/urbion_workspace_final.js"></script>'
-    if script not in html and "</body>" in html:
-        html = html.replace("</body>", script + "</body>", 1)
+    scripts = (
+        '<script src="/urbion_workspace_final.js"></script>'
+        '<script src="/urbion_workspace_runtime.js"></script>'
+    )
+    if "</body>" in html and "/urbion_workspace_final.js" not in html:
+        html = html.replace("</body>", scripts + "</body>", 1)
+    elif "/urbion_workspace_runtime.js" not in html:
+        html = html.replace(
+            "</body>",
+            '<script src="/urbion_workspace_runtime.js"></script></body>',
+            1,
+        )
     return HTMLResponse(
         html,
         media_type="text/html; charset=utf-8",
@@ -71,6 +77,18 @@ async def _urbion_canonical_presentation(request: Request, call_next):
             )
         return Response(
             WORKSPACE_JS.read_text(encoding="utf-8"),
+            media_type="application/javascript; charset=utf-8",
+            headers={"Cache-Control": "no-store, max-age=0"},
+        )
+    if path == "/urbion_workspace_runtime.js":
+        if not WORKSPACE_RUNTIME.is_file():
+            return Response(
+                "URBION HORIZON runtime layer missing.",
+                status_code=500,
+                media_type="text/plain; charset=utf-8",
+            )
+        return Response(
+            WORKSPACE_RUNTIME.read_text(encoding="utf-8"),
             media_type="application/javascript; charset=utf-8",
             headers={"Cache-Control": "no-store, max-age=0"},
         )
