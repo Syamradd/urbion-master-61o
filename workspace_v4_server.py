@@ -33,7 +33,6 @@ WORKSPACE_BRIDGE = BASE_DIR / 'urbion_workspace_bridge.js'
 WORKSPACE_RUNTIME = BASE_DIR / 'urbion_workspace_runtime.js'
 LAYER_RUNTIME = BASE_DIR / 'urbion_layer_runtime_fix.js'
 ABOUT_CITY_IMAGE = BASE_DIR / 'about_city_reference.jpg'
-ABOUT_INTERACTIONS = BASE_DIR / 'urbion_about_interactions.js'
 
 def _read(path: Path) -> str:
     if not path.is_file():
@@ -60,22 +59,18 @@ def _workspace() -> str:
     return html
 
 def _about() -> HTMLResponse:
-    html = _read(ABOUT_FILE)
-    enhance = '''<style id="urbion-about-reference-enhance">
-.city{background-image:url('/about_city_reference.jpg');background-size:cover;background-position:center;border-left:0;mask-image:linear-gradient(90deg,transparent 0,#000 9%,#000 100%);box-shadow:inset 0 0 80px rgba(2,10,17,.45)}
-.city:before{inset:0!important;background:linear-gradient(180deg,rgba(2,10,17,.15),rgba(2,10,17,.70))!important;transform:none!important}
-.city:after{left:8%!important;right:4%!important;bottom:15%!important}
-.city .tower{opacity:.16}.city .route{opacity:.65}.citylabel{z-index:2}
-.panel{backdrop-filter:blur(2px)}
-.teamPhoto{width:min(850px,78%)!important;height:auto!important;max-height:330px!important;object-fit:cover!important;object-position:center!important;margin:14px auto 0!important;display:block!important}
-.teamNames{margin-top:8px!important}
-</style>'''
-    if '</head>' in html: html = html.replace('</head>', enhance + '</head>', 1)
-    if '<section class="grid">' in html and 'Our Journey' not in html:
-        html = html.replace('</article></section><section class="panel team">', '</article><article class="panel"><h2>Our Journey</h2><p>A student initiative driven by a shared interest in planning, spatial data and real-world impact.</p><div class="features"><div class="feat"><strong>PEOPLE</strong><span>Planning-led thinking.</span></div><div class="feat"><strong>PLACES</strong><span>Spatial evidence at the centre.</span></div><div class="feat"><strong>POSSIBILITIES</strong><span>Technology for better decisions.</span></div></div></article></section><section class="panel team">',1)
-    if ABOUT_INTERACTIONS.is_file() and '</body>' in html and '/urbion_about_interactions.js' not in html:
-        html = html.replace('</body>', '<script src="/urbion_about_interactions.js"></script></body>', 1)
-    return HTMLResponse(html, media_type='text/html; charset=utf-8', headers={'Cache-Control':'no-store, max-age=0','X-URBION-UI':'CANONICAL-ABOUT'})
+    # About Us is deliberately served as ONE source of truth.
+    # No server-side visual injection, no duplicate interaction layer, no legacy HTML composition.
+    return HTMLResponse(
+        _read(ABOUT_FILE),
+        media_type='text/html; charset=utf-8',
+        headers={
+            'Cache-Control': 'no-store, max-age=0, must-revalidate',
+            'X-URBION-UI': 'CANONICAL-ABOUT',
+            'X-URBION-ABOUT': 'ABOUT-CANONICAL-V2',
+            'X-URBION-ABOUT-SOURCE': 'urbion_horizon_about.html',
+        },
+    )
 
 @app.get('/', include_in_schema=False)
 @app.get('/index.html', include_in_schema=False)
@@ -104,8 +99,6 @@ def workspace_bridge_js(): return _js(WORKSPACE_BRIDGE, 'URBION HORIZON workspac
 def workspace_runtime_js(): return _js(WORKSPACE_RUNTIME, 'URBION HORIZON workspace runtime missing.')
 @app.get('/urbion_layer_runtime_fix.js', include_in_schema=False)
 def layer_runtime_fix_js(): return _js(LAYER_RUNTIME, 'URBION HORIZON live layer renderer missing.')
-@app.get('/urbion_about_interactions.js', include_in_schema=False)
-def about_interactions_js(): return _js(ABOUT_INTERACTIONS, 'URBION HORIZON About Us interaction layer missing.')
 
 @app.get('/about_city_reference.jpg', include_in_schema=False)
 def about_city_reference():
@@ -132,4 +125,4 @@ def team_photo():
 
 @app.get('/__urbion_runtime_identity', include_in_schema=False)
 def runtime_identity():
-    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'CANONICAL-ABOUT','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_interactions':'CANONICAL-ABOUT-V1'}
+    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'ABOUT-CANONICAL-V2','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_mode':'SINGLE-SOURCE'}
