@@ -7,7 +7,7 @@
 
 ## Current checkpoint
 Branch: `feature/canonical-workspace-v2`.
-Latest source checkpoint: `5f8eed1f54db32f6b39f3176a655a1b3b0c9c96d`.
+Latest source repair: `8f8751a5bddebf40ac03bc98e75b09f8b90b315a`.
 Render: **LOCKED — no deployment / no iteration**.
 
 ## Current source trace
@@ -15,7 +15,7 @@ The canonical judge path is explicitly chained as:
 
 `workspace_v5.html` → `urbion_workspace_final.js` → `urbion_workspace_bridge.js` → `urbion_workspace_runtime.js`
 
-The presentation adapter injects the bridge between the planning function layer and the final visible-control takeover. The bridge is timing-safe and exposes the existing core functions without cloning the planning engines.
+The presentation adapter injects the bridge between the planning function layer and the final visible-control runtime. The bridge is timing-safe and exposes the existing core functions without cloning the planning engines.
 
 PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancangan Pemajuan Versi 3.0 / Versi 3 (2025)** for the Guna Tanah 1 / 2 / 3 hierarchy. Legacy `Perdagangan` is not used as the commercial GT1 label; runtime uses `Komersial`.
 
@@ -28,10 +28,10 @@ PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancan
 - [x] `urbion_workspace_final.js` remains the canonical planning function layer
 - [x] `urbion_workspace_bridge.js` exposes the existing core functions through `window.URBION_FINAL`
 - [x] Bridge waits for the actual core functions before publishing the API
-- [x] `urbion_workspace_runtime.js` remains the final visible-control takeover layer
+- [x] `urbion_workspace_runtime.js` remains the final visible-control runtime layer
 - [x] Duplicate runtime boot is guarded
 - [x] Runtime map/global access is defensive
-- [x] Competing listeners on visible buttons/selectors are stripped before final bindings are attached
+- [x] Runtime takeover is now scoped only to runtime-owned controls; canonical case-builder handlers are preserved
 
 ## 2. Guna Tanah 1 / 2 / 3 — latest classification
 - [x] Canonical GT hierarchy is Version 3-aligned
@@ -39,7 +39,7 @@ PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancan
 - [x] `Komersial` is the commercial GT1 term
 - [x] Legacy `Perdagangan` is excluded from visible runtime selectors
 - [x] Selected GT1/GT2/GT3 values are included in the assessment payload
-- [x] Runtime selector takeover prevents older inline bindings from overriding the visible taxonomy after load
+- [x] Runtime selector setup remains authoritative without cloning unrelated case controls
 
 ## 3. Map / GIS controls
 - [x] Leaflet map
@@ -98,7 +98,7 @@ PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancan
 ### Defect A — canonical runtime bridge missing
 **Status: REPAIRED ✅**
 
-The visible-control takeover waits for `window.URBION_FINAL`, while the original planning function layer defined the required functions without publishing that object. A canonical bridge was added without rewriting the planning engines.
+The visible-control runtime waited for `window.URBION_FINAL`, while the original planning function layer defined the required functions without publishing that object. A canonical bridge was added without rewriting the planning engines.
 
 ### Defect B — bridge timing could race the core
 **Status: REPAIRED ✅**
@@ -109,6 +109,11 @@ The bridge now waits for the actual function definitions and publishes the stabl
 **Status: REPAIRED ✅**
 
 The runtime now self-guards and checks map/base/ring globals before using them.
+
+### Defect D — runtime takeover could destroy unrelated case-builder handlers
+**Status: REPAIRED ✅**
+
+The runtime previously cloned every button on the page before rebinding its own controls. The takeover is now scoped to runtime-owned controls only, preserving native case-builder interactions and preventing silent handler loss. A source-gate regression check now protects this contract.
 
 ## 9. Browser proof gate — NOT CLAIMED UNTIL EXECUTED
 - [ ] 🟡 Open `/workspace`
@@ -136,7 +141,7 @@ The runtime now self-guards and checks map/base/ring globals before using them.
 ## 10. Source-side verdict
 ### **SOURCE FUNCTION SET: WIRED + HARDENED ✅**
 
-The canonical chain is explicitly bridged and the runtime takeover is protected against duplicate boot and missing map globals.
+The canonical chain is explicitly bridged and the runtime takeover is protected against duplicate boot, missing map globals, and unrelated case-builder handler loss.
 
 ### **RUNTIME VERDICT: PENDING BROWSER PROOF 🟡**
 
