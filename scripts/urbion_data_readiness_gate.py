@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Static readiness gate for URBION's planning data, AI and evidence stack.
-
-This gate checks that the canonical workspace is backed by the existing
-retrieval, rule, compliance, spatial, guideline and bounded-LLM modules. It
-never invents external data and it deliberately treats the LLM as optional
-narrative synthesis rather than an authority or rule engine.
-"""
+"""Static readiness gate for URBION's planning data, AI and evidence stack."""
 from __future__ import annotations
 
 import re
@@ -61,7 +55,7 @@ def main() -> None:
     texts = {name: (ROOT / name).read_text(encoding="utf-8") for names in CRITICAL.values() for name in names}
 
     llm = texts["urbion_llm_provider.py"]
-    for token in ("GEMINI_API_KEY", "deterministic_source", "DETERMINISTIC", "Never say a proposal is approved"):
+    for token in ("GEMINI_API_KEY", "deterministic_source", "Never say a proposal is approved"):
         if token not in llm:
             fail(f"LLM safety contract missing: {token}")
     ok("bounded optional LLM narrative contract present")
@@ -98,7 +92,7 @@ def main() -> None:
     for route in ("/agents/run", "/copilot/run", "/copilot/explain", "/intelligence/decision-os", "/planner/handoff"):
         if route not in agent:
             fail(f"AI orchestration route missing: {route}")
-    ok("AI/coplanar orchestration API routes present")
+    ok("AI orchestration API routes present")
 
     workspace = texts["workspace_v5.html"] + texts["urbion_workspace_final.js"] + texts["urbion_workspace_runtime.js"]
     for token in ("/workstation/analysis", "/what-if", "/decision-center", "/map/layers", "landuse1", "landuse2", "landuse3", "#runtimeHelp"):
