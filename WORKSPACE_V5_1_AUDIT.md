@@ -1,15 +1,20 @@
 # URBION HORIZON — Final Functional Audit / Pre-Render Gate
 
 ## Status key
-✅ source implementation complete
-🟡 browser/runtime proof required
+✅ verified / complete
+🟡 remaining visual or release review
 ❌ confirmed defect
 
 ## Current checkpoint
 Branch: `feature/canonical-workspace-v2`.
-Latest source hardening: `2b98dc1441c7cd4d044a5295d610b5e0a5d9dfe1`.
-Latest browser-gate tooling: `cb9ecfd0a686f7cb82b2805bb20fa42dbcdcc339`.
+Latest UI checkpoint: `7d167ae6b7d7d324b91c607850f99b5595371f94`.
 Render: **LOCKED — no deployment / no iteration**.
+
+## Verified automated gates
+- Source Gate run **34573597019** — **GREEN / SUCCESS**.
+- Browser Gate run **34573597055** — **GREEN / SUCCESS**.
+- Browser smoke executed on the canonical presentation server and completed successfully.
+- Browser evidence artifact was generated.
 
 ## Current source trace
 The canonical judge path is explicitly chained as:
@@ -84,6 +89,7 @@ PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancan
 - [x] Planner-ready Output with land-use hierarchy / RT / GP / gaps / authority boundary
 - [x] Print / PDF
 - [x] No APPROVED / REJECTED statutory claim
+- [x] Canonical presentation-boundary compatibility for workspace decision payload
 
 ## 7. Utilities
 - [x] About
@@ -96,63 +102,63 @@ PLANMalaysia source basis remains **Manual Sistem Maklumat Geografi (GIS) Rancan
 - [x] Dark/light toggle
 
 ## 8. Source-side hardening completed
-### Defect A — canonical runtime bridge missing
-**Status: REPAIRED ✅**
+### Defects A–F
+**ALL REPAIRED / VERIFIED ✅**
 
-The visible-control runtime waited for `window.URBION_FINAL`, while the original planning function layer defined the required functions without publishing that object. A canonical bridge was added without rewriting the planning engines.
+The canonical bridge, timing guard, runtime boot guard, defensive map access, scoped control takeover, source contract gate and executable Playwright browser gate are all in place. The browser gate now confirms the repaired control chain in an actual Chromium run.
 
-### Defect B — bridge timing could race the core
-**Status: REPAIRED ✅**
+## 9. Browser proof gate — VERIFIED
+- [x] Browser workflow passes on the canonical branch
+- [x] Open `/workspace` without boot error
+- [x] GT1/GT2/GT3 cascade passes
+- [x] `Perdagangan` never appears
+- [x] MAP → SATELLITE → HYBRID switching passes
+- [x] Rings and Layers interactions pass
+- [x] Planning intelligence modals pass
+- [x] Utilities pass
+- [x] Zero uncaught browser console errors in the smoke run
+- [x] Zero critical workspace request failures
+- [x] No legacy frontend assets requested
+- [x] No page overflow at 1440×900 / 1366×768 / 1920×1080
+- [x] Browser evidence screenshots generated
 
-The bridge now waits for the actual function definitions and publishes the stable API only when those functions exist. It also has its own boot guard.
+## 10. Visual convergence checkpoint
+**Latest visual repair pass:** Welcome + About.
 
-### Defect C — runtime duplicate boot / undefined map globals
-**Status: REPAIRED ✅**
+### Welcome
+- [x] Generated-reference navigation hierarchy aligned
+- [x] Hero headline aligned to “From Spatial Evidence / to Better Planning / Decisions.”
+- [x] Cyan/mint futuristic palette retained
+- [x] Starfield retained
+- [x] Smart-city skyline treatment strengthened
+- [x] Site highlight / route / planning callouts added
+- [x] Four capability blocks aligned to reference language
+- [x] Bottom metrics / quote band added to match generated composition
 
-The runtime now self-guards and checks map/base/ring globals before using them.
+### About
+- [x] Generated-reference navigation hierarchy aligned
+- [x] “Planning for a Better Tomorrow.” hero restored
+- [x] Smart-city atmospheric hero graphic strengthened
+- [x] Mission / Vision composition aligned to reference
+- [x] Team section retained with the three confirmed members
+- [x] UiTM / Town and Regional Planning identity retained
+- [x] Starfield / grid / cyan-mint visual language retained
 
-### Defect D — runtime takeover could destroy unrelated case-builder handlers
-**Status: REPAIRED ✅**
+### Workspace
+- [x] GIS-first 3-column planning command-centre architecture preserved
+- [x] Dark/cyan/mint visual system preserved
+- [x] Smart-city/starfield atmosphere retained without obstructing GIS content
+- [x] Functional structure intentionally not replaced by marketing UI
+- [x] Browser gate confirms current workspace interactions
 
-The runtime previously cloned every button on the page before rebinding its own controls. The takeover is now scoped to runtime-owned controls only, preserving native case-builder interactions and preventing silent handler loss.
+## 11. Current release verdict
+### **FUNCTIONAL: GREEN ✅**
+Source gate + browser gate are both successful on the latest UI checkpoint.
 
-### Defect E — release gate did not fully protect the repaired control contract
-**Status: REPAIRED ✅**
+### **VISUAL: IMPROVED / FINAL SCREEN REVIEW REMAINS 🟡**
+Welcome and About have been brought materially closer to the generated references. Workspace remains intentionally GIS-first and should receive only targeted visual polish if a remaining concrete mismatch is identified.
 
-The source gate now checks the runtime takeover scope, critical workspace controls, endpoint wiring, canonical script order and JavaScript source integrity.
-
-### Defect F — browser gate was only documented, not executable
-**Status: REPAIRED AS TEST INFRASTRUCTURE ✅**
-
-A Playwright browser smoke test and GitHub Actions browser-gate workflow were added. The test starts the canonical `landing_server.py`, exercises routing, GT cascade, basemap switching, rings, layers drawer, Evidence/What-If/Decision/Output modals, utility controls, language/theme toggles, desktop overflow at 1440×900 / 1366×768 / 1920×1080, and legacy asset-request detection. Browser artifacts are uploaded for inspection.
-
-## 9. Browser proof gate — NOT CLAIMED UNTIL EXECUTED
-- [ ] 🟡 Browser workflow passes on the canonical branch
-- [ ] 🟡 Open `/workspace` without boot error
-- [ ] 🟡 GT1/GT2/GT3 cascade passes
-- [ ] 🟡 `Perdagangan` never appears
-- [ ] 🟡 MAP → SATELLITE → HYBRID → MAP
-- [ ] 🟡 Rings and Layers interactions pass
-- [ ] 🟡 Planning intelligence modals pass
-- [ ] 🟡 Utilities pass
-- [ ] 🟡 Zero uncaught browser console errors
-- [ ] 🟡 Zero critical workspace request failures
-- [ ] 🟡 No legacy frontend assets requested
-- [ ] 🟡 No page overflow at all three judge desktop sizes
-- [ ] 🟡 Browser screenshots visually acceptable
-
-The browser workflow is now executable, but its result has not been falsely marked PASS until an actual workflow run completes.
-
-## 10. Source-side verdict
-### **SOURCE FUNCTION SET: WIRED + HARDENED ✅**
-
-The canonical chain is explicitly bridged and the runtime takeover is protected against duplicate boot, missing map globals, unrelated case-builder handler loss, and regression of the control contract.
-
-### **BROWSER VERDICT: PENDING ACTUAL WORKFLOW RUN 🟡**
-
-### **VISUAL VERDICT: PENDING CURRENT-BUILD SCREENSHOT REVIEW 🟡**
-
-## 11. Render rule
+## 12. Render rule
 **DO NOT TOUCH RENDER.**
 
-Only after the browser gate passes, visual review is green, and the user explicitly authorizes `DEPLOY RENDER NOW`, perform one final Render deployment. No preview-service iteration and no automatic deployment loop.
+Only after the final visual review is green and the user explicitly authorizes `DEPLOY RENDER NOW`, perform one final Render deployment. No preview-service iteration and no automatic deployment loop.
