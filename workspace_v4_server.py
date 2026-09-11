@@ -27,7 +27,7 @@ for route in backend_app.router.routes:
 
 WELCOME_FILE = BASE_DIR / 'welcome.html'
 ABOUT_FILE = BASE_DIR / 'urbion_horizon_about.html'
-ABOUT_MASTER_FILE = BASE_DIR / 'about_master.webp'
+ABOUT_MASTER_FILE = BASE_DIR / 'about_master.png'
 WORKSPACE_FILE = BASE_DIR / 'workspace_v5.html'
 WORKSPACE_JS = BASE_DIR / 'urbion_workspace_final.js'
 WORKSPACE_BRIDGE = BASE_DIR / 'urbion_workspace_bridge.js'
@@ -60,16 +60,15 @@ def _workspace() -> str:
     return html
 
 def _about() -> HTMLResponse:
-    # About Us is deliberately served as ONE source of truth.
-    # No server-side visual injection, no duplicate interaction layer, no legacy HTML composition.
     return HTMLResponse(
         _read(ABOUT_FILE),
         media_type='text/html; charset=utf-8',
         headers={
             'Cache-Control': 'no-store, max-age=0, must-revalidate',
             'X-URBION-UI': 'CANONICAL-ABOUT',
-            'X-URBION-ABOUT': 'ABOUT-CANONICAL-V2',
+            'X-URBION-ABOUT': 'ABOUT-CANONICAL-V3-PNG',
             'X-URBION-ABOUT-SOURCE': 'urbion_horizon_about.html',
+            'X-URBION-ABOUT-MASTER-FORMAT': 'PNG',
         },
     )
 
@@ -101,18 +100,18 @@ def workspace_runtime_js(): return _js(WORKSPACE_RUNTIME, 'URBION HORIZON worksp
 @app.get('/urbion_layer_runtime_fix.js', include_in_schema=False)
 def layer_runtime_fix_js(): return _js(LAYER_RUNTIME, 'URBION HORIZON live layer renderer missing.')
 
-@app.get('/about_master.webp', include_in_schema=False)
-def about_master():
+@app.get('/about_master.png', include_in_schema=False)
+def about_master_png():
     if not ABOUT_MASTER_FILE.is_file():
-        raise HTTPException(status_code=404, detail='About master image is missing')
-    return FileResponse(
-        ABOUT_MASTER_FILE,
-        media_type='image/webp',
-        headers={
-            'Cache-Control':'no-store, max-age=0, must-revalidate',
-            'X-URBION-ABOUT-MASTER':'CANONICAL-1600X900',
-        },
-    )
+        raise HTTPException(status_code=404, detail='About master PNG is missing')
+    return FileResponse(ABOUT_MASTER_FILE, media_type='image/png', headers={'Cache-Control':'no-store, max-age=0, must-revalidate','X-URBION-ABOUT-MASTER':'CANONICAL-PNG'})
+
+@app.get('/about_master.webp', include_in_schema=False)
+def about_master_legacy():
+    target = BASE_DIR / 'about_master.webp'
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail='Legacy About master is missing')
+    return FileResponse(target, media_type='image/webp', headers={'Cache-Control':'no-store, max-age=0'})
 
 @app.get('/about_city_reference.jpg', include_in_schema=False)
 def about_city_reference():
@@ -139,4 +138,4 @@ def team_photo():
 
 @app.get('/__urbion_runtime_identity', include_in_schema=False)
 def runtime_identity():
-    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'ABOUT-CANONICAL-V2','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_mode':'SINGLE-SOURCE','about_master':'CANONICAL-1600X900'}
+    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'ABOUT-CANONICAL-V3-PNG','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_mode':'SINGLE-SOURCE','about_master':'CANONICAL-PNG'}
