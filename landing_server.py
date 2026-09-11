@@ -16,6 +16,7 @@ WELCOME_FILE = BASE_DIR / "welcome.html"
 ABOUT_FILE = BASE_DIR / "urbion_horizon_about.html"
 WORKSPACE_FILE = BASE_DIR / "workspace_v5.html"
 WORKSPACE_JS = BASE_DIR / "urbion_workspace_final.js"
+WORKSPACE_BRIDGE = BASE_DIR / "urbion_workspace_bridge.js"
 WORKSPACE_RUNTIME = BASE_DIR / "urbion_workspace_runtime.js"
 
 
@@ -33,7 +34,7 @@ def _html(path: Path) -> HTMLResponse:
 
 
 def _workspace() -> HTMLResponse:
-    for path in (WORKSPACE_FILE, WORKSPACE_JS, WORKSPACE_RUNTIME):
+    for path in (WORKSPACE_FILE, WORKSPACE_JS, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME):
         if not path.is_file():
             return HTMLResponse(
                 f"URBION HORIZON workspace asset missing: {path.name}",
@@ -42,6 +43,7 @@ def _workspace() -> HTMLResponse:
     html = WORKSPACE_FILE.read_text(encoding="utf-8")
     scripts = (
         '<script src="/urbion_workspace_final.js"></script>'
+        '<script src="/urbion_workspace_bridge.js"></script>'
         '<script src="/urbion_workspace_runtime.js"></script>'
     )
     if "</body>" in html and "/urbion_workspace_final.js" not in html:
@@ -77,6 +79,18 @@ async def _urbion_canonical_presentation(request: Request, call_next):
             )
         return Response(
             WORKSPACE_JS.read_text(encoding="utf-8"),
+            media_type="application/javascript; charset=utf-8",
+            headers={"Cache-Control": "no-store, max-age=0"},
+        )
+    if path == "/urbion_workspace_bridge.js":
+        if not WORKSPACE_BRIDGE.is_file():
+            return Response(
+                "URBION HORIZON workspace bridge missing.",
+                status_code=500,
+                media_type="text/plain; charset=utf-8",
+            )
+        return Response(
+            WORKSPACE_BRIDGE.read_text(encoding="utf-8"),
             media_type="application/javascript; charset=utf-8",
             headers={"Cache-Control": "no-store, max-age=0"},
         )
