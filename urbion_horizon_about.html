@@ -97,9 +97,10 @@ const motionLayer=document.getElementById("motionLayer"),cursorGlow=document.get
 let targetX=0,targetY=0,currentX=0,currentY=0,raf=0,pointerInside=false;
 function placeGlow(x,y){targetX=x;targetY=y;pointerInside=true;cursorGlow.style.opacity="1";if(!raf)raf=requestAnimationFrame(stepMotion)}
 function stepMotion(){currentX+=(targetX-currentX)*.12;currentY+=(targetY-currentY)*.12;cursorGlow.style.left=currentX+"px";cursorGlow.style.top=currentY+"px";if(pointerInside||Math.abs(targetX-currentX)>0.25||Math.abs(targetY-currentY)>0.25){raf=requestAnimationFrame(stepMotion)}else{raf=0}}
-motionLayer.addEventListener("pointermove",e=>{const r=motionLayer.getBoundingClientRect();placeGlow(e.clientX-r.left,e.clientY-r.top)});
-motionLayer.addEventListener("pointerenter",()=>{pointerInside=true;cursorGlow.style.opacity="1"});
-motionLayer.addEventListener("pointerleave",()=>{pointerInside=false;cursorGlow.style.opacity="0";hoverGlow.classList.remove("on")});
+const stageEl=document.getElementById("stage");
+stageEl.addEventListener("pointermove",e=>{const r=stageEl.getBoundingClientRect();placeGlow(e.clientX-r.left,e.clientY-r.top)});
+stageEl.addEventListener("pointerenter",()=>{pointerInside=true;cursorGlow.style.opacity="1"});
+stageEl.addEventListener("pointerleave",()=>{pointerInside=false;cursorGlow.style.opacity="0";hoverGlow.classList.remove("on")});
 document.querySelectorAll(".hit").forEach(btn=>{btn.addEventListener("pointerenter",()=>{const r=btn.getBoundingClientRect(),sr=document.getElementById("stage").getBoundingClientRect();hoverGlow.style.left=(r.left-sr.left+r.width/2)+"px";hoverGlow.style.top=(r.top-sr.top+r.height/2)+"px";hoverGlow.style.transformOrigin="center center";const scale=Math.min(1.45,Math.max(.85,Math.sqrt((r.width*r.height)/(220*140))*1.35));hoverGlow.style.setProperty("--hover-scale",scale);hoverGlow.style.transform="translate3d(-50%,-50%,0) scale("+scale+")";hoverGlow.classList.add("on")});btn.addEventListener("pointerleave",()=>hoverGlow.classList.remove("on"))});
 window.URBION_ABOUT={openModal,closeModal};
 </script>
