@@ -13,8 +13,6 @@ function toast(message,ok=true){const t=$('toast');if(!t)return;t.textContent=me
 function modal(title,html){const m=$('modal');if(!m)return;$('modalTitle').textContent=title;$('modalBody').innerHTML=html;$('modal').classList.add('show')}
 function replaceNode(el){if(!el||!el.parentNode)return el;const clone=el.cloneNode(true);el.parentNode.replaceChild(clone,el);return clone}
 function takeoverControls(){
-  /* Do NOT clone every button. Case-builder buttons may have canonical inline
-     handlers; cloning them silently destroys those handlers. */
   const owned=[
     ...document.querySelectorAll('[data-base]'),
     ...document.querySelectorAll('.nav button'),
@@ -46,7 +44,7 @@ function setupLandUse(){
 function bindMapControls(){
   document.querySelectorAll('[data-base]').forEach(b=>b.addEventListener('click',()=>setBasemap(b.dataset.base)));
   $('layerBtn')?.addEventListener('click',()=>{$('layers')?.classList.toggle('open');window.URBION_FINAL.loadLayers?.()});
-  $('run')?.addEventListener('click',()=>window.URBION_FINAL.analyse?.());
+  $('run')?.addEventListener('click',()=>{void runAnalysisWithAI()});
   $('evidenceBtn')?.addEventListener('click',()=>openCore('evidence'));
   $('whatifBtn')?.addEventListener('click',()=>openCore('whatif'));
   $('decisionBtn')?.addEventListener('click',()=>openCore('decision'));
@@ -68,6 +66,31 @@ async function searchBinding(){
 }
 function openCore(kind){if(kind==='evidence')return evidenceView();if(kind==='whatif')return window.URBION_FINAL.whatif?.();if(kind==='decision')return window.URBION_FINAL.decision?.();if(kind==='output')return window.URBION_FINAL.output?.()}
 function evidenceView(){const r=window.URBION_LAST||{};const items=Array.isArray(r.evidence_register)?r.evidence_register:(Array.isArray(r.evidence?.evidence_register)?r.evidence.evidence_register:[]);const gaps=Array.isArray(r.review_gaps)?r.review_gaps:[];const rows=items.slice(0,15).map(x=>`<tr><td>${esc(x.source||x.name||'Source')}</td><td>${esc(x.status||x.evidence_status||'—')}</td><td>${esc(x.finding||x.summary||'—')}</td><td>${esc(x.implication||x.reason||'—')}</td></tr>`).join('')||'<tr><td colspan="4">No structured evidence register returned.</td></tr>';modal('EVIDENCE CHAIN',`<div class="resultbox"><h4>BOUNDARY</h4><p>Live source context, calculated evidence and verification status remain distinct. No statutory approval is inferred.</p></div><div style="height:8px"></div><table class="table"><thead><tr><th>SOURCE</th><th>STATUS</th><th>FINDING</th><th>IMPLICATION</th></tr></thead><tbody>${rows}</tbody></table><div class="resultbox" style="margin-top:8px"><h4>REVIEW GAPS (${gaps.length})</h4><p>${esc(gaps.map(x=>x.title||x).join(' · ')||'None returned')}</p></div>`)}
+async function runAnalysisWithAI(){
+  try{
+    await window.URBION_FINAL.analyse?.();
+    for(let i=0;i<30 && !window.URBION_LAST;i++) await sleep(100);
+    if(!window.URBION_LAST)return;
+    const inputs=typeof getInputs==='function'?getInputs():{
+      site_lat:Number($('site_lat')?.value),site_lon:Number($('site_lon')?.value),tod_lat:Number($('tod_lat')?.value)||null,tod_lon:Number($('tod_lon')?.value)||null,
+      plot_ratio:Number($('plot_ratio')?.value)||4.5,development_type:$('development_type')?.value,development_class:$('development_class')?.value,
+      state:$('state')?.value,district:$('district')?.value,pbt:$('pbt')?.value,lot_no:$('lot_no')?.value,building_height:Number($('building_height')?.value)||null,
+      landuse1:$('landuse1')?.value,landuse2:$('landuse2')?.value,landuse3:$('landuse3')?.value,units:Number($('units')?.value)||null,gfa:Number($('gfa')?.value)||null,
+      perimeter_planting:$('perimeter_planting')?.value||null,landscaped_pedestrian_walkway:$('landscaped_pedestrian_walkway')?.value||null,
+      precinct:$('precinct')?.value,environment_note:$('environment_note')?.value,infra_note:$('infra_note')?.value,constraint_note:$('constraint_note')?.value,source_note:$('source_note')?.value,analysis_focus:$('analysis_focus')?.value
+    };
+    const r=await fetch(location.origin+'/copilot/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assessment:inputs})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail?.message||d.detail||'Copilot explanation failed');
+    const ex=d.explanation||{};const text=typeof ex==='string'?ex:(ex.text||ex.explanation||'No narrative returned.');
+    const provider=typeof ex==='object'?(ex.provider||'LLM'):'LLM';
+    const status=typeof ex==='object'?(ex.status||'READY'):'READY';
+    window.URBION_AI_LAST={provider,status,text,evidence_ledger:d.evidence_ledger||{},source:'bounded_copilot_explain'};
+    const host=$('findings');
+    if(host){const ai=document.createElement('div');ai.className='finding';ai.id='aiSynthesisCard';ai.innerHTML=`<b>AI PLANNING SYNTHESIS</b><p>${esc(text)}</p><small>${esc(provider)} · ${esc(status)} · DETERMINISTIC PACKET REMAINS SOURCE OF TRUTH</small>`;host.querySelector('#aiSynthesisCard')?.remove();host.appendChild(ai);}
+    if($('evidenceHealth'))$('evidenceHealth').insertAdjacentHTML('beforeend',`<div class="finding"><b>AI / COPILOT</b><p>Planner narrative generated from the deterministic planning packet and evidence ledger.</p><small>${esc(provider)} · ${esc(status)} · NO STATUTORY AUTHORITY</small></div>`);
+  }catch(e){window.URBION_AI_LAST={provider:'fallback',status:'UNAVAILABLE',text:String(e.message||e)};toast('AI synthesis unavailable — deterministic assessment retained',false)}
+}
 function bindNav(){document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const m=b.dataset.mode;if(m==='whatif')window.URBION_FINAL.whatif?.();else if(m==='decision')window.URBION_FINAL.decision?.();else if(m==='output')window.URBION_FINAL.output?.();else if(m==='evidence')evidenceView();else{$('modal')?.classList.remove('show');window.scrollTo(0,0);toast('Planning workspace active')}}))}
 function bindUtility(){$('themeBtn')?.addEventListener('click',()=>document.body.classList.toggle('light'));$('langBtn')?.addEventListener('click',()=>{const bm=$('langBtn').textContent==='EN';$('langBtn').textContent=bm?'BM':'EN';document.documentElement.lang=bm?'ms':'en';const dict=bm?{'PLAN':'PELAN','EVIDENCE':'BUKTI','WHAT-IF':'BAGAIMANA JIKA','DECISION':'KEPUTUSAN','OUTPUT':'OUTPUT','Map':'Peta','Satellite':'Satelit','Hybrid':'Hibrid','Layers':'Lapisan','Planning Case':'Kes Perancangan'}:{'PELAN':'PLAN','BUKTI':'EVIDENCE','BAGAIMANA JIKA':'WHAT-IF','KEPUTUSAN':'DECISION','Peta':'Map','Satelit':'Satellite','Hibrid':'Hybrid','Lapisan':'Layers','Kes Perancangan':'Planning Case'};document.querySelectorAll('button,.lab,.sechead button,.dock h3,.card h3,.maptag').forEach(el=>{const t=el.textContent.trim();if(dict[t])el.textContent=dict[t]});toast(bm?'BM mode':'EN mode')});$('runtimeAbout')?.addEventListener('click',()=>location.href='/about')}
 function addUtilities(){const top=document.querySelector('.top');if(!top||$('runtimeTools'))return;const box=document.createElement('div');box.id='runtimeTools';box.style.cssText='display:flex;align-items:center;gap:4px;margin-left:4px;flex-shrink:0';const make=(id,label)=>{const b=document.createElement('button');b.id=id;b.className='tool';b.type='button';b.textContent=label;return b};const about=make('runtimeAbout','ABOUT'),help=make('runtimeHelp','HELP'),sources=make('runtimeSources','SOURCES'),status=make('runtimeStatus','STATUS'),fs=make('runtimeFullscreen','FULLSCREEN'),reset=make('runtimeReset','RESET');[about,help,sources,status,fs,reset].forEach(b=>box.appendChild(b));top.appendChild(box)}
