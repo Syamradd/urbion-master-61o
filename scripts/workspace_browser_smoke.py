@@ -3,7 +3,8 @@
 
 Runs against a locally started landing_server.py instance. This is deliberately
 focused on the judge-facing journey: routing, taxonomy cascade, map controls,
-modal navigation, utilities, console/network errors, and desktop overflow.
+modal navigation, bounded AI synthesis, utilities, console/network errors,
+and desktop overflow.
 """
 from __future__ import annotations
 
@@ -70,12 +71,15 @@ def main() -> int:
         page.locator("#layerBtn").click()
         check(not page.locator("#layers").evaluate("e => e.classList.contains('open')"), "layers drawer closes")
 
-        # What-If / Decision / Output require a completed analysis state in the
-        # canonical workspace. Execute the real analysis journey before testing them.
         page.locator("#run").click()
         page.wait_for_function("document.querySelector('#run') && document.querySelector('#run').textContent.includes('RUN SITE ANALYSIS')", timeout=30000)
         check("ANALYSIS COMPLETE" in page.locator("#mapStatus").inner_text(), "site analysis completes")
         check(page.locator("#readyLabel").inner_text().strip() != "PRE-RUN", "decision readiness updates after analysis")
+        page.wait_for_selector("#aiSynthesisCard", timeout=20000)
+        check(page.locator("#aiSynthesisCard").is_visible(), "bounded AI planning synthesis surfaced")
+        ai_text = page.locator("#aiSynthesisCard").inner_text()
+        check("SOURCE OF TRUTH" in ai_text.upper(), "AI synthesis states deterministic source-of-truth boundary")
+        check(page.locator("#evidenceHealth").inner_text().contains("AI / COPILOT") if False else "AI / COPILOT" in page.locator("#evidenceHealth").inner_text(), "AI/coplanar status surfaced in evidence health")
 
         for selector, title in [("#evidenceBtn", "EVIDENCE CHAIN"), ("#whatifBtn", "WHAT-IF STUDIO"), ("#decisionBtn", "DECISION SUPPORT"), ("#outputBtn", "URBION PLANNER-READY OUTPUT")]:
             page.locator(selector).click()
@@ -84,8 +88,6 @@ def main() -> int:
             check(title in page.locator("#modalTitle").inner_text(), f"{selector} opens expected content")
             page.locator("#closeModal").click()
 
-        # Runtime utility controls are generated after boot; wait for them rather
-        # than turning a legitimate boot race into a 30-second selector timeout.
         page.wait_for_selector("#runtimeHelp", timeout=10000)
         for selector in ["#runtimeAbout", "#runtimeHelp", "#runtimeSources", "#runtimeStatus", "#runtimeFullscreen", "#runtimeReset"]:
             check(page.locator(selector).count() == 1, f"{selector} injected")
@@ -94,7 +96,6 @@ def main() -> int:
             check(page.locator("#modal.show").count() == 1, f"{selector} works")
             page.locator("#closeModal").click()
 
-        # Utility controls that are safe to verify without navigation side effects.
         page.locator("#themeBtn").click()
         check(page.locator("body").evaluate("e => e.classList.contains('light')"), "dark/light toggle")
         page.locator("#langBtn").click()
