@@ -70,12 +70,18 @@ def main() -> int:
         page.locator("#layerBtn").click()
         check(not page.locator("#layers").evaluate("e => e.classList.contains('open')"), "layers drawer closes")
 
-        for selector, title in [("#evidenceBtn", "EVIDENCE CHAIN"), ("#whatifBtn", ""), ("#decisionBtn", ""), ("#outputBtn", "")]:
+        # What-If / Decision / Output require a completed analysis state in the
+        # canonical workspace. Execute the real analysis journey before testing them.
+        page.locator("#run").click()
+        page.wait_for_function("document.querySelector('#run') && document.querySelector('#run').textContent.includes('RUN SITE ANALYSIS')", timeout=30000)
+        check(page.locator("#mapStatus").inner_text().includes("ANALYSIS COMPLETE"), "site analysis completes")
+        check(page.locator("#readyLabel").inner_text().strip() != "PRE-RUN", "decision readiness updates after analysis")
+
+        for selector, title in [("#evidenceBtn", "EVIDENCE CHAIN"), ("#whatifBtn", "WHAT-IF STUDIO"), ("#decisionBtn", "DECISION SUPPORT"), ("#outputBtn", "URBION PLANNER-READY OUTPUT")]:
             page.locator(selector).click()
             page.wait_for_timeout(120)
             check(page.locator("#modal.show").count() == 1, f"{selector} opens modal")
-            if title:
-                check(title in page.locator("#modalTitle").inner_text(), f"{selector} opens evidence chain")
+            check(title in page.locator("#modalTitle").inner_text(), f"{selector} opens expected content")
             page.locator("#closeModal").click()
 
         # Runtime utility controls are generated after boot.
