@@ -84,12 +84,17 @@ def main() -> int:
             check(title in page.locator("#modalTitle").inner_text(), f"{selector} opens expected content")
             page.locator("#closeModal").click()
 
-        # Runtime utility controls are generated after boot.
+        # Runtime utility controls are generated after boot; wait for them rather
+        # than turning a legitimate boot race into a 30-second selector timeout.
+        page.wait_for_selector("#runtimeHelp", timeout=10000)
+        for selector in ["#runtimeAbout", "#runtimeHelp", "#runtimeSources", "#runtimeStatus", "#runtimeFullscreen", "#runtimeReset"]:
+            check(page.locator(selector).count() == 1, f"{selector} injected")
         for selector in ["#runtimeHelp", "#runtimeSources", "#runtimeStatus"]:
             page.locator(selector).click()
             check(page.locator("#modal.show").count() == 1, f"{selector} works")
             page.locator("#closeModal").click()
 
+        # Utility controls that are safe to verify without navigation side effects.
         page.locator("#themeBtn").click()
         check(page.locator("body").evaluate("e => e.classList.contains('light')"), "dark/light toggle")
         page.locator("#langBtn").click()
@@ -97,7 +102,6 @@ def main() -> int:
         page.locator("#langBtn").click()
         check(page.locator("#langBtn").inner_text().strip() == "EN", "EN language toggle")
 
-        # Desktop visual overflow gate across the supported judge sizes.
         for width, height in [(1440, 900), (1366, 768), (1920, 1080)]:
             page.set_viewport_size({"width": width, "height": height})
             page.wait_for_timeout(200)
@@ -105,7 +109,6 @@ def main() -> int:
             check(overflow["x"] <= 2 and overflow["y"] <= 2, f"no page overflow at {width}x{height}")
             page.screenshot(path=str(ARTIFACT / f"workspace-{width}x{height}.png"), full_page=True)
 
-        # Legacy frontend pollution gate.
         resource_urls = page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")
         legacy = [u for u in resource_urls if any(token in u.lower() for token in ("premium_v", "p20506", "championship_frontend", "language_bootstrap"))]
         check(not legacy, "no legacy frontend assets requested")
