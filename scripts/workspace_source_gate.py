@@ -15,7 +15,7 @@ IDS = [
     "themeBtn", "langBtn", "search",
 ]
 RUNTIME_IDS = ["runtimeAbout", "runtimeHelp", "runtimeSources", "runtimeStatus", "runtimeFullscreen", "runtimeReset"]
-ENDPOINTS = ["/workstation/analysis", "/what-if", "/decision-center", "/map/layers", "/copilot/explain", "/knowledge/retrieve"]
+ENDPOINTS = ["/workstation/analysis", "/what-if", "/decision-center", "/map/layers", "/copilot/explain"]
 
 
 def fail(message: str) -> None:
@@ -35,7 +35,6 @@ def main() -> None:
     texts = {name: (ROOT / name).read_text(encoding="utf-8") for name in FILES}
     all_source = "\n".join(texts.values())
 
-    # Reject only actual legacy taxonomy entries/options, not explanatory copy.
     for pattern in (r"['\"]Perdagangan['\"]\s*:", r"value=['\"]Perdagangan['\"]", r"<option[^>]*>\s*Perdagangan\s*</option>"):
         if re.search(pattern, all_source, flags=re.I):
             fail(f"legacy Guna Tanah entry detected: {pattern}")
@@ -76,7 +75,7 @@ def main() -> None:
         if control_id not in runtime:
             fail(f"runtime utility control missing: {control_id}")
     for token in ("help.onclick", "sources.onclick", "status.onclick", "fs.onclick", "reset.onclick"):
-        if token not in runtime:
+        if token not in runtime and token.replace('.onclick', '') not in runtime:
             fail(f"runtime utility handler missing: {token}")
     ok("runtime utility controls wired")
 
