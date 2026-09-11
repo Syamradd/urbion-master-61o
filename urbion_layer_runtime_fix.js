@@ -1,65 +1,36 @@
-/* URBION HORIZON — resilient live GIS layer renderer */
-(()=>{
-'use strict';
-if(window.__URBION_LAYER_RUNTIME_FIX__)return;
-window.__URBION_LAYER_RUNTIME_FIX__=true;
-const $=id=>document.getElementById(id);
+/* URBION HORIZON — authoritative live GIS layer manager */
+(()=>{'use strict';
+if(window.__URBION_LAYER_MANAGER__)return;
+window.__URBION_LAYER_MANAGER__=true;
+const $=id=>document.getElementById(id), sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function getMap(){try{return (typeof map!=='undefined'&&map)||window.__URBION_MAP__||window.URBION_FCC_MAP||null}catch(_){return window.__URBION_MAP__||null}}
-function stateName(){return String($('state')?.value||'Melaka').trim()||'Melaka'}
-function escAttr(s){return esc(s).replace(/`/g,'&#96;')}
-function setMsg(id,msg,good=true){const el=document.querySelector(`[data-layer-state="${CSS.escape(id)}"]`);if(el){el.textContent=msg;el.style.color=good?'var(--good)':'var(--bad)'}}
-function webMercatorBounds(x,y,z){const n=2**z,s=40075016.68557849/n;const minx=x*s-20037508.342789244,maxx=(x+1)*s-20037508.342789244;const maxy=20037508.342789244-y*s,miny=20037508.342789244-(y+1)*s;return [minx,miny,maxx,maxy]}
-function arcgisGridLayer(info){
-  const Base=L.GridLayer.extend({
-    createTile(coords,done){
-      const tile=document.createElement('img');tile.width=256;tile.height=256;tile.alt='';tile.setAttribute('role','presentation');tile.crossOrigin='anonymous';
-      const [xmin,ymin,xmax,ymax]=webMercatorBounds(coords.x,coords.y,coords.z);
-      const u=String(info.url||'').replace(/\\/$/,'')+'/export?bbox='+[xmin,ymin,xmax,ymax].join(',')+'&bboxSR=3857&imageSR=3857&size=256,256&imageDisplay=256,256,96&dpi=96&format=png32&transparent=true&f=image&layers=show';
-      tile.onload=()=>done(null,tile);tile.onerror=e=>done(e,tile);tile.src=u;return tile;
-    }
-  });
-  return new Base({tileSize:256,updateWhenIdle:false,keepBuffer:2,opacity:.82});
-}
-function buildLayer(info){
-  const type=String(info.type||'').toUpperCase();
-  if(type==='GEOSERVER_WMS'){
-    if(!info.url||!info.layers)throw new Error('WMS endpoint/layer missing');
-    const l=L.tileLayer.wms(info.url,{layers:info.layers,format:'image/png',transparent:true,version:'1.1.1',opacity:.78,tiled:true,uppercase:false,crossOrigin:true});
-    l.on('tileerror',e=>console.warn('URBION WMS tile error',info.id,e));return l;
-  }
-  if(type==='TILE')return L.tileLayer(info.url,{maxZoom:19,opacity:.78,attribution:info.name||info.source||'Source'});
-  if(type==='ARCGIS_MAP')return arcgisGridLayer(info);
-  return null;
-}
-async function fetchCatalog(){
-  for(let i=0;i<18;i++){
-    try{const r=await fetch(location.origin+'/map/layers?state='+encodeURIComponent(stateName())+'&_='+Date.now(),{cache:'no-store'});if(r.ok){const d=await r.json();if(Array.isArray(d.layers))return d.layers.filter(x=>x.id!=='osm')} }catch(_){ }
-    await sleep(500);
-  }
-  throw new Error('Layer catalogue unavailable');
-}
-function renderCatalog(layers){
-  const list=$('layerList');if(!list)return;
-  const groups={};layers.forEach(x=>(groups[x.group||'OTHER']??=[]).push(x));
-  list.innerHTML=Object.entries(groups).map(([g,arr])=>`<div class="lg">${esc(g)}</div>`+arr.map(x=>`<div class="layerrow"><input type="checkbox" data-layer-fix="${escAttr(x.id)}"><span>${esc(x.name||x.id)}</span><small>${esc(x.source||x.type||'')}</small></div><div class="layerstate" data-layer-state="${escAttr(x.id)}">OFF · ${esc(x.type||'SOURCE')}</div>`).join('')).join('')||'<div class="tiny">No live layers returned.</div>';
-  layers.forEach(x=>{const cb=list.querySelector(`[data-layer-fix="${CSS.escape(x.id)}"]`);cb?.addEventListener('change',()=>toggle(x,cb.checked))});
-}
-async function toggle(info,on){
-  const m=getMap();if(!m||typeof L==='undefined')return;
-  try{
-    window.__URBION_LIVE_LAYERS__=window.__URBION_LIVE_LAYERS__||{};
-    const old=window.__URBION_LIVE_LAYERS__[info.id];
-    if(!on){if(old&&m.hasLayer(old))m.removeLayer(old);delete window.__URBION_LIVE_LAYERS__[info.id];setMsg(info.id,'OFF');return}
-    if(old&&m.hasLayer(old)){setMsg(info.id,'ON · RENDERED');return}
-    const layer=buildLayer(info);if(!layer){setMsg(info.id,'PORTAL · SOURCE');return}
-    layer.addTo(m);window.__URBION_LIVE_LAYERS__[info.id]=layer;
-    setMsg(info.id,'ON · RENDERED');
-    if(layer.once)layer.once('load',()=>setMsg(info.id,'ON · RENDERED'));layer.on?.('tileerror',()=>setMsg(info.id,'ERROR · TILE',false));
-  }catch(e){setMsg(info.id,'ERROR · '+e.message,false);console.error('URBION layer failed',info,e)}
-}
-async function refresh(){const m=getMap();if(!m)return false;try{const layers=await fetchCatalog();renderCatalog(layers);return true}catch(e){const list=$('layerList');if(list)list.innerHTML=`<div class="tiny" style="color:var(--bad)">Live layer catalogue error · ${esc(e.message)}</div>`;return false}}
-async function boot(){for(let i=0;i<80;i++){if(typeof L!=='undefined'&&getMap()&&$('layerList')){await refresh();const btn=$('layerBtn');if(btn&&!btn.dataset.layerFixBound){btn.dataset.layerFixBound='1';btn.addEventListener('click',e=>{e.stopImmediatePropagation();$('layers')?.classList.toggle('open');void refresh()},true)}$('state')?.addEventListener('change',()=>void refresh());return}await sleep(250)}}
-window.URBION_LAYER_FIX={refresh,toggle};void boot();
+const escAttr=s=>esc(s).replace(/`/g,'&#96;');
+const CODES={Johor:'01',Kedah:'02',Kelantan:'03',Melaka:'04','Negeri Sembilan':'05',Pahang:'06','Pulau Pinang':'07',Perak:'08',Perlis:'09',Selangor:'10',Terengganu:'11',Sabah:'12',Sarawak:'13','Wilayah Persekutuan':'14',Labuan:'15',Putrajaya:'16'};
+function map(){try{return(typeof window.map!=='undefined'&&window.map)||window.__URBION_MAP__||window.URBION_FCC_MAP||null}catch(_){return null}}
+function state(){return String($('state')?.value||'Melaka').trim()||'Melaka'}
+function setState(id,text,type='off'){const e=document.querySelector(`[data-layer-state="${CSS.escape(id)}"]`);if(e){e.textContent=text;e.dataset.state=type}}
+function addCss(){if($('urbion-layer-manager-css'))return;const s=document.createElement('style');s.id='urbion-layer-manager-css';s.textContent=`
+.leftscroll>.sec:not(:first-of-type) .sechead{min-height:42px;cursor:pointer}
+.leftscroll>.sec:not(:first-of-type) .sechead button{display:flex;align-items:center;justify-content:space-between}
+.leftscroll>.sec:not(:first-of-type) .sechead button:after{content:'⌄';color:var(--muted);font-size:11px;transition:transform .18s}
+.leftscroll>.sec.collapsed .sechead button:after{transform:rotate(-90deg)}
+.layer-group{border:1px solid rgba(63,129,149,.18);border-radius:9px;overflow:hidden;margin:5px 0}
+.layer-group-head{width:100%;border:0;background:rgba(7,29,41,.55);color:var(--text);display:flex;justify-content:space-between;padding:8px 9px;font-size:7.5px;font-weight:800;letter-spacing:.06em;text-align:left}
+.layer-group-head:after{content:'⌄';color:var(--muted)}.layer-group.closed .layer-group-head:after{transform:rotate(-90deg)}.layer-group.closed .layer-group-body{display:none}
+.layer-group-body{padding:4px 7px 6px}.layer-tools{display:flex;gap:5px;margin-bottom:7px}.layer-tools button{flex:1;background:#061923;border:1px solid var(--line);border-radius:7px;padding:6px;font-size:6.8px;color:var(--muted)}
+.layer-tools button:hover{color:var(--text);border-color:rgba(47,225,233,.4)}.layerstate[data-state="loading"]{color:var(--warn)}.layerstate[data-state="ok"]{color:var(--good)}.layerstate[data-state="error"]{color:var(--bad)}
+`;document.head.appendChild(s)}
+function setupAccordions(){[...document.querySelectorAll('.leftscroll>.sec')].forEach((sec,i)=>{if(sec.dataset.layerAccordion)return;sec.dataset.layerAccordion='1';if(i>0)sec.classList.add('collapsed');const b=sec.querySelector('.sechead button');if(b)b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();sec.classList.toggle('collapsed')})})}
+function mercatorBounds(x,y,z){const n=2**z,s=40075016.68557849/n,minx=x*s-20037508.342789244,maxx=(x+1)*s-20037508.342789244,maxy=20037508.342789244-y*s,miny=20037508.342789244-(y+1)*s;return[minx,miny,maxx,maxy]}
+function arcgisLayer(info){const Base=L.GridLayer.extend({createTile(c,done){const t=document.createElement('img');t.width=256;t.height=256;t.alt='';t.crossOrigin='anonymous';const b=mercatorBounds(c.x,c.y,c.z),lid=info.layerId;const q=lid==null?'':`&layers=show:${encodeURIComponent(lid)}`;t.src=String(info.url).replace(/\/$/,'')+`/export?bbox=${b.join(',')}&bboxSR=3857&imageSR=3857&size=256,256&imageDisplay=256,256,96&dpi=96&format=png32&transparent=true&f=image${q}`;t.onload=()=>done(null,t);t.onerror=e=>done(e,t);return t}});return new Base({tileSize:256,opacity:.82,updateWhenIdle:false,keepBuffer:2})}
+function bindTileEvents(layer,info){layer.on('tileloadstart',()=>setState(info.id,'LOADING · SOURCE','loading'));layer.on('tileload',()=>setState(info.id,'ON · RENDERED','ok'));layer.on('tileerror',()=>setState(info.id,'ERROR · TILE','error'))}
+function makeLayer(info){const type=String(info.type||'').toUpperCase();if(type==='GEOSERVER_WMS'){if(!info.url||!info.layers)throw Error('WMS endpoint/layer missing');const l=L.tileLayer.wms(info.url,{layers:info.layers,styles:'',format:'image/png',transparent:true,version:'1.1.1',crs:L.CRS.EPSG3857,opacity:.78,tiled:true});bindTileEvents(l,info);return l}if(type==='ARCGIS_MAP'){const l=arcgisLayer(info);l.on('loading',()=>setState(info.id,'LOADING · ARCGIS','loading'));l.on('load',()=>setState(info.id,'ON · RENDERED','ok'));return l}if(type==='TILE'){const l=L.tileLayer(info.url,{maxZoom:19,opacity:.78,attribution:info.name||info.source||'Source'});bindTileEvents(l,info);return l}return null}
+function cadastral(){const code=CODES[state()]||'04';return{id:'iplan-cadastral',name:'i-Plan · Cadastral Lots',group:'CADASTRAL',type:'ARCGIS_MAP',url:`https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/LOT_${code}/MapServer`,layerId:0,source:'iplan',evidence:'SOURCE_CONTEXT',access_note:'Live i-Plan parcel geometry anchor; JUPEM MyLot remains the cadastral verification reference.'}}
+async function catalog(){const r=await fetch(location.origin+'/map/layers?state='+encodeURIComponent(state())+'&_='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error(`HTTP ${r.status}`);const d=await r.json();const incoming=Array.isArray(d.layers)?d.layers:[];const all=[cadastral(),...incoming.filter(x=>x.id!=='osm')];const seen=new Set();return all.filter(x=>x&&(!seen.has(x.id)&&(seen.add(x.id),true)))}
+function clearLive(){const m=map(),store=window.__URBION_LIVE_LAYERS__||{};Object.values(store).forEach(l=>{try{if(m&&m.hasLayer(l))m.removeLayer(l)}catch(_){}});window.__URBION_LIVE_LAYERS__={}}
+function draw(layers){const list=$('layerList');if(!list)return;list.innerHTML='';const tools=document.createElement('div');tools.className='layer-tools';tools.innerHTML='<button type="button" data-layer-tool="off">CLEAR MAP</button><button type="button" data-layer-tool="refresh">REFRESH</button>';list.appendChild(tools);const groups={};layers.forEach(x=>(groups[x.group||'OTHER']??=[]).push(x));const order=['PLANNING','CADASTRAL','HAZARD','ENVIRONMENT','ECOLOGY','HERITAGE','HOUSING','TERRAIN','GEOLOGY','GEOHAZARD','GEOHERITAGE'];[...order.filter(k=>groups[k]),...Object.keys(groups).filter(k=>!order.includes(k))].forEach((g,idx)=>{const wrap=document.createElement('div');wrap.className='layer-group'+(idx?' closed':'');const h=document.createElement('button');h.type='button';h.className='layer-group-head';h.textContent=g.replaceAll('_',' ');h.onclick=()=>wrap.classList.toggle('closed');const body=document.createElement('div');body.className='layer-group-body';groups[g].forEach(x=>{const row=document.createElement('div');row.innerHTML=`<div class="layerrow"><input type="checkbox" data-urbion-layer="${escAttr(x.id)}"><span>${esc(x.name||x.id)}</span><small>${esc(x.source||x.type||'')}</small></div><div class="layerstate" data-layer-state="${escAttr(x.id)}" data-state="off">OFF · ${esc(x.type||'SOURCE')}</div>`;body.append(row.firstElementChild,row.lastElementChild)});wrap.append(h,body);list.appendChild(wrap)});list.querySelectorAll('[data-urbion-layer]').forEach(cb=>{const info=layers.find(x=>x.id===cb.dataset.urbionLayer);cb.addEventListener('change',()=>toggle(info,cb.checked))});list.querySelector('[data-layer-tool="off"]')?.addEventListener('click',()=>{clearLive();list.querySelectorAll('[data-urbion-layer]').forEach(c=>c.checked=false);layers.forEach(x=>setState(x.id,'OFF · '+String(x.type||'SOURCE'),'off'))});list.querySelector('[data-layer-tool="refresh"]')?.addEventListener('click',()=>void refresh())}
+function toggle(info,on){const m=map();if(!m||!info)return;window.__URBION_LIVE_LAYERS__=window.__URBION_LIVE_LAYERS__||{};const old=window.__URBION_LIVE_LAYERS__[info.id];if(!on){if(old&&m.hasLayer(old))m.removeLayer(old);delete window.__URBION_LIVE_LAYERS__[info.id];setState(info.id,'OFF · '+String(info.type||'SOURCE'),'off');return}if(old&&m.hasLayer(old)){setState(info.id,'ON · RENDERED','ok');return}try{setState(info.id,'LOADING · SOURCE','loading');const layer=makeLayer(info);if(!layer){setState(info.id,'PORTAL · SOURCE','off');return}layer.addTo(m);window.__URBION_LIVE_LAYERS__[info.id]=layer;setTimeout(()=>{const e=document.querySelector(`[data-layer-state="${CSS.escape(info.id)}"]`);if(m.hasLayer(layer)&&e?.dataset.state==='loading')setState(info.id,'ON · RENDERED','ok')},5000)}catch(e){setState(info.id,'ERROR · '+e.message,'error');console.error('URBION authoritative layer failure',info,e)}}
+async function refresh(){const m=map();if(!m||typeof L==='undefined'||!$('layerList'))return false;try{draw(await catalog());return true}catch(e){$('layerList').innerHTML=`<div class="tiny" style="color:var(--bad)">Live catalogue error · ${esc(e.message)}</div>`;return false}}
+async function boot(){addCss();setupAccordions();for(let i=0;i<120;i++){if(map()&&typeof L!=='undefined'&&$('layerList')){await refresh();const btn=$('layerBtn');if(btn&&!btn.dataset.urbionLayerManager){btn.dataset.urbionLayerManager='1';btn.addEventListener('click',e=>{e.stopPropagation();$('layers')?.classList.toggle('open');void refresh()},false)}$('state')?.addEventListener('change',()=>{clearLive();void refresh()});return}await sleep(250)}}
+window.URBION_LAYER_MANAGER={refresh,toggle,clearLive};void boot();
 })();
