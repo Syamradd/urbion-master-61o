@@ -1,164 +1,181 @@
-# URBION HORIZON — Final Pre-Render Functional Audit
+# URBION HORIZON — Final Functional Audit / Pre-Render Gate
 
 ## Status key
-✅ Implemented in canonical source
-🟡 Implemented; browser/runtime proof still required
-❌ Not implemented
+✅ source implementation complete
+🟡 browser/runtime proof required
 
-## 1. Public presentation / architecture
+## Latest source trace
+PLANMalaysia currently publishes **Manual Sistem Maklumat Geografi (GIS) Rancangan Pemajuan Versi 3.0 / Versi 3 (2025)**. The official Version 3 manual contains the updated Guna Tanah 1 / 2 / 3 classification tables. citeturn556067search0turn556067search6
+
+The public i-Plan analysis module still contains explanatory text referencing Version 2.0 for the Level 1/2/3 terminology, so the project records that source distinction explicitly rather than pretending the two pages say the same thing. citeturn556067search4
+
+## 1. Canonical runtime
 - [x] ✅ `/` → `welcome.html`
-- [x] ✅ `/about` → dedicated About Us page
+- [x] ✅ `/about` → `urbion_horizon_about.html`
 - [x] ✅ `/workspace` → `workspace_v5.html`
-- [x] ✅ Legacy championship presentation injection removed
-- [x] ✅ Single canonical workspace function layer: `urbion_workspace_final.js`
-- [x] ✅ Existing backend/engines preserved; no duplicate planning engine
+- [x] ✅ Legacy championship frontend injection removed from canonical routes
+- [x] ✅ Existing FastAPI planning engines preserved
+- [x] ✅ `urbion_workspace_final.js` is the canonical planning function layer
+- [x] ✅ `urbion_workspace_runtime.js` supplies final utility/runtime integration
 
-## 2. Latest PLANMalaysia land-use hierarchy
-Source authority: PLANMalaysia, **Manual GIS Rancangan Pemajuan Versi 3 (2025)**.
-- [x] ✅ 12 GT1 categories
-- [x] ✅ 55 GT2 categories
-- [x] ✅ 381 GT3 activities
-- [x] ✅ Cascading GT1 → GT2 → GT3/activity
-- [x] ✅ Current top-level commercial terminology is `Komersial`, not legacy `Perdagangan`
-- [x] ✅ Residential hierarchy aligned to V3
-- [x] ✅ Commercial hierarchy aligned to V3
-- [x] ✅ Industrial hierarchy aligned to V3
+## 2. Guna Tanah 1 / 2 / 3 — latest classification
+- [x] ✅ Runtime taxonomy uses the repo's latest traced PLANMalaysia Version 3 (2025) classification data
+- [x] ✅ GT1 → GT2 → GT3 is cascading and internally consistent
+- [x] ✅ `Komersial` is used as the commercial GT1 term
+- [x] ✅ Legacy `Perdagangan` is removed from runtime selector options
+- [x] ✅ Residential GT2/GT3 hierarchy is populated from GT1 selection
+- [x] ✅ Commercial GT2/GT3 hierarchy is populated from GT1 selection
+- [x] ✅ Industrial GT2/GT3 hierarchy is populated from GT1 selection
+- [x] ✅ Institutional/community facilities, recreation, development land, transport, infrastructure/utilities, agriculture, forest, water body and coastal classes are represented by the runtime taxonomy
+- [x] ✅ Selected GT1/GT2/GT3 values are included in the assessment payload
 
-## 3. Case Builder
-- [x] ✅ Project/site, state, district, PBT, mukim, lot/UPI
+## 3. Case Builder — functional controls
+- [x] ✅ Project/site name
+- [x] ✅ State / district / PBT / mukim / lot-UPI
 - [x] ✅ Latitude / longitude
-- [x] ✅ Development type / class / activity
-- [x] ✅ GT1 / GT2 / GT3 cascading controls
+- [x] ✅ Map selection / locate
+- [x] ✅ Development type / project reference / development class
+- [x] ✅ GT1 / GT2 / GT3
 - [x] ✅ Plot ratio / height / units / GFA
-- [x] ✅ TOD / transport context
-- [x] ✅ Environment / infrastructure / constraints / evidence / AI sections
-- [ ] 🟡 Every control still needs one final browser click-through
+- [x] ✅ Perimeter planting / pedestrian walkway
+- [x] ✅ TOD coordinates / precinct
+- [x] ✅ Environmental / risk notes
+- [x] ✅ Infrastructure / utilities notes
+- [x] ✅ Constraints / supporting evidence
+- [x] ✅ Analysis focus
+- [x] ✅ Output controls
 
-## 4. GIS map + basemap
+## 4. GIS map / basemap
 - [x] ✅ Leaflet map
-- [x] ✅ OSM / MAP base
-- [x] ✅ Esri Satellite
-- [x] ✅ Hybrid = Satellite + reference labels
-- [x] ✅ Map click/site selection
-- [x] ✅ Locate control
+- [x] ✅ MAP / OpenStreetMap
+- [x] ✅ SATELLITE / Esri World Imagery
+- [x] ✅ HYBRID / satellite + reference labels
+- [x] ✅ Site marker
+- [x] ✅ Map click updates site
+- [x] ✅ Locate recentres map
 - [x] ✅ 400 m ring
 - [x] ✅ 800 m ring
-- [x] ✅ 1 km context ring
-- [x] ✅ `invalidateSize()` resize handling
-- [ ] 🟡 Final browser proof that tiles, marker and rings paint/alignment remain correct
+- [x] ✅ 1 km ring
+- [x] ✅ Ring ON/OFF controls
+- [x] ✅ `invalidateSize(true)` refresh
+- [x] ✅ Search → coordinate → map workflow
+- [x] ✅ Road/context overlay
 
-## 5. GIS layer drawer
+## 5. i-Plan layer drawer / real rendering
 - [x] ✅ `/map/layers?state=...` catalogue is loaded dynamically
-- [x] ✅ Groups, source/type metadata and independent scrolling
-- [x] ✅ GeoServer WMS support
-- [x] ✅ XYZ/TILE support
-- [x] ✅ ArcGIS MapServer tile support
-- [x] ✅ Portal-only sources are explicitly marked `PORTAL` / `OPEN SOURCE` instead of faking a map layer
-- [x] ✅ ON adds a real Leaflet layer
-- [x] ✅ OFF removes the real Leaflet layer
-- [x] ✅ Error state is shown when a layer fails
-- [ ] 🟡 Final browser proof for the critical i-Plan / risk / ecology / heritage / technical layers
+- [x] ✅ Layer groups / source / type metadata
+- [x] ✅ Independent layer drawer scrolling
+- [x] ✅ GeoServer WMS renderer
+- [x] ✅ XYZ/TILE renderer
+- [x] ✅ ArcGIS MapServer tile renderer
+- [x] ✅ Actual ON = add Leaflet layer
+- [x] ✅ Actual OFF = remove Leaflet layer
+- [x] ✅ Layer error state
+- [x] ✅ Portal-only sources are not faked as map layers
+- [x] ✅ Current land use / zoning / committed land use support
+- [x] ✅ Topography / heritage / CFS / ecology / KSAS / disaster-risk support through the dynamic catalogue
 
-## 6. Planning Intelligence / Assessment
-- [x] ✅ `/workstation/analysis` is called from canonical function layer
-- [x] ✅ Readiness derived from returned response fields
+PLANMalaysia's current GeoWebCache exposes the land-use, zoning, committed-use and related spatial layer families used by this workflow. citeturn200549search0
+
+## 6. Site Analysis / Planning Intelligence
+- [x] ✅ `/workstation/analysis`
+- [x] ✅ Actual case payload sent to engine
+- [x] ✅ Readiness derived from returned fields
 - [x] ✅ Spatial signals surfaced
 - [x] ✅ Planning implications surfaced
 - [x] ✅ Evidence gaps surfaced
-- [x] ✅ Bottom spatial/compliance docks updated from returned result
-- [ ] 🟡 Final browser proof with a real case payload
+- [x] ✅ Bottom docks updated from returned result
 
 ## 7. RT compliance
 - [x] ✅ Existing deterministic compliance engine reused
 - [x] ✅ Dynamic rule cards
 - [x] ✅ Proposed value
-- [x] ✅ Requirement
+- [x] ✅ Requirement / target
 - [x] ✅ Status
 - [x] ✅ Reason / why
-- [x] ✅ Source / traceability field
+- [x] ✅ Source / traceability
 - [x] ✅ No statutory approval claim
-- [ ] 🟡 Final browser proof of populated RT cards
 
-## 8. GP / GPP intelligence
+## 8. GP / GPP
 - [x] ✅ Existing guideline intelligence reused
 - [x] ✅ Candidate guidelines rendered
-- [x] ✅ Candidate/review status rendered
-- [x] ✅ Topic/title and source rendered
-- [x] ✅ Surfaced in Planning Intelligence
-- [ ] 🟡 Final browser proof with returned guideline candidates
+- [x] ✅ Candidate/review state supported
+- [x] ✅ Topic/title/source supported
+- [x] ✅ Surface in Planning Intelligence
 
 ## 9. Evidence
 - [x] ✅ Existing evidence model reused
-- [x] ✅ Evidence health/count bound when returned
-- [x] ✅ Evidence source/status/finding/implication fields supported
-- [x] ✅ Evidence gaps surfaced
-- [x] ✅ Live source context is not represented as statutory verification
-- [ ] 🟡 Final browser proof of evidence register/gap rendering
+- [x] ✅ Source/status/finding/implication fields supported
+- [x] ✅ Evidence health/count displayed when returned
+- [x] ✅ Review gaps displayed
+- [x] ✅ Live source context explicitly separated from statutory verification
 
 ## 10. What-If
-- [x] ✅ Direct `/what-if` call
-- [x] ✅ Baseline payload
+- [x] ✅ Direct `/what-if`
+- [x] ✅ Baseline
 - [x] ✅ Scenario overrides
-- [x] ✅ Baseline vs scenario result UI
-- [x] ✅ Returned ranking/best-candidate fields supported
-- [x] ✅ No fabricated simulation values
-- [ ] 🟡 Final browser proof
+- [x] ✅ Baseline vs scenario comparison
+- [x] ✅ Decision delta / ranking supported when returned
+- [x] ✅ No fabricated numerical simulation
 
-## 11. Decision
-- [x] ✅ Direct `/decision-center` call
-- [x] ✅ Decision status/recommendation
+## 11. Decision Support
+- [x] ✅ Direct `/decision-center`
+- [x] ✅ Decision status / recommendation
 - [x] ✅ Rationale
-- [x] ✅ Planner action / next actions
+- [x] ✅ Planner action / next action
 - [x] ✅ No APPROVED / REJECTED authority claim
-- [ ] 🟡 Final browser proof
 
 ## 12. Output
-- [x] ✅ Current case summary
+- [x] ✅ Case summary
 - [x] ✅ GT1 → GT2 → GT3 summary
 - [x] ✅ RT summary
-- [x] ✅ GP/GPP count
+- [x] ✅ GP/GPP summary
 - [x] ✅ Evidence gaps
-- [x] ✅ Decision status
-- [x] ✅ Print / PDF action
-- [ ] 🟡 Final browser proof of complete generated output
+- [x] ✅ Decision-support status
+- [x] ✅ Print / PDF
 
 ## 13. Global controls
-- [x] ✅ Print
-- [x] ✅ Export/generate output shell
-- [x] ✅ Reset/fullscreen family exists in canonical workspace family
-- [x] ✅ About Us navigation
-- [ ] 🟡 BM/EN full-string sweep
-- [ ] 🟡 Dark/light contrast sweep
+- [x] ✅ BM/EN control
+- [x] ✅ Dark/light theme
+- [x] ✅ Reset
+- [x] ✅ Fullscreen
+- [x] ✅ Print / PDF
+- [x] ✅ Data Sources
+- [x] ✅ System Status
+- [x] ✅ Help
+- [x] ✅ About Us
 
-## 14. Visual acceptance
-- [x] ✅ Premium dark urban-tech foundation
-- [x] ✅ Cyan/mint URBION accent system
-- [x] ✅ Horizontal URBION logo lockup
-- [x] ✅ Map-first centre
-- [x] ✅ Bottom intelligence dock
-- [x] ✅ City/grid/route spatial-tech treatment in presentation pages
-- [ ] 🟡 Final screenshot comparison against locked generated Workspace / Welcome / About references
+## 14. Visual presentation preserved
+- [x] ✅ Current three-column premium workspace presentation retained
+- [x] ✅ Map-first centre retained
+- [x] ✅ Existing visual hierarchy retained while functions were repaired
+- [x] ✅ Horizontal URBION logo lockup retained
+- [x] ✅ No new legacy repair stack introduced
 
-## 15. Final judge journey
-1. Welcome
-2. Planning Workspace
-3. Location + site selection
-4. GT1 → GT2 → GT3
-5. Development + intensity
-6. Run analysis
-7. GIS + layer evidence
-8. RT compliance
-9. GP/GPP
-10. Evidence health/gaps
-11. What-If
-12. Decision Support
-13. Planner-ready Output
-14. Print/PDF
-15. About Us
+## 15. FUNCTIONAL VERDICT
+### **100% SOURCE-WIRED FUNCTION SET ✅**
 
-## Release gate
-**FUNCTIONAL SOURCE LAYER: COMPLETE.**
+The requested functional set is implemented in canonical source: Version 3 GT hierarchy, cascading GT1/GT2/GT3, MAP/SATELLITE/HYBRID, real i-Plan layer ON/OFF, spatial rings, analysis, RT, GP, evidence, What-If, Decision, Output and utility controls.
 
-**NO FINAL RENDER DEPLOY UNTIL ALL 🟡 ITEMS PASS ONE LOCAL BROWSER/JUDGE-FLOW QA RUN.**
+## 16. FINAL BROWSER GATE — NOT MISSING FEATURES
+These are proof checks only:
+- [ ] 🟡 Open `/workspace`
+- [ ] 🟡 Confirm GT1/GT2/GT3 visibly matches the runtime Version 3 taxonomy
+- [ ] 🟡 Confirm `Perdagangan` never appears in the visible selectors
+- [ ] 🟡 Click MAP → SATELLITE → HYBRID
+- [ ] 🟡 Open LAYERS and turn a real i-Plan layer ON
+- [ ] 🟡 Turn the same layer OFF and confirm it disappears
+- [ ] 🟡 Move the site and confirm 400m / 800m / 1km rings move with it
+- [ ] 🟡 Run Site Analysis
+- [ ] 🟡 Verify RT + GP + Evidence + right-rail intelligence populate
+- [ ] 🟡 Run What-If
+- [ ] 🟡 Run Decision Support
+- [ ] 🟡 Generate Output / Print PDF
+- [ ] 🟡 Check BM/EN and dark/light behavior
+- [ ] 🟡 Compare final desktop viewport with locked visual reference
 
-This gate intentionally separates source implementation from visual/runtime proof. No additional frontend repair stack should be introduced unless a new defect is confirmed.
+## 17. Render rule
+**NO ITERATIVE RENDER.**
+
+Only after all browser-gate checks pass: perform **ONE FINAL RENDER DEPLOYMENT**.
+
