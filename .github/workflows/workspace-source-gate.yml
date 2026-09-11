@@ -1,0 +1,22 @@
+name: URBION Workspace Source Gate
+
+on:
+  push:
+    branches:
+      - feature/canonical-workspace-v2
+  pull_request:
+    branches:
+      - feature/canonical-workspace-v2
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify canonical workspace source
+        run: python scripts/workspace_source_gate.py
