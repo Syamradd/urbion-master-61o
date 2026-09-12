@@ -45,6 +45,14 @@ if old_cascade not in source:
     raise SystemExit("expected development cascade block not found")
 source = source.replace(old_cascade, new_cascade, 1)
 
+# GT1 -> GT2 -> GT3 is also asynchronous. Wait for each descendant option graph
+# before selecting the next level, then explicitly dispatch the canonical change.
+old_landuse = '''    page.locator("#landuse1").select_option(label="Komersial", force=True)\n    page.wait_for_timeout(200)\n    fill_first_option(page.locator("#landuse2"))\n    page.wait_for_timeout(200)\n    fill_first_option(page.locator("#landuse3"))\n    page.wait_for_timeout(250)'''
+new_landuse = '''    gt1 = page.locator("#landuse1")\n    gt2 = page.locator("#landuse2")\n    gt3 = page.locator("#landuse3")\n    gt1.select_option(label="Komersial", force=True)\n    gt1.dispatch_event("change")\n    page.wait_for_timeout(350)\n    gt2.locator("option:not(:first-child)").first.wait_for(state="attached", timeout=10000)\n    fill_first_option(gt2)\n    gt2.dispatch_event("change")\n    page.wait_for_timeout(350)\n    gt3.locator("option:not(:first-child)").first.wait_for(state="attached", timeout=10000)\n    fill_first_option(gt3)\n    gt3.dispatch_event("change")\n    page.wait_for_timeout(500)'''
+if old_landuse not in source:
+    raise SystemExit("expected land-use readiness block not found")
+source = source.replace(old_landuse, new_landuse, 1)
+
 # Final stabilization: retry empty cascading selects after the graph settles.
 needle = '    ready_controls = [\n'
 insert = '''    page.wait_for_timeout(500)\n    for control in [\n        row_control(page, "DISTRICT"),\n        row_control(page, "LOCAL AUTHORITY"),\n        row_control(page, "DEVELOPMENT TYPE"),\n        row_control(page, "DEVELOPMENT CLASS"),\n        page.locator("#landuse1"), page.locator("#landuse2"), page.locator("#landuse3"),\n    ]:\n        if control.evaluate("el=>el.tagName") == "SELECT" and not str(control.input_value()).strip():\n            options = usable_options(control)\n            if options:\n                control.select_option(label=options[0], force=True)\n                control.dispatch_event("change")\n                page.wait_for_timeout(200)\n\n'''
