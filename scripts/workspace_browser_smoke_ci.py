@@ -1,77 +1,95 @@
 #!/usr/bin/env python3
 """Stable CI launcher for the canonical URBION browser smoke gate.
 
-Keeps the product smoke test source untouched while applying CI-only fixture
-hardening in memory before executing it.
+The product smoke source remains unchanged. CI loads its definitions without
+executing main(), installs a deterministic readiness fixture, then runs the
+original gate. This avoids brittle source-injection order and keeps fixture
+hardening out of the product implementation.
 """
 from __future__ import annotations
+import re
 from pathlib import Path
 
 TARGET = Path(__file__).with_name("workspace_browser_smoke.py")
 source = TARGET.read_text(encoding="utf-8")
 
-# Native DOM querySelector does not support Playwright's :visible pseudo-class.
+# The original readiness helper contains a native querySelector selector that
+# is not valid DOM CSS. The CI override does not depend on it, but remove the
+# invalid form everywhere so no stale helper can trip parsing/runtime probes.
 source = source.replace(
-    "?.querySelector('input:visible,select:visible,textarea:visible');",
-    "?.querySelector('input,select,textarea');",
-    1,
+    "querySelector('input:visible,select:visible,textarea:visible')",
+    "querySelector('input,select,textarea')",
 )
 
-# Rename the source fixture function; CI supplies a more resilient replacement below.
-source = source.replace("def prepare_ready_case(page):", "def __original_prepare_ready_case(page):", 1)
-
-# Keep CI fixture interactions resilient when a section is collapsed.
-source = source.replace(
-    'control.select_option(label=options[0])',
-    'control.select_option(label=options[0], force=True)',
-    1,
+# Strip the source's __main__ execution block. We will call main() only after
+# installing the CI fixture override below.
+source = re.sub(
+    r"\nif __name__ == [\"']__main__[\"']:\n\s*main\(\)\s*\Z",
+    "\n",
+    source,
 )
 
-# CI fixture replacement. It uses the same canonical controls but explicitly
-# expands the owning sections and replays the real change events until each
-# asynchronous descendant select becomes populated.
-marker = "def main():"
-fixture = r'''def prepare_ready_case(page):
+code = compile(source, str(TARGET), "exec")
+globals_dict = {"__name__": "workspace_browser_smoke_ci", "__file__": str(TARGET)}
+exec(code, globals_dict)
+
+check = globals_dict["check"]
+row_control = globals_dict["row_control"]
+usable_options = globals_dict["usable_options"]
+page_main = globals_dict["main"]
+
+
+def prepare_ready_case(page):
+    """Build a valid case through the same visible controls used by judges.
+
+    The key reliability rule is to derive a GT2/GT3 path from the live
+    taxonomy, rather than assuming the first GT2 item has a GT3 descendant.
+    """
     def expand_owner(ident):
-        page.locator(f"#{ident}").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains('sec')))p=p.parentElement;if(p?.classList.contains('collapsed'))p.querySelector('.sechead button')?.click();}""")
-        page.wait_for_timeout(120)
+        page.locator(f"#{ident}").evaluate(
+            """el=>{let p=el;while(p&&!(p.classList&&p.classList.contains('sec')))p=p.parentElement;if(p?.classList.contains('collapsed'))p.querySelector('.sechead button')?.click();}"""
+        )
+        page.wait_for_timeout(80)
 
-    def choose_first(control, timeout_ms=5000):
-        deadline = timeout_ms
-        while deadline > 0:
-            options = usable_options(control)
-            if options:
-                control.select_option(label=options[0], force=True)
-                control.dispatch_event("input")
-                control.dispatch_event("change")
-                return options[0]
-            page.wait_for_timeout(250)
-            deadline -= 250
-        raise AssertionError(f"no usable options for control {control}")
+    def choose(control, value=None, timeout_ms=8000):
+        if value is None:
+            deadline = timeout_ms
+            while deadline > 0:
+                options = usable_options(control)
+                if options:
+                    value = options[0]
+                    break
+                page.wait_for_timeout(250)
+                deadline -= 250
+            if value is None:
+                raise AssertionError(f"no usable options for control {control}")
+        control.select_option(label=value, force=True)
+        control.dispatch_event("input")
+        control.dispatch_event("change")
+        return value
 
     row_control(page, "PROJECT / SITE NAME").fill("Browser Gate Planning Case")
 
     state = row_control(page, "STATE")
     if state.evaluate("el=>el.tagName") == "SELECT":
-        state.select_option(label="Melaka", force=True)
+        choose(state, "Melaka")
     else:
         state.fill("Melaka")
-    state.dispatch_event("change")
-    page.wait_for_timeout(400)
+        state.dispatch_event("change")
+    page.wait_for_timeout(350)
 
     district = row_control(page, "DISTRICT")
     if district.evaluate("el=>el.tagName") == "SELECT":
-        choose_first(district)
+        opts = usable_options(district)
+        choose(district, "Alor Gajah" if "Alor Gajah" in opts else (opts[0] if opts else None))
     else:
         district.fill("Alor Gajah")
         district.dispatch_event("change")
-    page.wait_for_timeout(400)
+    page.wait_for_timeout(350)
 
     pbt = row_control(page, "LOCAL AUTHORITY")
     if pbt.evaluate("el=>el.tagName") == "SELECT":
-        # Prefer the authoritative Melaka PBT expected for the planning case.
-        pbt.select_option(label="Majlis Bandaraya Melaka Bersejarah", force=True)
-        pbt.dispatch_event("change")
+        choose(pbt, "Majlis Bandaraya Melaka Bersejarah")
     else:
         pbt.fill("Majlis Bandaraya Melaka Bersejarah")
         pbt.dispatch_event("change")
@@ -82,93 +100,82 @@ fixture = r'''def prepare_ready_case(page):
     for label in ["DEVELOPMENT TYPE", "DEVELOPMENT CLASS"]:
         control = row_control(page, label)
         if control.evaluate("el=>el.tagName") == "SELECT":
-            expand_owner(ident="landuse1")
-            choose_first(control, 8000)
+            choose(control)
         else:
             control.fill("General")
             control.dispatch_event("input")
             control.dispatch_event("change")
         page.wait_for_timeout(250)
 
-    gt1 = page.locator("#landuse1")
-    gt2 = page.locator("#landuse2")
-    gt3 = page.locator("#landuse3")
     for ident in ["landuse1", "landuse2", "landuse3"]:
         expand_owner(ident)
 
-    # Replay the exact real cascade path, with retries for asynchronous population.
-    gt1.select_option(label="Komersial", force=True)
-    gt1.dispatch_event("input")
-    gt1.dispatch_event("change")
+    gt1 = page.locator("#landuse1")
+    gt2 = page.locator("#landuse2")
+    gt3 = page.locator("#landuse3")
+
+    # Ask the running canonical taxonomy for a valid full cascade path.
+    path = page.evaluate(
+        """()=>{
+          const gt=window.URBION_FINAL?.GT||{};
+          const preferred='Komersial';
+          const a=Object.prototype.hasOwnProperty.call(gt,preferred)?preferred:Object.keys(gt).find(k=>String(k).toLowerCase()!=='perdagangan');
+          if(!a)return null;
+          const l2=gt[a]||{};
+          const b=Object.keys(l2).find(k=>Array.isArray(l2[k])&&l2[k].length>0);
+          const c=b?(l2[b]||[])[0]:null;
+          return {a,b,c};
+        }"""
+    )
+    check(path and path.get("a"), "canonical taxonomy exposes a valid GT1 path")
+    check(path.get("b") and path.get("c"), "canonical taxonomy exposes a valid GT2 → GT3 path")
+
+    choose(gt1, path["a"])
     page.wait_for_timeout(300)
 
-    for attempt in range(4):
-        try:
-            gt2.locator("option:not(:first-child)").first.wait_for(state="attached", timeout=2500)
+    # The canonical handler owns the cascade. Wait on actual option state,
+    # replay GT1 only if asynchronous population has not settled yet.
+    for _ in range(8):
+        if len(usable_options(gt2)) >= 1:
             break
-        except Exception:
-            expand_owner("landuse1")
-            gt1.select_option(label="Komersial", force=True)
-            gt1.dispatch_event("input")
-            gt1.dispatch_event("change")
-            page.wait_for_timeout(350)
-    choose_first(gt2, 3000)
-    page.wait_for_timeout(350)
+        choose(gt1, path["a"])
+        page.wait_for_timeout(250)
+    check(len(usable_options(gt2)) >= 1, "GT2 populated after canonical GT1 cascade")
 
-    for attempt in range(4):
-        try:
-            gt3.locator("option:not(:first-child)").first.wait_for(state="attached", timeout=2500)
+    choose(gt2, path["b"])
+    page.wait_for_timeout(300)
+    for _ in range(8):
+        if len(usable_options(gt3)) >= 1:
             break
-        except Exception:
-            expand_owner("landuse2")
-            gt2.dispatch_event("input")
-            gt2.dispatch_event("change")
-            page.wait_for_timeout(350)
-    choose_first(gt3, 3000)
-    gt3.dispatch_event("change")
-    page.wait_for_timeout(500)
+        choose(gt2, path["b"])
+        page.wait_for_timeout(250)
+    check(len(usable_options(gt3)) >= 1, "GT3 populated after canonical GT2 cascade")
+    choose(gt3, path["c"])
+    page.wait_for_timeout(250)
 
-    # Stabilize all cascading selects after the graph settles.
-    for control in [
-        row_control(page, "DISTRICT"),
-        row_control(page, "LOCAL AUTHORITY"),
-        row_control(page, "DEVELOPMENT TYPE"),
-        row_control(page, "DEVELOPMENT CLASS"),
-        gt1, gt2, gt3,
-    ]:
-        if control.evaluate("el=>el.tagName") == "SELECT" and not str(control.input_value()).strip():
-            choose_first(control, 3000)
-
-    ready_controls = [
-        row_control(page, "PROJECT / SITE NAME"),
-        row_control(page, "STATE"),
-        row_control(page, "DISTRICT"),
-        row_control(page, "LOCAL AUTHORITY"),
-        page.locator("#site_lat"),
-        page.locator("#site_lon"),
-        row_control(page, "DEVELOPMENT TYPE"),
-        row_control(page, "DEVELOPMENT CLASS"),
+    # Final value verification through Playwright locators, not stale DOM
+    # handles or page.evaluate() CSS pseudo-classes.
+    labels = [
+        "PROJECT / SITE NAME", "STATE", "DISTRICT", "LOCAL AUTHORITY",
+        "LATITUDE", "LONGITUDE", "DEVELOPMENT TYPE", "DEVELOPMENT CLASS",
+        "GT1", "GT2", "GT3",
+    ]
+    controls = [
+        row_control(page, "PROJECT / SITE NAME"), row_control(page, "STATE"),
+        row_control(page, "DISTRICT"), row_control(page, "LOCAL AUTHORITY"),
+        page.locator("#site_lat"), page.locator("#site_lon"),
+        row_control(page, "DEVELOPMENT TYPE"), row_control(page, "DEVELOPMENT CLASS"),
         gt1, gt2, gt3,
     ]
-    ready_values = [str(control.input_value()).strip() for control in ready_controls]
-    missing_labels = [
-        label for label, value in zip(
-            ["PROJECT / SITE NAME","STATE","DISTRICT","LOCAL AUTHORITY","LATITUDE","LONGITUDE","DEVELOPMENT TYPE","DEVELOPMENT CLASS","GT1","GT2","GT3"],
-            ready_values,
-        ) if not value
-    ]
-    if missing_labels:
-        print(f"[TRACE] readiness missing: {missing_labels}; values={ready_values}")
-    check(len(ready_values) == 11 and all(ready_values), f"planning case fixture is complete ({sum(bool(v) for v in ready_values)}/{len(ready_values)})")
+    values = [str(c.input_value()).strip() for c in controls]
+    missing = [label for label, value in zip(labels, values) if not value]
+    if missing:
+        print(f"[TRACE-CI-V3] readiness missing={missing}; values={values}; gt2={usable_options(gt2)}; gt3={usable_options(gt3)}")
+    check(len(values) == 11 and all(values), f"planning case fixture is complete ({sum(bool(v) for v in values)}/{len(values)})")
     page.wait_for_function("document.querySelector('#run') && !document.querySelector('#run').disabled", timeout=10000)
     check(not page.locator("#run").is_disabled(), "Run Site Analysis unlocked by canonical readiness")
 
-'''
-if marker not in source:
-    raise SystemExit("main marker not found for CI fixture override")
-source = source.replace(marker, fixture + marker, 1)
 
-# The CI launcher only executes after all source rewrites compile cleanly.
-code = compile(source, str(TARGET), "exec")
-globals_dict = {"__name__": "__main__", "__file__": str(TARGET)}
-exec(code, globals_dict)
+globals_dict["prepare_ready_case"] = prepare_ready_case
+print("[CI-FIXTURE-V3] deterministic canonical readiness fixture installed")
+page_main()
