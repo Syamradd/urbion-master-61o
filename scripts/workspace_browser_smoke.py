@@ -6,9 +6,9 @@ parallel UI/function layers. GIS upstream tile failures are recorded
 separately because the authoritative services are external to URBION.
 """
 from __future__ import annotations
-import json, os, sys
+import json, os
 from pathlib import Path
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
 
 BASE = os.environ.get("URBION_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 ARTIFACT = Path(os.environ.get("URBION_ARTIFACT_DIR", "artifacts/workspace-browser"))
@@ -134,7 +134,7 @@ def main():
             dup_ids=page.evaluate("""()=>{const a=[...document.querySelectorAll('[id]')].map(e=>e.id);const c={};a.forEach(x=>c[x]=(c[x]||0)+1);return Object.entries(c).filter(([,n])=>n>1)}""")
             check(not dup_ids,"no duplicate DOM ids")
             scripts=page.evaluate("""()=>[...document.scripts].map(s=>s.src).filter(Boolean)""")
-            expected=["urbion_workspace_bridge.js","urbion_workspace_runtime.js","urbion_layer_runtime_fix.js","urbion_workspace_canonical_ui.js","urbion_workspace_modal_owner.js"]
+            expected=["urbion_workspace_bridge.js","urbion_workspace_runtime.js","urbion_layer_runtime_fix.js","urbion_workspace_canonical_ui.js","urbion_workspace_modal_owner.js","urbion_workspace_pbt_catalog.js"]
             check(all(any(x.endswith('/'+e) for x in scripts) for e in expected),"canonical script owners all loaded")
             check(page.evaluate("window.__URBION_CANONICAL_UI_V1__===true"),"canonical UI owner guard active")
             check(page.evaluate("window.__URBION_LAYER_MANAGER__===true"),"single live layer manager guard active")
@@ -145,8 +145,8 @@ def main():
             check(district.evaluate("el=>el.tagName")=="SELECT","District control is canonical select")
             check(mukim.evaluate("el=>el.tagName")=="SELECT","Mukim control is canonical select")
             check(pbt.evaluate("el=>el.tagName")=="SELECT","Local Authority control is canonical select")
-            check(page.evaluate("!!document.querySelector('[data-pbt-catalog-owner=\"urbion_workspace_pbt_catalog.js\"]')"),"single frontend PBT catalogue owner active")
-            check(page.evaluate("Object.keys(window.__URBION_PBT_CATALOG__||{}).length>=16"),"full state/territory PBT catalogue exposed")
+            check(page.evaluate("!!document.querySelector('[data-pbt-catalog-owner=\\"urbion_workspace_pbt_catalog.js\\"]')"),"single frontend PBT catalogue owner active")
+            check(Object.keys(page.evaluate("window.__URBION_PBT_CATALOG__||{}") ).__len__()>=16,"full state/territory PBT catalogue exposed")
             state.select_option(label="Selangor"); page.wait_for_timeout(350)
             sel_districts=[x for x in district.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")]
             sel_pbts=[x for x in pbt.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")]
@@ -213,32 +213,32 @@ def main():
             analysis_requests.clear(); copilot_requests.clear(); page.locator("#run").click(); page.wait_for_timeout(350)
             check(len(analysis_requests)==1,"RUN sends exactly one analysis request")
             page.wait_for_function("document.body.innerText.includes('ANALYSIS COMPLETE')",timeout=20000)
-            check(page.evaluate("!!window.URBION_LAST"),"analysis packet stored")
+            check(!!page.evaluate("window.URBION_LAST"),"analysis packet stored")
             check(page.locator("#caseReadinessNote").inner_text().strip().upper().startswith("READY"),"case remains ready after analysis")
-            if copilot_requests: check(page.evaluate("!!window.URBION_AI_LAST"),"AI/Copilot narrative stored")
+            if copilot_requests: check(!!page.evaluate("window.URBION_AI_LAST"),"AI/Copilot narrative stored")
 
-            for kind,button_id in [("evidence","#evidenceBtn"),("whatif","#whatIfBtn"),("decision","#decisionBtn"),("output","#outputBtn")]:
+            for kind,button_id in [("evidence","#evidenceBtn"),("whatif","#whatifBtn"),("decision","#decisionBtn"),("output","#outputBtn")]:
                 page.locator(button_id).click(); page.wait_for_timeout(150)
                 check(page.locator("#modal").is_visible(),f"{kind} modal opens")
-                page.locator("#modalClose").click(); page.wait_for_timeout(100)
+                page.locator("#closeModal").click(); page.wait_for_timeout(100)
                 check(not page.locator("#modal").is_visible(),f"{kind} modal closes")
-            page.locator("#whatIfBtn").click(); page.wait_for_timeout(150)
+            page.locator("#whatifBtn").click(); page.wait_for_timeout(150)
             check(page.locator("#modal").is_visible(),"what-if studio opens")
             whatif_requests.clear(); wf_button=page.locator("#whatIfRun")
             if wf_button.count():
                 wf_button.click(); page.wait_for_timeout(300)
                 check(len(whatif_requests)==1,"what-if sends exactly one request")
-            page.locator("#modalClose").click(); page.wait_for_timeout(100)
+            page.locator("#closeModal").click(); page.wait_for_timeout(100)
 
-            utilities=[("#aboutBtn","ABOUT"),("#helpBtn","HELP"),("#sourcesBtn","SOURCES"),("#statusBtn","STATUS")]
+            utilities=[("#runtimeAbout","ABOUT"),("#runtimeHelp","HELP"),("#runtimeSources","SOURCES"),("#runtimeStatus","STATUS")]
             for sel,label in utilities:
                 page.locator(sel).click(); page.wait_for_timeout(100)
                 check(page.locator("#modal").is_visible(),f"{label} utility opens")
-                page.locator("#modalClose").click()
-            if page.locator("#fullscreenBtn").count(): page.locator("#fullscreenBtn").click(); page.wait_for_timeout(100); check(True,"FULLSCREEN utility action")
-            if page.locator("#resetBtn").count(): page.locator("#resetBtn").click(); page.wait_for_timeout(100); check(True,"RESET utility action")
-            if page.locator("#themeToggle").count(): page.locator("#themeToggle").click(); page.wait_for_timeout(80); check(True,"theme toggle action")
-            if page.locator("#langToggle").count(): page.locator("#langToggle").click(); page.wait_for_timeout(80); check(True,"BM/EN language toggle action")
+                page.locator("#closeModal").click()
+            if page.locator("#runtimeFullscreen").count(): page.locator("#runtimeFullscreen").click(); page.wait_for_timeout(100); check(True,"FULLSCREEN utility action")
+            if page.locator("#runtimeReset").count(): page.locator("#runtimeReset").click(); page.wait_for_timeout(100); check(True,"RESET utility action")
+            if page.locator("#themeBtn").count(): page.locator("#themeBtn").click(); page.wait_for_timeout(80); check(True,"theme toggle action")
+            if page.locator("#langBtn").count(): page.locator("#langBtn").click(); page.wait_for_timeout(80); check(True,"language toggle action")
 
             for w,h in [(1440,900),(1366,768),(1920,1080)]:
                 page.set_viewport_size({"width":w,"height":h}); page.wait_for_timeout(120)
