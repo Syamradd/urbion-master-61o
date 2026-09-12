@@ -142,6 +142,30 @@ def main():
             check(page.evaluate("window.__URBION_LAYER_MANAGER__===true"),"single live layer manager guard active")
             check(page.evaluate("window.__URBION_MODAL_OWNER_V1__===true"),"single modal owner guard active")
 
+            # Canonical administrative hierarchy: State -> District -> Mukim,
+            # while Local Authority comes from the single frontend PBT catalogue owner.
+            state= row_control(page,"STATE")
+            district= row_control(page,"DISTRICT")
+            mukim= row_control(page,"MUKIM")
+            pbt= row_control(page,"LOCAL AUTHORITY")
+            check(state.evaluate("el=>el.tagName")=="SELECT","State control is canonical select")
+            check(district.evaluate("el=>el.tagName")=="SELECT","District control is canonical select")
+            check(mukim.evaluate("el=>el.tagName")=="SELECT","Mukim control is canonical select")
+            check(pbt.evaluate("el=>el.tagName")=="SELECT","Local Authority control is canonical select")
+            check(page.evaluate("!!document.querySelector('[data-pbt-catalog-owner=urbion_workspace_pbt_catalog.js]')"),"single frontend PBT catalogue owner active")
+            check(page.evaluate("Object.keys(window.__URBION_PBT_CATALOG__||{}).length>=16",""),"full state/territory PBT catalogue exposed")
+            state.select_option(label="Selangor"); page.wait_for_timeout(350)
+            sel_districts=[x for x in district.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")]
+            sel_pbts=[x for x in pbt.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")]
+            check(len(sel_districts)>=5,"State change populates District hierarchy")
+            check(len(sel_pbts)>=10,"State change populates authoritative PBT catalogue")
+            district.select_option(label=sel_districts[0]); page.wait_for_timeout(350)
+            sel_mukims=[x for x in mukim.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")]
+            check(len(sel_mukims)>=1,"District change populates Mukim hierarchy")
+            state.select_option(label="Melaka"); page.wait_for_timeout(350)
+            check(len([x for x in district.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")])>=3,"State reset refreshes District options")
+            check(len([x for x in pbt.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")])==4,"State reset refreshes Melaka PBT catalogue")
+
             gt1=page.locator("#landuse1 option").all_text_contents()
             check(len(gt1)>=10,"GT1 taxonomy populated")
             check(not any(x.strip().lower()=="perdagangan" for x in gt1),"legacy Perdagangan absent")
@@ -177,11 +201,11 @@ def main():
                 try:
                     page.wait_for_function("id=>!!window.__URBION_LIVE_LAYERS__?.[id]",arg=layer_id,timeout=6000)
                     page.wait_for_function("""id=>{const l=window.__URBION_LIVE_LAYERS__?.[id];if(!l)return false;const t=Object.keys(l._tiles||{}).length;const d=l._container?.querySelectorAll('img,canvas').length||0;return t>0||d>0}""",arg=layer_id,timeout=6000)
-                    state=page.locator(f"[data-layer-state='{layer_id}']").inner_text().strip().upper()
-                    check(not state.startswith("ERROR"),f"layer {layer_id} state non-error")
+                    state_text=page.locator(f"[data-layer-state='{layer_id}']").inner_text().strip().upper()
+                    check(not state_text.startswith("ERROR"),f"layer {layer_id} state non-error")
                     check(page.evaluate("id=>{const l=window.__URBION_LIVE_LAYERS__?.[id];return !!l&&map.hasLayer(l)}",layer_id),f"layer {layer_id} mounted on map")
                     check(page.evaluate("id=>{const l=window.__URBION_LIVE_LAYERS__?.[id];if(!l)return false;return Object.keys(l._tiles||{}).length>0||(l._container?.querySelectorAll('img,canvas').length||0)>0}",layer_id),f"layer {layer_id} rendered imagery")
-                    layer_results.append({"id":layer_id,"ok":True,"state":state})
+                    layer_results.append({"id":layer_id,"ok":True,"state":state_text})
                 except Exception as e:
                     layer_results.append({"id":layer_id,"ok":False,"error":str(e)})
                     failed.append(f"layer {layer_id}: {e}")
@@ -208,7 +232,6 @@ def main():
                 check(page.locator("#modal").is_visible(),f"{kind} modal opens")
                 page.locator("#modalClose").click(); page.wait_for_timeout(100)
                 check(not page.locator("#modal").is_visible(),f"{kind} modal closes")
-            
             page.locator("#whatIfBtn").click(); page.wait_for_timeout(150)
             check(page.locator("#modal").is_visible(),"what-if studio opens")
             whatif_requests.clear()
