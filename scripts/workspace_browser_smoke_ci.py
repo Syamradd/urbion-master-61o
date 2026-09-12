@@ -10,8 +10,7 @@ from pathlib import Path
 TARGET = Path(__file__).with_name("workspace_browser_smoke.py")
 source = TARGET.read_text(encoding="utf-8")
 
-# Playwright supports :visible; native querySelector does not. Replace only the
-# readiness resolver inside the CI copy of the script.
+# Native DOM querySelector does not support Playwright's :visible pseudo-class.
 source = source.replace(
     "?.querySelector('input:visible,select:visible,textarea:visible');",
     "?.querySelector('input,select,textarea');",
@@ -38,17 +37,15 @@ source = source.replace(
     1,
 )
 
-# The development-class select is populated asynchronously after the
-# development-type change. Poll the locator-backed DOM directly rather than
-# passing a Playwright Locator through wait_for_function as an argument.
-source = source.replace(
-    '        if control.evaluate("el=>el.tagName") == "SELECT":\n            if label == "DEVELOPMENT CLASS":\n                page.wait_for_function(\n                    "sel=>Array.from(sel.options).some(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith(\\\'select\\\'))",\n                    arg=control, timeout=8000,\n                )\n            fill_first_option(control)\n            control.dispatch_event("change")\n        else:\n            control.fill("General")\n            control.dispatch_event("input")\n            control.dispatch_event("change")\n        page.wait_for_timeout(250)',
-    '        if control.evaluate("el=>el.tagName") == "SELECT":\n            if label == "DEVELOPMENT CLASS":\n                deadline = page.wait_for_timeout\n                ready_class = False\n                for _ in range(80):\n                    if usable_options(control):\n                        ready_class = True\n                        break\n                    page.wait_for_timeout(100)\n                if not ready_class:\n                    raise AssertionError("development class options did not populate within 8s")\n            fill_first_option(control)\n            control.dispatch_event("change")\n        else:\n            control.fill("General")\n            control.dispatch_event("input")\n            control.dispatch_event("change")\n        page.wait_for_timeout(250)',
-    1,
-)
+# Development Type -> Development Class is asynchronous in the canonical UI.
+# Wait on the locator itself; do not pass Locator objects into page.wait_for_function.
+old_cascade = '''    for label in ["DEVELOPMENT TYPE", "DEVELOPMENT CLASS"]:\n        control = row_control(page, label)\n        if control.evaluate("el=>el.tagName") == "SELECT":\n            fill_first_option(control)\n        else:\n            control.fill("General")\n        page.wait_for_timeout(150)'''
+new_cascade = '''    for label in ["DEVELOPMENT TYPE", "DEVELOPMENT CLASS"]:\n        control = row_control(page, label)\n        if control.evaluate("el=>el.tagName") == "SELECT":\n            if label == "DEVELOPMENT CLASS":\n                try:\n                    control.locator("option:not(:first-child)").first.wait_for(state="attached", timeout=8000)\n                except Exception:\n                    pass\n            fill_first_option(control)\n            control.dispatch_event("change")\n        else:\n            control.fill("General")\n            control.dispatch_event("input")\n            control.dispatch_event("change")\n        page.wait_for_timeout(250)'''
+if old_cascade not in source:
+    raise SystemExit("expected development cascade block not found")
+source = source.replace(old_cascade, new_cascade, 1)
 
-# Final fixture stabilization: retry any empty select once after the cascading
-# graph settles, without changing application code or introducing a second owner.
+# Final stabilization: retry empty cascading selects after the graph settles.
 needle = '    ready_controls = [\n'
 insert = '''    page.wait_for_timeout(500)\n    for control in [\n        row_control(page, "DISTRICT"),\n        row_control(page, "LOCAL AUTHORITY"),\n        row_control(page, "DEVELOPMENT TYPE"),\n        row_control(page, "DEVELOPMENT CLASS"),\n        page.locator("#landuse1"), page.locator("#landuse2"), page.locator("#landuse3"),\n    ]:\n        if control.evaluate("el=>el.tagName") == "SELECT" and not str(control.input_value()).strip():\n            options = usable_options(control)\n            if options:\n                control.select_option(label=options[0], force=True)\n                control.dispatch_event("change")\n                page.wait_for_timeout(200)\n\n'''
 if needle not in source:
