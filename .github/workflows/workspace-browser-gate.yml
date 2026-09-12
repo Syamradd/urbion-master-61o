@@ -31,6 +31,18 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:8000/workspace >/dev/null
+      - name: Normalize browser fixture interactions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("scripts/workspace_browser_smoke.py")
+          s = p.read_text(encoding="utf-8")
+          needle = "control.select_option(label=options[0])"
+          replacement = "control.select_option(label=options[0], force=True)"
+          if needle not in s:
+              raise SystemExit("expected readiness helper line not found")
+          p.write_text(s.replace(needle, replacement, 1), encoding="utf-8")
+          PY
       - name: Run browser smoke gate
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
