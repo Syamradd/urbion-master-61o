@@ -28,7 +28,7 @@
 </head>
 <body>
 <div class="page" id="page">
-  <img class="master" src="/welcome_background.png" alt="URBION HORIZON city planning visual">
+  <img class="master" src="/background_welcoming_page.png" alt="URBION HORIZON city planning visual">
   <div class="atmosphere"></div><div class="grid"></div>
   <div class="motion" aria-hidden="true"><div class="ambient"></div><div class="cursor-glow" id="cursorGlow"></div></div>
   <div class="wrap">
@@ -67,19 +67,23 @@ const MODALS={
   scenario:['Scenario Exploration','Test alternative planning possibilities and examine how different choices may change outcomes.'],
   decision:['Decision Support','Turn evidence and scenario findings into a clearer basis for planning decisions, recommendations and communication.'],
   sources:['Data Sources','URBION HORIZON is designed to bring together spatial, planning, infrastructure and supporting evidence into a connected urban intelligence workflow.'],
-  contact:['Contact','For URBION HORIZON enquiries, collaboration or demonstration requests, use the available project contact channel.'],
-  demo:['Watch Demo','Demo playback can be connected here to the URBION HORIZON demonstration flow.'],
+  contact:['Contact','For demonstrations, collaboration and project enquiries, use the URBION HORIZON contact channel maintained by the project team.'],
+  demo:['Watch Demo','The product demonstration will show the transition from spatial evidence to AI-assisted planning intelligence inside the URBION HORIZON workspace.']
 };
 function openModal(key){const item=MODALS[key];if(!item)return;modalTitle.textContent=item[0];modalBody.innerHTML=item[1];modal.classList.add('open');document.body.style.overflow='hidden'}
 function closeModal(){modal.classList.remove('open');document.body.style.overflow=''}
+function showToast(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('show'),1800)}
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});document.getElementById('modalClose').addEventListener('click',closeModal);document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+document.querySelectorAll('.links a[href="#how"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openModal('how')}));
+document.querySelectorAll('.links a[href="#sources"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openModal('sources')}));
+document.querySelectorAll('.links a[href="#contact"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openModal('contact')}));
 document.querySelectorAll('[data-modal]').forEach(el=>el.addEventListener('click',()=>openModal(el.dataset.modal)));
-document.querySelectorAll('a[href="#how"],a[href="#sources"],a[href="#contact"]').forEach(el=>el.addEventListener('click',e=>{const key=el.getAttribute('href').slice(1);if(MODALS[key]){e.preventDefault();openModal(key)}}));
 document.getElementById('demoBtn').addEventListener('click',e=>{e.preventDefault();openModal('demo')});
-document.getElementById('modalClose').addEventListener('click',closeModal);modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-document.getElementById('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('high-contrast');toast.textContent=document.body.classList.contains('high-contrast')?'Enhanced contrast enabled':'Enhanced contrast disabled';toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1500)});
-document.getElementById('searchBtn').addEventListener('click',()=>{openModal('sources')});
-const page=document.getElementById('page'),cursorGlow=document.getElementById('cursorGlow');let tx=0,ty=0,cx=0,cy=0,raf=0,inside=false;function animateGlow(){cx+=(tx-cx)*.12;cy+=(ty-cy)*.12;cursorGlow.style.left=cx+'px';cursorGlow.style.top=cy+'px';if(inside||Math.abs(tx-cx)>.25||Math.abs(ty-cy)>.25){raf=requestAnimationFrame(animateGlow)}else raf=0}
-page.addEventListener('pointermove',e=>{const r=page.getBoundingClientRect();tx=e.clientX-r.left;ty=e.clientY-r.top;inside=true;cursorGlow.style.opacity='1';if(!raf)raf=requestAnimationFrame(animateGlow)});page.addEventListener('pointerenter',()=>{inside=true;cursorGlow.style.opacity='1'});page.addEventListener('pointerleave',()=>{inside=false;cursorGlow.style.opacity='0'});
+document.getElementById('searchBtn').addEventListener('click',()=>showToast('Search is reserved for the planning workspace.'));
+document.getElementById('themeBtn').addEventListener('click',()=>{document.documentElement.classList.toggle('high-contrast');showToast('Presentation contrast toggled.')});
+const stage=document.getElementById('page'),glow=document.getElementById('cursorGlow');let tx=0,ty=0,cx=0,cy=0,raf=0,inside=false;
+function step(){cx+=(tx-cx)*.13;cy+=(ty-cy)*.13;glow.style.left=cx+'px';glow.style.top=cy+'px';if(inside||Math.abs(tx-cx)>.2||Math.abs(ty-cy)>.2)raf=requestAnimationFrame(step);else raf=0}
+stage.addEventListener('pointermove',e=>{const r=stage.getBoundingClientRect();tx=e.clientX-r.left;ty=e.clientY-r.top;inside=true;glow.style.opacity='.9';if(!raf)raf=requestAnimationFrame(step)});stage.addEventListener('pointerleave',()=>{inside=false;glow.style.opacity='0'});
 </script>
 </body>
 </html>
