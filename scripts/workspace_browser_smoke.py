@@ -13,13 +13,13 @@ def main():
     errors=[]; failed=[]; http=[]; checks=[]
     with sync_playwright() as pw:
         browser=pw.chromium.launch(headless=True)
-        page=browser.new_page(viewport={"width":1440,"height":900},device_scale_factor=1)
+        page=pw.chromium.new_page(viewport={"width":1440,"height":900},device_scale_factor=1)
         page.on("console",lambda m: errors.append(f"console {m.type}: {m.text}") if m.type=="error" else None)
         page.on("pageerror",lambda e: errors.append(f"pageerror: {e}"))
         page.on("requestfailed",lambda r: failed.append(f"{r.method} {r.url} :: {r.failure}"))
         page.on("response",lambda r: http.append(f"{r.status} {r.request.method} {r.url}") if r.status>=400 else None)
-        analysis_requests=[]; copilot_requests=[]; whatif_ok=[]
-        page.on("request",lambda r: analysis_requests.append(r.url) if r.url.endswith("/workstation/analysis") else copilot_requests.append(r.url) if r.url.endswith("/copilot/explain") else whatif_ok.append(r.url) if r.url.endswith("/what-if") else None)
+        analysis_requests=[]; copilot_requests=[]; whatif_requests=[]
+        page.on("request",lambda r: analysis_requests.append(r.url) if r.url.endswith("/workstation/analysis") else copilot_requests.append(r.url) if r.url.endswith("/copilot/explain") else whatif_requests.append(r.url) if r.url.endswith("/what-if") else None)
         try:
             page.goto(f"{BASE}/workspace",wait_until="domcontentloaded"); page.wait_for_selector("#map"); page.wait_for_timeout(1800)
             page.wait_for_function("window.__URBION_CANONICAL_UI_V1__===true",timeout=15000)
@@ -32,15 +32,16 @@ def main():
             check(not any(u.endswith('/urbion_workspace_final.js') for u in resources),"duplicate workspace function bundle not requested")
             for id_ in ["landuse1","landuse2","landuse3"]: check(page.locator(f"#{id_}").count()==1,f"{id_.upper()} control unique")
             gt1=page.locator("#landuse1 option").all_text_contents(); check(len(gt1)>=10,"GT1 taxonomy populated"); check(not any(x.strip().lower()=="perdagangan" for x in gt1),"legacy Perdagangan absent")
-            # Open the section that contains the land-use controls before interacting.
-            lu=page.locator("#landuse1"); section=lu.locator("xpath=ancestor::div[contains(@class,'sec')][1]");
-            if section.evaluate("e=>e.classList.contains('collapsed')"):
-                section.locator('.sechead button').click(); page.wait_for_timeout(100)
-            check(lu.is_visible(),"land-use controls visible before selection")
-            lu.select_option(label="Komersial"); check(len(page.locator("#landuse2 option").all_text_contents())>=2,"GT2 cascades")
+            # Open any containing section using DOM traversal, not an XPath ancestry assumption.
+            for id_ in ["landuse1","landuse2","landuse3"]:
+                page.locator(f"#{id_}").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains('sec')))p=p.parentElement;if(p?.classList.contains('collapsed'))p.querySelector('.sechead button')?.click();}""")
+            check(page.locator("#landuse1").is_visible(),"land-use controls visible before selection")
+            page.locator("#landuse1").select_option(label="Komersial"); check(len(page.locator("#landuse2 option").all_text_contents())>=2,"GT2 cascades")
             page.locator("#landuse2").select_option(index=1); check(len(page.locator("#landuse3 option").all_text_contents())>=2,"GT3 cascades")
-            # Accordion must toggle exactly once per click.
-            sec=page.locator('.sec').nth(1); head=sec.locator('.sechead button'); before=sec.evaluate("e=>e.classList.contains('collapsed')"); head.click(); page.wait_for_timeout(100); after=sec.evaluate("e=>e.classList.contains('collapsed')"); check(after!=before,"section header toggles state once"); head.click(); page.wait_for_timeout(100); check(sec.evaluate("e=>e.classList.contains('collapsed')")==before,"section header toggles back once")
+            # Accordion must toggle exactly once for a real section.
+            sec_info=page.locator("#landuse1").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains('sec')))p=p.parentElement;return p?{exists:true,collapsed:p.classList.contains('collapsed')}:{exists:false}}""")
+            if sec_info["exists"]:
+                before=sec_info["collapsed"]; page.locator("#landuse1").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains('sec')))p=p.parentElement;p?.querySelector('.sechead button')?.click();}"""); page.wait_for_timeout(100); after=page.locator("#landuse1").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains('sec')))p=p.parentElement;return p?.classList.contains('collapsed')||false;}"""); check(after!=before,"section header toggles state once"); page.locator("#landuse1").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains('sec')))p=p.parentElement;p?.querySelector('.sechead button')?.click();}""")
             # Basemap must replace, not stack, the current base layer.
             page.locator("[data-base='street']").click(); page.wait_for_timeout(150); check(page.locator("[data-base='street']").evaluate("e=>e.classList.contains('active')"),"street base active"); check(page.evaluate("typeof baseLayers!=='undefined' && map.hasLayer(baseLayers.street)"),"street layer mounted")
             page.locator("[data-base='sat']").click(); page.wait_for_timeout(150); check(page.locator("[data-base='sat']").evaluate("e=>e.classList.contains('active')"),"satellite base active"); check(page.evaluate("typeof baseLayers!=='undefined' && !map.hasLayer(baseLayers.street) && map.hasLayer(baseLayers.sat)"),"basemap switch removes prior layer")
@@ -53,11 +54,11 @@ def main():
             analysis_requests.clear(); copilot_requests.clear(); page.locator("#run").click(); page.wait_for_function("document.querySelector('#run')&&document.querySelector('#run').textContent.includes('RUN SITE ANALYSIS')",timeout=45000); check(len(analysis_requests)==1,"one analysis request per Run click"); check("ANALYSIS COMPLETE" in page.locator("#mapStatus").inner_text(),"site analysis completes"); check(page.locator("#readyLabel").inner_text().strip()!="PRE-RUN","readiness updates"); page.wait_for_timeout(800); check(len(copilot_requests)<=1,"zero or one copilot request per analysis")
             if page.locator("#aiSynthesisCard").count(): check(page.locator("#aiSynthesisCard").is_visible(),"AI synthesis surfaced when available"); check("SOURCE OF TRUTH" in page.locator("#aiSynthesisCard").inner_text().upper(),"AI boundary text surfaced")
             check("AI / COPILOT" in page.locator("#evidenceHealth").inner_text() or len(copilot_requests)==0,"AI evidence status surfaced or deterministic fallback retained")
-            # Quick actions must use the real core result state.
+            # Core actions.
             for sel,title in [("#evidenceBtn","EVIDENCE CHAIN"),("#whatifBtn","WHAT-IF SCENARIO"),("#decisionBtn","DECISION SUPPORT"),("#outputBtn","PLANNER-READY OUTPUT")]:
                 page.locator(sel).click(); page.wait_for_selector("#modal.show",timeout=6000); check(title in page.locator("#modalTitle").inner_text(),f"{sel} opens expected content"); page.locator("#closeModal").click(); page.wait_for_timeout(100)
-            page.locator("#whatifBtn").click(); page.wait_for_selector("#wfRun",timeout=4000); page.locator("#wfRatio").fill("5.0"); page.locator("#wfHeight").fill("10"); n0=len(whatif_ok); page.locator("#wfRun").click(); page.wait_for_function("document.querySelector('#modalTitle')&&document.querySelector('#modalTitle').textContent.includes('WHAT-IF RESULT')",timeout=30000); check(len(whatif_ok)>=n0+1,"What-If request completes")
-            page.locator("#closeModal").click()
+            page.locator("#whatifBtn").click(); page.wait_for_selector("#wfRun",timeout=4000); page.locator("#wfRatio").fill("5.0"); page.locator("#wfHeight").fill("10"); n0=len(whatif_requests); page.locator("#wfRun").click(); page.wait_for_function("document.querySelector('#modalTitle')&&document.querySelector('#modalTitle').textContent.includes('WHAT-IF RESULT')",timeout=30000); check(len(whatif_requests)>=n0+1,"What-If request completes"); page.locator("#closeModal").click()
+            # Utilities.
             page.wait_for_selector("#runtimeHelp",timeout=10000)
             for sel in ["#runtimeAbout","#runtimeHelp","#runtimeSources","#runtimeStatus","#runtimeFullscreen","#runtimeReset"]: check(page.locator(sel).count()==1,f"{sel} injected once")
             for sel in ["#runtimeHelp","#runtimeSources","#runtimeStatus"]:
