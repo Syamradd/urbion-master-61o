@@ -53,18 +53,22 @@ jobs:
       ].filter(Boolean);
       return {filled:controls.filter(c=>String(c.value||'').trim()!=='').length,total:controls.length};
     }""")
-    check(ready["total"] >= 11 and ready["filled"] == ready["total"], f"planning case fixture is complete ({ready['filled']}/{ready['total']})")''': '''    ready = page.evaluate("""()=>{
-      const rowValue=label=>{
-        const row=[...document.querySelectorAll('.sec .row')]
-          .find(r=>r.textContent.toLowerCase().includes(label.toLowerCase()));
-        return String(row?.querySelector('input,select,textarea')?.value||'').trim();
-      };
-      const labels=['project / site name','state','district','local authority','development type','development class'];
-      const ids=['site_lat','site_lon','landuse1','landuse2','landuse3'];
-      const values=[...labels.map(rowValue),...ids.map(id=>String(document.querySelector('#'+id)?.value||'').trim())];
-      return {filled:values.filter(Boolean).length,total:values.length,values};
-    }""")
-    check(ready["total"] >= 11 and ready["filled"] == ready["total"], f"planning case fixture is complete ({ready['filled']}/{ready['total']})")''',
+    check(ready["total"] >= 11 and ready["filled"] == ready["total"], f"planning case fixture is complete ({ready['filled']}/{ready['total']})")''': '''    ready_controls = [
+        row_control(page, "PROJECT / SITE NAME"),
+        row_control(page, "STATE"),
+        row_control(page, "DISTRICT"),
+        row_control(page, "LOCAL AUTHORITY"),
+        page.locator("#site_lat"),
+        page.locator("#site_lon"),
+        row_control(page, "DEVELOPMENT TYPE"),
+        row_control(page, "DEVELOPMENT CLASS"),
+        page.locator("#landuse1"),
+        page.locator("#landuse2"),
+        page.locator("#landuse3"),
+    ]
+    ready_values = [str(control.input_value()).strip() for control in ready_controls]
+    ready = {"filled": sum(bool(value) for value in ready_values), "total": len(ready_values), "values": ready_values}
+    check(ready["total"] == 11 and ready["filled"] == ready["total"], f"planning case fixture is complete ({ready['filled']}/{ready['total']})")'''
           }
           for needle, replacement in replacements.items():
               if needle not in s:
