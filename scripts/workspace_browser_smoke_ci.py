@@ -39,10 +39,11 @@ source = source.replace(
 )
 
 # The development-class select is populated asynchronously after the
-# development-type change. Wait for a real option set before selecting it.
+# development-type change. Poll the locator-backed DOM directly rather than
+# passing a Playwright Locator through wait_for_function as an argument.
 source = source.replace(
-    '        if control.evaluate("el=>el.tagName") == "SELECT":\n            fill_first_option(control)\n        else:\n            control.fill("General")\n        page.wait_for_timeout(150)',
     '        if control.evaluate("el=>el.tagName") == "SELECT":\n            if label == "DEVELOPMENT CLASS":\n                page.wait_for_function(\n                    "sel=>Array.from(sel.options).some(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith(\\\'select\\\'))",\n                    arg=control, timeout=8000,\n                )\n            fill_first_option(control)\n            control.dispatch_event("change")\n        else:\n            control.fill("General")\n            control.dispatch_event("input")\n            control.dispatch_event("change")\n        page.wait_for_timeout(250)',
+    '        if control.evaluate("el=>el.tagName") == "SELECT":\n            if label == "DEVELOPMENT CLASS":\n                deadline = page.wait_for_timeout\n                ready_class = False\n                for _ in range(80):\n                    if usable_options(control):\n                        ready_class = True\n                        break\n                    page.wait_for_timeout(100)\n                if not ready_class:\n                    raise AssertionError("development class options did not populate within 8s")\n            fill_first_option(control)\n            control.dispatch_event("change")\n        else:\n            control.fill("General")\n            control.dispatch_event("input")\n            control.dispatch_event("change")\n        page.wait_for_timeout(250)',
     1,
 )
 
