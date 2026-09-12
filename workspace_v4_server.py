@@ -12,10 +12,12 @@ import urbion_agent_api  # noqa: F401,E402
 import urbion_knowledge_api  # noqa: F401,E402
 import urbion_copilot_api  # noqa: F401,E402
 import urbion_live_stations_api  # noqa: F401,E402
+from urbion_wms_proxy import router as urbion_wms_router
 
 BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title='URBION HORIZON Workspace V5', version='CANONICAL-V5')
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=False, allow_methods=['*'], allow_headers=['*'])
+app.include_router(urbion_wms_router)
 
 _FRONTEND_SUFFIXES = ('.html', '.js', '.css', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico')
 _SKIP_PATHS = {'/', '/index.html'}
