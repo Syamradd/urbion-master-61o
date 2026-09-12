@@ -39,7 +39,8 @@ jobs:
           s = p.read_text(encoding="utf-8")
           replacements = {
               "control.select_option(label=options[0])": "control.select_option(label=options[0], force=True)",
-              'page.locator("#landuse1").select_option(label="Komersial")': 'page.locator("#landuse1").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains(\'sec\')))p=p.parentElement;if(p?.classList.contains(\'collapsed\'))p.querySelector(\'.sechead button\')?.click();}""")\n    page.locator("#landuse1").select_option(label="Komersial", force=True)',
+              'page.locator("#landuse1").select_option(label="Komersial")': 'page.locator("#landuse1").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains(\\'sec\\')))p=p.parentElement;if(p?.classList.contains(\\'collapsed\\'))p.querySelector(\\'.sechead button\\')?.click();}""")\n    page.locator("#landuse1").select_option(label="Komersial", force=True)',
+              "?.querySelector('input:visible,select:visible,textarea:visible')": "?.querySelectorAll('input,select,textarea') && [...row.querySelectorAll('input,select,textarea')].find(el=>{const s=getComputedStyle(el);const r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0})",
           }
           for needle, replacement in replacements.items():
               if needle not in s:
