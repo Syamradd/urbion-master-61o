@@ -12,7 +12,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const waitFor=async(pred,tries=120,delay=100)=>{for(let i=0;i<tries;i++){try{if(pred())return true}catch(_){}await sleep(delay)}return false};
 const clone=(el)=>{if(!el||!el.parentNode)return null;const c=el.cloneNode(true);el.parentNode.replaceChild(c,el);return c};
 const toast=(message,ok=true)=>{const t=$('toast');if(!t)return;t.textContent=message;t.style.display='block';t.style.color=ok?'var(--good)':'var(--bad)';clearTimeout(window.__urbionCanonicalToast);window.__urbionCanonicalToast=setTimeout(()=>{t.style.display='none'},2600)};
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
 function mapObj(){try{return typeof map!=='undefined'&&map?map:null}catch(_){return null}}
 function baseSwitch(kind){const m=mapObj();if(!m||typeof baseLayers==='undefined'||!baseLayers[kind]){toast('Map engine is not ready',false);return}for(const k of Object.keys(baseLayers)){try{if(m.hasLayer(baseLayers[k]))m.removeLayer(baseLayers[k])}catch(_){} }baseLayers[kind].addTo(m);document.querySelectorAll('[data-base]').forEach(b=>b.classList.toggle('active',b.dataset.base===kind));if($('mapStatus'))$('mapStatus').textContent=(kind==='street'?'MAP':kind==='sat'?'SATELLITE':'HYBRID')+' · LIVE';m.invalidateSize(true)}
 function syncSite(lat,lon,zoom=14){lat=Number(lat);lon=Number(lon);const m=mapObj();if(!Number.isFinite(lat)||!Number.isFinite(lon)||!m)return;try{if(typeof setSite==='function')setSite(lat,lon,zoom);else{if($('site_lat'))$('site_lat').value=lat.toFixed(6);if($('site_lon'))$('site_lon').value=lon.toFixed(6);if(typeof marker!=='undefined'&&marker)marker.setLatLng([lat,lon]);[typeof r400!=='undefined'?r400:null,typeof r800!=='undefined'?r800:null,typeof r1000!=='undefined'?r1000:null].forEach(x=>x?.setLatLng([lat,lon]));m.setView([lat,lon],zoom)}if($('coords'))$('coords').textContent=`${lat.toFixed(6)}, ${lon.toFixed(6)}`}catch(e){toast('Location update failed: '+e.message,false)}}
@@ -28,7 +28,7 @@ if(typeof taxonomy!=='undefined'){const a=$('landuse1'),b=$('landuse2'),c=$('lan
 document.querySelectorAll('.sec .sechead button').forEach(b=>{const c=clone(b);c.addEventListener('click',()=>c.parentElement.parentElement.classList.toggle('collapsed'))});
 // Map controls.
 document.querySelectorAll('[data-base]').forEach(b=>{const c=clone(b);c.addEventListener('click',()=>baseSwitch(c.dataset.base))});
-claim('#layerBtn',b=>b.addEventListener('click',()=>{$('#layers')?.classList.toggle('open');void window.URBION_LAYER_MANAGER?.refresh?.()}));
+claim('#layerBtn',b=>b.addEventListener('click',e=>{e.stopPropagation();$('#layers')?.classList.toggle('open');void window.URBION_LAYER_MANAGER?.refresh?.()}));
 claim('#run',()=>{});const run=$('run');run?.addEventListener('click',()=>void runAnalysisCanonical());
 [['#evidenceBtn','evidence'],['#whatifBtn','whatif'],['#decisionBtn','decision'],['#outputBtn','output'],['#generateOutput','output']].forEach(([s,k])=>claim(s,b=>b.addEventListener('click',()=>openCore(k))));
 claim('#printBtn',b=>b.addEventListener('click',()=>window.print()));
