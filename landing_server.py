@@ -8,7 +8,7 @@ from pathlib import Path
 import json
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse, Response, JSONResponse
+from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
 
 from championship_server import app
 from server import AssessmentRequest, assess_core
@@ -16,11 +16,13 @@ from urbion_decision_center import build_decision_center
 
 BASE_DIR = Path(__file__).resolve().parent
 WELCOME_FILE = BASE_DIR / "welcome.html"
+WELCOME_BACKGROUND_FILE = BASE_DIR / "background_welcoming_page.png"
 ABOUT_FILE = BASE_DIR / "urbion_horizon_about.html"
 WORKSPACE_FILE = BASE_DIR / "workspace_v5.html"
-WORKSPACE_JS = BASE_DIR / "urbion_workspace_final.js"
 WORKSPACE_BRIDGE = BASE_DIR / "urbion_workspace_bridge.js"
 WORKSPACE_RUNTIME = BASE_DIR / "urbion_workspace_runtime.js"
+WORKSPACE_LAYER = BASE_DIR / "urbion_layer_runtime_fix.js"
+WORKSPACE_CANONICAL_UI = BASE_DIR / "urbion_workspace_canonical_ui.js"
 
 
 def _html(path: Path) -> HTMLResponse:
@@ -37,7 +39,8 @@ def _html(path: Path) -> HTMLResponse:
 
 
 def _workspace() -> HTMLResponse:
-    for path in (WORKSPACE_FILE, WORKSPACE_JS, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME):
+    required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER, WORKSPACE_CANONICAL_UI)
+    for path in required:
         if not path.is_file():
             return HTMLResponse(
                 f"URBION HORIZON workspace asset missing: {path.name}",
@@ -45,18 +48,13 @@ def _workspace() -> HTMLResponse:
             )
     html = WORKSPACE_FILE.read_text(encoding="utf-8")
     scripts = (
-        '<script src="/urbion_workspace_final.js"></script>'
         '<script src="/urbion_workspace_bridge.js"></script>'
         '<script src="/urbion_workspace_runtime.js"></script>'
+        '<script src="/urbion_layer_runtime_fix.js"></script>'
+        '<script src="/urbion_workspace_canonical_ui.js"></script>'
     )
-    if "</body>" in html and "/urbion_workspace_final.js" not in html:
+    if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
-    elif "/urbion_workspace_runtime.js" not in html:
-        html = html.replace(
-            "</body>",
-            '<script src="/urbion_workspace_runtime.js"></script></body>',
-            1,
-        )
     atmosphere = '''<style id="urbion-presentation-atmosphere">
 html,body{background-color:#020b12!important}
 body{position:relative}
@@ -68,7 +66,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opac
     return HTMLResponse(
         html,
         media_type="text/html; charset=utf-8",
-        headers={"Cache-Control": "no-store, max-age=0"},
+        headers={"Cache-Control": "no-store, max-age=0", "X-URBION-UI": "CANONICAL-V5-ISOLATED"},
     )
 
 
@@ -76,11 +74,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opac
 async def _urbion_canonical_presentation(request: Request, call_next):
     path = request.url.path
 
-    # Hard compatibility boundary for the canonical workspace decision action.
-    # The workspace sends {"assessment": {...}, "analysis": {...}}, while the
-    # production engine route accepts AssessmentRequest directly. Handle this
-    # exact presentation shape before FastAPI route validation and reuse the same
-    # deterministic decision engine. No alternate approval logic is introduced.
+    # Compatibility boundary for the canonical workspace decision action.
     if path == "/decision-center" and request.method == "POST":
         try:
             raw = await request.body()
@@ -97,44 +91,29 @@ async def _urbion_canonical_presentation(request: Request, call_next):
 
     if path in {"/", "/index.html"}:
         return _html(WELCOME_FILE)
+    if path == "/background_welcoming_page.png":
+        if not WELCOME_BACKGROUND_FILE.is_file():
+            return Response("URBION HORIZON welcome background missing",status_code=404,media_type="text/plain")
+        return FileResponse(WELCOME_BACKGROUND_FILE,media_type="image/png",headers={"Cache-Control":"no-store, max-age=0, must-revalidate","X-URBION-WELCOME-BACKGROUND":"CANONICAL-WELCOME"})
     if path == "/about":
         return _html(ABOUT_FILE)
     if path == "/workspace":
         return _workspace()
+    assets={
+        "/urbion_workspace_bridge.js": (WORKSPACE_BRIDGE,"URBION HORIZON workspace bridge missing."),
+        "/urbion_workspace_runtime.js": (WORKSPACE_RUNTIME,"URBION HORIZON runtime layer missing."),
+        "/urbion_layer_runtime_fix.js": (WORKSPACE_LAYER,"URBION HORIZON live layer renderer missing."),
+        "/urbion_workspace_canonical_ui.js": (WORKSPACE_CANONICAL_UI,"URBION HORIZON canonical UI owner missing."),
+    }
+    if path in assets:
+        target,message=assets[path]
+        if not target.is_file():
+            return Response(message,status_code=500,media_type="text/plain; charset=utf-8")
+        return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
     if path == "/urbion_workspace_final.js":
-        if not WORKSPACE_JS.is_file():
-            return Response(
-                "URBION HORIZON function layer missing.",
-                status_code=500,
-                media_type="text/plain; charset=utf-8",
-            )
-        return Response(
-            WORKSPACE_JS.read_text(encoding="utf-8"),
-            media_type="application/javascript; charset=utf-8",
-            headers={"Cache-Control": "no-store, max-age=0"},
-        )
-    if path == "/urbion_workspace_bridge.js":
-        if not WORKSPACE_BRIDGE.is_file():
-            return Response(
-                "URBION HORIZON workspace bridge missing.",
-                status_code=500,
-                media_type="text/plain; charset=utf-8",
-            )
-        return Response(
-            WORKSPACE_BRIDGE.read_text(encoding="utf-8"),
-            media_type="application/javascript; charset=utf-8",
-            headers={"Cache-Control": "no-store, max-age=0"},
-        )
-    if path == "/urbion_workspace_runtime.js":
-        if not WORKSPACE_RUNTIME.is_file():
-            return Response(
-                "URBION HORIZON runtime layer missing.",
-                status_code=500,
-                media_type="application/javascript; charset=utf-8",
-            )
-        return Response(
-            WORKSPACE_RUNTIME.read_text(encoding="utf-8"),
-            media_type="application/javascript; charset=utf-8",
-            headers={"Cache-Control": "no-store, max-age=0"},
-        )
+        # Kept as a compatibility endpoint only; canonical workspace no longer loads it.
+        target=BASE_DIR/"urbion_workspace_final.js"
+        if not target.is_file():
+            return Response("URBION HORIZON legacy compatibility asset missing.",status_code=404,media_type="text/plain")
+        return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
     return await call_next(request)
