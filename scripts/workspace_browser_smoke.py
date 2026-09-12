@@ -145,7 +145,7 @@ def main():
             check(district.evaluate("el=>el.tagName")=="SELECT","District control is canonical select")
             check(mukim.evaluate("el=>el.tagName")=="SELECT","Mukim control is canonical select")
             check(pbt.evaluate("el=>el.tagName")=="SELECT","Local Authority control is canonical select")
-            check(page.evaluate("!!document.querySelector('[data-pbt-catalog-owner=urbion_workspace_pbt_catalog.js]')"),"single frontend PBT catalogue owner active")
+            check(page.evaluate("!!document.querySelector('[data-pbt-catalog-owner=\"urbion_workspace_pbt_catalog.js\"]')"),"single frontend PBT catalogue owner active")
             check(page.evaluate("Object.keys(window.__URBION_PBT_CATALOG__||{}).length>=16"),"full state/territory PBT catalogue exposed")
             state.select_option(label="Selangor"); page.wait_for_timeout(350)
             sel_districts=[x for x in district.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")]
