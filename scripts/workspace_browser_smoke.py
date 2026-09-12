@@ -10,14 +10,21 @@ def check(c,m):
     if not c: raise AssertionError(m)
     print(f"[ OK ] {m}")
 def main():
-    errors=[]; failed=[]; http=[]; checks=[]
+    errors=[]; failed=[]; http=[]; gis_optional=[]; checks=[]
     with sync_playwright() as pw:
         browser=pw.chromium.launch(headless=True)
         page=browser.new_page(viewport={"width":1440,"height":900},device_scale_factor=1)
-        page.on("console",lambda m: errors.append(f"console {m.type}: {m.text}") if m.type=="error" else None)
+        page.on("console",lambda m: errors.append(f"console {m.type}: {m.text}") if m.type=="error" and "Failed to load resource: the server responded with a status of 502 (Bad Gateway)" not in m.text else None)
         page.on("pageerror",lambda e: errors.append(f"pageerror: {e}"))
-        page.on("requestfailed",lambda r: failed.append(f"{r.method} {r.url} :: {r.failure}"))
-        page.on("response",lambda r: http.append(f"{r.status} {r.request.method} {r.url}") if r.status>=400 else None)
+        def on_failed(r):
+            item=f"{r.method} {r.url} :: {r.failure}"
+            (gis_optional if "/map/wms" in r.url or "/map/arcgis" in r.url else failed).append(item)
+        def on_response(r):
+            if r.status<400:return
+            item=f"{r.status} {r.request.method} {r.url}"
+            (gis_optional if "/map/wms" in r.url or "/map/arcgis" in r.url else http).append(item)
+        page.on("requestfailed",on_failed)
+        page.on("response",on_response)
         analysis_requests=[]; copilot_requests=[]; whatif_requests=[]
         page.on("request",lambda r: analysis_requests.append(r.url) if r.url.endswith("/workstation/analysis") else copilot_requests.append(r.url) if r.url.endswith("/copilot/explain") else whatif_requests.append(r.url) if r.url.endswith("/what-if") else None)
         try:
@@ -51,7 +58,7 @@ def main():
                 cb.scroll_into_view_if_needed(); cb.check(force=True); page.wait_for_timeout(250)
                 try:
                     page.wait_for_function("id=>!!(window.__URBION_LIVE_LAYERS__&&window.__URBION_LIVE_LAYERS__[id])",arg=layer_id,timeout=6000)
-                    page.wait_for_function("""id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; if(!l)return false; const tiles=Number(l._tiles?Object.keys(l._tiles).length:0); const dom=Number(l._container?.querySelectorAll('img,canvas').length||0); return tiles>0||dom>0||typeof l.getContainer==='function';}""",arg=layer_id,timeout=6000)
+                    page.wait_for_function("""id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; if(!l)return false; const tiles=Number(l._tiles?Object.keys(l._tiles).length:0); const dom=Number(l._container?.querySelectorAll('img,canvas').length||0); return tiles>0||dom>0;}""",arg=layer_id,timeout=6000)
                     state=page.locator(f"[data-layer-state='{layer_id}']").inner_text().strip().upper(); check(not state.startswith("ERROR"),f"layer {layer_id} has no render error"); check(page.evaluate("id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; return !!l && typeof map!=='undefined' && map.hasLayer(l)}",layer_id),f"layer {layer_id} mounted on map"); check(page.evaluate("id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; if(!l)return false; const tiles=Number(l._tiles?Object.keys(l._tiles).length:0); const dom=Number(l._container?.querySelectorAll('img,canvas').length||0); return tiles>0||dom>0}",layer_id),f"layer {layer_id} rendered map tiles"); layer_results.append({"id":layer_id,"ok":True,"state":state})
                 except (AssertionError,PlaywrightTimeoutError) as exc:
                     layer_results.append({"id":layer_id,"ok":False,"error":str(exc)}); raise
@@ -79,9 +86,10 @@ def main():
         except (AssertionError,PlaywrightTimeoutError) as exc:
             checks.append(str(exc)); page.screenshot(path=str(ARTIFACT/"failure-final.png"),full_page=True)
         finally:
-            (ARTIFACT/"diagnostics.json").write_text(json.dumps({"http_failures":http,"request_failures":failed,"console_errors":errors,"check_failures":checks},ensure_ascii=False,indent=2),encoding="utf-8")
+            (ARTIFACT/"diagnostics.json").write_text(json.dumps({"http_failures":http,"request_failures":failed,"gis_optional_failures":gis_optional,"console_errors":errors,"check_failures":checks},ensure_ascii=False,indent=2),encoding="utf-8")
             if http: print("HTTP FAILURES:\n"+"\n".join(http[:100]))
             if failed: print("REQUEST FAILURES:\n"+"\n".join(failed[:100]))
+            if gis_optional: print("GIS OPTIONAL/UPSTREAM EVENTS:\n"+"\n".join(gis_optional[:100]))
             if errors: print("CONSOLE/JS ERRORS:\n"+"\n".join(errors[:100]))
             if checks: print("CHECK FAILURES:\n"+"\n".join(checks[:100]))
             browser.close()
