@@ -38,6 +38,7 @@ WORKSPACE_RUNTIME = BASE_DIR / 'urbion_workspace_runtime.js'
 LAYER_RUNTIME = BASE_DIR / 'urbion_layer_runtime_fix.js'
 CANONICAL_UI = BASE_DIR / 'urbion_workspace_canonical_ui.js'
 MODAL_OWNER = BASE_DIR / 'urbion_workspace_modal_owner.js'
+PBT_CATALOG = BASE_DIR / 'urbion_workspace_pbt_catalog.js'
 ABOUT_CITY_IMAGE = BASE_DIR / 'about_city_reference.jpg'
 
 def _read(path: Path) -> str:
@@ -53,6 +54,7 @@ def _workspace() -> str:
         '<script src="/urbion_layer_runtime_fix.js"></script>'
         '<script src="/urbion_workspace_canonical_ui.js"></script>'
         '<script src="/urbion_workspace_modal_owner.js"></script>'
+        '<script src="/urbion_workspace_pbt_catalog.js"></script>'
     )
     if '</body>' in html:
         html = html.replace('</body>', scripts + '</body>', 1)
@@ -97,6 +99,8 @@ def layer_runtime_fix_js():return _js(LAYER_RUNTIME,'URBION HORIZON live layer r
 def canonical_ui_js():return _js(CANONICAL_UI,'URBION HORIZON canonical UI owner missing.')
 @app.get('/urbion_workspace_modal_owner.js',include_in_schema=False)
 def modal_owner_js():return _js(MODAL_OWNER,'URBION HORIZON modal owner missing.')
+@app.get('/urbion_workspace_pbt_catalog.js',include_in_schema=False)
+def pbt_catalog_js():return _js(PBT_CATALOG,'URBION HORIZON PBT catalog adapter missing.')
 
 @app.get('/about_master.png',include_in_schema=False)
 def about_master_png():
@@ -128,4 +132,4 @@ def team_photo():
     return FileResponse(target,media_type='image/svg+xml')
 @app.get('/__urbion_runtime_identity',include_in_schema=False)
 def runtime_identity():
-    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'ABOUT-CANONICAL-V3-PNG','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_mode':'SINGLE-SOURCE','about_master':'CANONICAL-PNG','workspace_ui_owner':'urbion_workspace_canonical_ui.js','modal_owner':'urbion_workspace_modal_owner.js'}
+    return {'ui':'CANONICAL-PRESENTATION','root':'WELCOME','about':'ABOUT-CANONICAL-V3-PNG','workspace':'CANONICAL-V5-ISOLATED','legacy_frontend_routes':'EXCLUDED','backend':'REUSED','source':'workspace_v4_server.py','layer_runtime':'AUTHORITATIVE-V1','about_mode':'SINGLE-SOURCE','about_master':'CANONICAL-PNG','workspace_ui_owner':'urbion_workspace_canonical_ui.js','modal_owner':'urbion_workspace_modal_owner.js','pbt_catalog':'urbion_workspace_pbt_catalog.js'}
