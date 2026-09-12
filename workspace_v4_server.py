@@ -26,7 +26,7 @@ for route in backend_app.router.routes:
     app.router.routes.append(route)
 
 WELCOME_FILE = BASE_DIR / 'welcome.html'
-WELCOME_BACKGROUND_FILE = BASE_DIR / 'welcome_background.jpg'
+WELCOME_BACKGROUND_FILE = BASE_DIR / 'background_welcoming_page.png'
 ABOUT_FILE = BASE_DIR / 'urbion_horizon_about.html'
 ABOUT_MASTER_FILE = BASE_DIR / 'about_master.png'
 WORKSPACE_FILE = BASE_DIR / 'workspace_v5.html'
@@ -78,11 +78,11 @@ def _about() -> HTMLResponse:
 def root() -> HTMLResponse:
     return HTMLResponse(_read(WELCOME_FILE), media_type='text/html; charset=utf-8', headers={'Cache-Control':'no-store, max-age=0', 'X-URBION-UI':'CANONICAL-WELCOME'})
 
-@app.get('/welcome_background.jpg', include_in_schema=False)
+@app.get('/background_welcoming_page.png', include_in_schema=False)
 def welcome_background():
     if not WELCOME_BACKGROUND_FILE.is_file():
         raise HTTPException(status_code=404, detail='Welcome background is missing')
-    return FileResponse(WELCOME_BACKGROUND_FILE, media_type='image/jpeg', headers={'Cache-Control':'no-store, max-age=0, must-revalidate','X-URBION-WELCOME-BACKGROUND':'CANONICAL-WELCOME'})
+    return FileResponse(WELCOME_BACKGROUND_FILE, media_type='image/png', headers={'Cache-Control':'no-store, max-age=0, must-revalidate','X-URBION-WELCOME-BACKGROUND':'CANONICAL-WELCOME'})
 
 @app.get('/about', include_in_schema=False)
 def about() -> HTMLResponse:
