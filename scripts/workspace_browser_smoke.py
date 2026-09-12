@@ -22,6 +22,82 @@ def check(condition, message):
 def nearest_sec(page, control_id):
     return page.locator(f"#{control_id}").evaluate("""el=>{let p=el;while(p && !(p.classList&&p.classList.contains('sec')))p=p.parentElement;return p}""")
 
+def fill_first_option(control):
+    options = control.locator("option").all_text_contents()
+    usable = [x for x in options if x.strip() and not x.strip().lower().startswith("select")]
+    if not usable:
+        raise AssertionError(f"no usable options for control {control}")
+    control.select_option(label=usable[0])
+    return usable[0]
+
+def row_control(page, label_text):
+    return page.locator(".sec .row").filter(has_text=label_text).first.locator("input,select,textarea").first
+
+def prepare_ready_case(page):
+    """Populate the real canonical planning case; never weaken readiness."""
+    project = row_control(page, "PROJECT / SITE NAME")
+    project.fill("Browser Gate Planning Case")
+
+    state = row_control(page, "STATE")
+    if state.evaluate("el=>el.tagName") == "SELECT":
+        state.select_option(label="Melaka")
+    else:
+        state.fill("Melaka")
+    page.wait_for_timeout(300)
+
+    district = row_control(page, "DISTRICT")
+    if district.evaluate("el=>el.tagName") == "SELECT":
+        district_opts = [x for x in district.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")]
+        if district_opts:
+            district.select_option(label=district_opts[0])
+    else:
+        district.fill("Melaka Tengah")
+    page.wait_for_timeout(300)
+
+    local_authority = row_control(page, "LOCAL AUTHORITY")
+    if local_authority.evaluate("el=>el.tagName") == "SELECT":
+        pbt_opts = [x for x in local_authority.locator("option").all_text_contents() if x.strip() and not x.lower().startswith("select")]
+        if pbt_opts:
+            local_authority.select_option(label=pbt_opts[0])
+    else:
+        local_authority.fill("Majlis Bandaraya Melaka Bersejarah")
+
+    page.locator("#site_lat").fill("2.285000")
+    page.locator("#site_lon").fill("102.196000")
+
+    for label_text in ["DEVELOPMENT TYPE", "DEVELOPMENT CLASS"]:
+        control = row_control(page, label_text)
+        if control.evaluate("el=>el.tagName") == "SELECT":
+            fill_first_option(control)
+        else:
+            control.fill("General")
+        page.wait_for_timeout(150)
+
+    gt1 = page.locator("#landuse1")
+    gt1.select_option(label="Komersial")
+    page.wait_for_timeout(200)
+    fill_first_option(page.locator("#landuse2"))
+    page.wait_for_timeout(200)
+    fill_first_option(page.locator("#landuse3"))
+    page.wait_for_timeout(250)
+
+    ready = page.evaluate("""()=>{
+      const pick=label=>[...document.querySelectorAll('.sec .row')]
+        .find(r=>r.querySelector('.lab')?.textContent.toLowerCase().includes(label.toLowerCase()))
+        ?.querySelector('input,select,textarea');
+      const controls=[
+        pick('project / site name'),pick('state'),pick('district'),pick('local authority'),
+        document.querySelector('#site_lat'),document.querySelector('#site_lon'),
+        pick('development type'),pick('development class'),
+        document.querySelector('#landuse1'),document.querySelector('#landuse2'),document.querySelector('#landuse3')
+      ].filter(Boolean);
+      return {filled:controls.filter(c=>String(c.value||'').trim()!=='').length,total:controls.length,disabled:document.querySelector('#run')?.disabled??true};
+    }""")
+    check(ready["total"]>=11 and ready["filled"]==ready["total"],f"planning case fixture is complete ({ready['filled']}/{ready['total']})")
+    page.wait_for_function("document.querySelector('#run') && !document.querySelector('#run').disabled", timeout=10000)
+    check(not page.locator("#run").is_disabled(),"Run Site Analysis unlocked by canonical readiness")
+
+
 def main():
     errors=[]; failed=[]; http=[]; gis_optional=[]; checks=[]
     with sync_playwright() as pw:
@@ -115,6 +191,7 @@ def main():
             coords=page.locator("#coords").inner_text().strip()
             check("," in coords and coords!="2.285000, 102.196000","map click updates coordinates")
 
+            prepare_ready_case(page)
             analysis_requests.clear(); copilot_requests.clear(); page.locator("#run").click()
             page.wait_for_function("document.querySelector('#run')&&document.querySelector('#run').textContent.includes('RUN SITE ANALYSIS')",timeout=45000)
             check(len(analysis_requests)==1,"one analysis request per Run click")
