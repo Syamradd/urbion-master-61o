@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
 from championship_server import app
 from server import AssessmentRequest, assess_core
 from urbion_decision_center import build_decision_center
+from urbion_wms_proxy import router as urbion_wms_router
 
 BASE_DIR = Path(__file__).resolve().parent
 WELCOME_FILE = BASE_DIR / "welcome.html"
@@ -23,6 +24,8 @@ WORKSPACE_BRIDGE = BASE_DIR / "urbion_workspace_bridge.js"
 WORKSPACE_RUNTIME = BASE_DIR / "urbion_workspace_runtime.js"
 WORKSPACE_LAYER = BASE_DIR / "urbion_layer_runtime_fix.js"
 WORKSPACE_CANONICAL_UI = BASE_DIR / "urbion_workspace_canonical_ui.js"
+
+app.include_router(urbion_wms_router)
 
 
 def _html(path: Path) -> HTMLResponse:
