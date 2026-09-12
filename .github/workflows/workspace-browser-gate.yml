@@ -41,10 +41,34 @@ jobs:
               'control.select_option(label=options[0])': 'control.select_option(label=options[0], force=True)',
               'page.locator("#landuse1").select_option(label="Komersial")': 'page.locator("#landuse1").evaluate("""el=>{let p=el;while(p&&!(p.classList&&p.classList.contains(\'sec\')))p=p.parentElement;if(p?.classList.contains(\'collapsed\'))p.querySelector(\'.sechead button\')?.click();}""")\n    page.locator("#landuse1").select_option(label="Komersial", force=True)',
               "?.querySelector('input:visible,select:visible,textarea:visible')": "?.querySelector('input,select,textarea')",
+              '''    ready = page.evaluate("""()=>{
+      const pick=label=>[...document.querySelectorAll('.sec .row')]
+        .find(r=>r.querySelector('.lab')?.textContent.toLowerCase().includes(label.toLowerCase()))
+        ?.querySelector('input,select,textarea');
+      const controls=[
+        pick('project / site name'),pick('state'),pick('district'),pick('local authority'),
+        document.querySelector('#site_lat'),document.querySelector('#site_lon'),
+        pick('development type'),pick('development class'),
+        document.querySelector('#landuse1'),document.querySelector('#landuse2'),document.querySelector('#landuse3')
+      ].filter(Boolean);
+      return {filled:controls.filter(c=>String(c.value||'').trim()!=='').length,total:controls.length};
+    }""")
+    check(ready["total"] >= 11 and ready["filled"] == ready["total"], f"planning case fixture is complete ({ready['filled']}/{ready['total']})")''': '''    ready = page.evaluate("""()=>{
+      const rowValue=label=>{
+        const row=[...document.querySelectorAll('.sec .row')]
+          .find(r=>r.textContent.toLowerCase().includes(label.toLowerCase()));
+        return String(row?.querySelector('input,select,textarea')?.value||'').trim();
+      };
+      const labels=['project / site name','state','district','local authority','development type','development class'];
+      const ids=['site_lat','site_lon','landuse1','landuse2','landuse3'];
+      const values=[...labels.map(rowValue),...ids.map(id=>String(document.querySelector('#'+id)?.value||'').trim())];
+      return {filled:values.filter(Boolean).length,total:values.length,values};
+    }""")
+    check(ready["total"] >= 11 and ready["filled"] == ready["total"], f"planning case fixture is complete ({ready['filled']}/{ready['total']})")''',
           }
           for needle, replacement in replacements.items():
               if needle not in s:
-                  raise SystemExit(f'expected fixture line not found: {needle}')
+                  raise SystemExit(f'expected fixture block not found: {needle[:90]}')
               s = s.replace(needle, replacement, 1)
           p.write_text(s, encoding='utf-8')
           PY
