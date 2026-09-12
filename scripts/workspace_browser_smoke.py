@@ -43,26 +43,22 @@ def main():
             page.locator("[data-base='street']").click(); page.wait_for_timeout(150); check(page.locator("[data-base='street']").evaluate("e=>e.classList.contains('active')"),"street base active"); check(page.evaluate("typeof baseLayers!=='undefined' && map.hasLayer(baseLayers.street)"),"street layer mounted")
             page.locator("[data-base='sat']").click(); page.wait_for_timeout(150); check(page.locator("[data-base='sat']").evaluate("e=>e.classList.contains('active')"),"satellite base active"); check(page.evaluate("typeof baseLayers!=='undefined' && !map.hasLayer(baseLayers.street) && map.hasLayer(baseLayers.sat)"),"basemap switch removes prior layer")
             page.locator("[data-base='hybrid']").click(); page.wait_for_timeout(150); check(page.locator("[data-base='hybrid']").evaluate("e=>e.classList.contains('active')"),"hybrid base active"); check(page.evaluate("typeof baseLayers!=='undefined' && !map.hasLayer(baseLayers.sat) && map.hasLayer(baseLayers.hybrid)"),"hybrid replaces satellite layer")
-            page.locator("#layerBtn").click(); page.wait_for_timeout(300); check(page.locator("#layers").evaluate("e=>e.classList.contains('open')"),"layers opens"); layer_rows=page.locator("#layerList [data-urbion-layer]"); layer_count=layer_rows.count(); check(layer_count>=1,"authoritative live layer rows rendered");
+            page.locator("#layerBtn").click(); page.wait_for_timeout(300); check(page.locator("#layers").evaluate("e=>e.classList.contains('open')"),"layers opens"); layer_rows=page.locator("#layerList [data-urbion-layer]"); layer_count=layer_rows.count(); check(layer_count>=1,"authoritative live layer rows rendered")
             layer_results=[]
             for i in range(layer_count):
                 cb=page.locator("#layerList [data-urbion-layer]").nth(i); layer_id=cb.get_attribute("data-urbion-layer") or f"layer-{i}"
+                cb.evaluate("""el=>{const g=el.closest('.layer-group');if(g?.classList.contains('closed'))g.querySelector('.layer-group-head')?.click();}""")
                 cb.scroll_into_view_if_needed(); cb.check(force=True); page.wait_for_timeout(250)
                 try:
                     page.wait_for_function("id=>!!(window.__URBION_LIVE_LAYERS__&&window.__URBION_LIVE_LAYERS__[id])",arg=layer_id,timeout=6000)
                     page.wait_for_function("""id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; if(!l)return false; const tiles=Number(l._tiles?Object.keys(l._tiles).length:0); const dom=Number(l._container?.querySelectorAll('img,canvas').length||0); return tiles>0||dom>0||typeof l.getContainer==='function';}""",arg=layer_id,timeout=6000)
-                    state=page.locator(f"[data-layer-state='{layer_id}']").inner_text().strip().upper()
-                    check(not state.startswith("ERROR"),f"layer {layer_id} has no render error"); check(page.evaluate("id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; return !!l && typeof map!=='undefined' && map.hasLayer(l)}",layer_id),f"layer {layer_id} mounted on map")
-                    check(page.evaluate("id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; if(!l)return false; const tiles=Number(l._tiles?Object.keys(l._tiles).length:0); const dom=Number(l._container?.querySelectorAll('img,canvas').length||0); return tiles>0||dom>0}",layer_id),f"layer {layer_id} rendered map tiles")
-                    layer_results.append({"id":layer_id,"ok":True,"state":state})
+                    state=page.locator(f"[data-layer-state='{layer_id}']").inner_text().strip().upper(); check(not state.startswith("ERROR"),f"layer {layer_id} has no render error"); check(page.evaluate("id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; return !!l && typeof map!=='undefined' && map.hasLayer(l)}",layer_id),f"layer {layer_id} mounted on map"); check(page.evaluate("id=>{const l=window.__URBION_LIVE_LAYERS__?.[id]; if(!l)return false; const tiles=Number(l._tiles?Object.keys(l._tiles).length:0); const dom=Number(l._container?.querySelectorAll('img,canvas').length||0); return tiles>0||dom>0}",layer_id),f"layer {layer_id} rendered map tiles"); layer_results.append({"id":layer_id,"ok":True,"state":state})
                 except (AssertionError,PlaywrightTimeoutError) as exc:
-                    layer_results.append({"id":layer_id,"ok":False,"error":str(exc)})
-                    raise
+                    layer_results.append({"id":layer_id,"ok":False,"error":str(exc)}); raise
                 finally:
                     cb=page.locator("#layerList [data-urbion-layer]").nth(i)
                     if cb.is_checked(): cb.uncheck(force=True); page.wait_for_timeout(100)
-            page.locator("#layerBtn").click(); page.wait_for_timeout(120); check(not page.locator("#layers").evaluate("e=>e.classList.contains('open')"),"layers closes")
-            check(all(x["ok"] for x in layer_results),f"all {len(layer_results)} live GIS layers render end-to-end")
+            page.locator("#layerBtn").click(); page.wait_for_timeout(120); check(not page.locator("#layers").evaluate("e=>e.classList.contains('open')"),"layers closes"); check(all(x["ok"] for x in layer_results),f"all {len(layer_results)} live GIS layers render end-to-end")
             page.locator("#map").click(position={"x":420,"y":260}); page.wait_for_timeout(160); coords=page.locator("#coords").inner_text().strip(); check("," in coords and coords!="2.285000, 102.196000","map click updates selected coordinates")
             analysis_requests.clear(); copilot_requests.clear(); page.locator("#run").click(); page.wait_for_function("document.querySelector('#run')&&document.querySelector('#run').textContent.includes('RUN SITE ANALYSIS')",timeout=45000); check(len(analysis_requests)==1,"one analysis request per Run click"); check("ANALYSIS COMPLETE" in page.locator("#mapStatus").inner_text(),"site analysis completes"); check(page.locator("#readyLabel").inner_text().strip()!="PRE-RUN","readiness updates"); page.wait_for_timeout(800); check(len(copilot_requests)<=1,"zero or one copilot request per analysis")
             if page.locator("#aiSynthesisCard").count(): check(page.locator("#aiSynthesisCard").is_visible(),"AI synthesis surfaced when available"); check("SOURCE OF TRUTH" in page.locator("#aiSynthesisCard").inner_text().upper(),"AI boundary text surfaced")
