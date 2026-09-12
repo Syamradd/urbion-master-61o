@@ -1,7 +1,8 @@
 """Same-origin proxies for authoritative i-Plan/JMG GIS imagery.
 
 Browser-facing imagery stays same-origin while upstream GIS hosts and service
-prefixes remain tightly allow-listed.
+prefixes remain tightly allow-listed. Query parameters are normalized to the
+upstream APIs' canonical names before forwarding.
 """
 from __future__ import annotations
 
@@ -21,14 +22,24 @@ ALLOWED_WMS_PARAMS = {
     "version", "tiled", "width", "height", "srs", "bbox", "crs",
     "bgcolor", "exceptions", "time", "elevation",
 }
-ALLOWED_ARCGIS_PARAMS = {
-    "bbox", "bboxsr", "imagesr", "size", "imagedisplay", "dpi",
-    "format", "transparent", "f", "layers", "layerdefs", "dynamiclayers",
+ARCGIS_PARAM_NAMES = {
+    "bbox": "bbox", "bboxsr": "bboxSR", "imagesr": "imageSR", "size": "size",
+    "imagedisplay": "imageDisplay", "dpi": "dpi", "format": "format",
+    "transparent": "transparent", "f": "f", "layers": "layers",
+    "layerdefs": "layerDefs", "dynamiclayers": "dynamicLayers",
 }
 
 
+def _headers() -> dict[str, str]:
+    return {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36",
+        "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        "Referer": "https://www.planmalaysia.gov.my/",
+    }
+
+
 def _client_get(url: str, params: dict[str, str]) -> httpx.Response:
-    with httpx.Client(follow_redirects=True, timeout=20.0) as client:
+    with httpx.Client(follow_redirects=True, timeout=30.0, headers=_headers()) as client:
         return client.get(url, params=params)
 
 
@@ -67,7 +78,11 @@ def map_arcgis_proxy(request: Request) -> Response:
     if not match or not parsed.path.endswith("/MapServer"):
         return Response("ArcGIS service is outside the allow-listed authoritative GIS namespace.", status_code=400, media_type="text/plain")
 
-    params = {key: value for key, value in request.query_params.multi_items() if key.lower() in ALLOWED_ARCGIS_PARAMS and key.lower() != "service"}
+    params: dict[str, str] = {}
+    for key, value in request.query_params.multi_items():
+        canonical = ARCGIS_PARAM_NAMES.get(key.lower())
+        if canonical and key.lower() != "service":
+            params[canonical] = value
     params.setdefault("f", "image")
     params.setdefault("format", "png32")
     params.setdefault("transparent", "true")
