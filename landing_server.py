@@ -9,6 +9,7 @@ from server import AssessmentRequest, assess_core
 from urbion_decision_center import build_decision_center
 from urbion_wms_proxy import router as urbion_wms_router
 from urbion_environment_api import router as urbion_environment_router
+from urbion_mobility_api import router as urbion_mobility_router
 from urbion_canonical_evidence import build_canonical_evidence_packet
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -25,9 +26,11 @@ WORKSPACE_PBT_CATALOG = BASE_DIR / "urbion_workspace_pbt_catalog.js"
 WORKSPACE_UTILITY_OWNER = BASE_DIR / "urbion_workspace_utility_owner.js"
 WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
 WORKSPACE_ENVIRONMENT = BASE_DIR / "urbion_workspace_environment_owner.js"
+WORKSPACE_MOBILITY = BASE_DIR / "urbion_workspace_mobility_owner.js"
 
 app.include_router(urbion_wms_router)
 app.include_router(urbion_environment_router)
+app.include_router(urbion_mobility_router)
 
 
 def _html(path: Path) -> HTMLResponse:
@@ -39,7 +42,8 @@ def _html(path: Path) -> HTMLResponse:
 def _workspace() -> HTMLResponse:
     required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER,
                 WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
-                WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT)
+                WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT,
+                WORKSPACE_MOBILITY)
     for path in required:
         if not path.is_file():
             return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
@@ -52,16 +56,18 @@ def _workspace() -> HTMLResponse:
                '<script src="/urbion_workspace_pbt_catalog.js"></script>'
                '<script src="/urbion_workspace_utility_owner.js"></script>'
                '<script src="/urbion_workspace_review_gaps_owner.js"></script>'
-               '<script src="/urbion_workspace_environment_owner.js"></script>')
+               '<script src="/urbion_workspace_environment_owner.js"></script>'
+               '<script src="/urbion_workspace_mobility_owner.js"></script>')
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
-    return HTMLResponse(html, media_type="text/html; charset=utf-8", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
+    return HTMLResponse(html, media_type="text/html", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
 
 
 def _canonical_packet(assessment: dict) -> dict:
     return build_canonical_evidence_packet(assessment=assessment,
                                            spatial=assessment.get("site_analysis"),
                                            environment=assessment.get("live_environment_evidence") or assessment.get("evidence_intelligence"),
+                                           stations=assessment.get("live_station_evidence") or assessment.get("stations"),
                                            policy_graph={"policy_coverage": assessment.get("policy_coverage")})
 
 
@@ -122,6 +128,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_utility_owner.js": (WORKSPACE_UTILITY_OWNER,"URBION HORIZON utility owner missing."),
         "/urbion_workspace_review_gaps_owner.js": (WORKSPACE_REVIEW_GAPS,"URBION HORIZON review-gap presentation owner missing."),
         "/urbion_workspace_environment_owner.js": (WORKSPACE_ENVIRONMENT,"URBION HORIZON environment evidence owner missing."),
+        "/urbion_workspace_mobility_owner.js": (WORKSPACE_MOBILITY,"URBION HORIZON mobility evidence owner missing."),
     }
     if path in assets:
         target,message=assets[path]
