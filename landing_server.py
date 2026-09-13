@@ -29,6 +29,7 @@ WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
 WORKSPACE_ENVIRONMENT = BASE_DIR / "urbion_workspace_environment_owner.js"
 WORKSPACE_MOBILITY = BASE_DIR / "urbion_workspace_mobility_owner.js"
 WORKSPACE_DEVELOPMENT_IMPACT = BASE_DIR / "urbion_workspace_development_impact_owner.js"
+WORKSPACE_RATIO_OWNER = BASE_DIR / "urbion_workspace_ratio_owner.js"
 
 app.include_router(urbion_wms_router)
 app.include_router(urbion_environment_router)
@@ -45,7 +46,7 @@ def _workspace() -> HTMLResponse:
     required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER,
                 WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
                 WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT,
-                WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT)
+                WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT, WORKSPACE_RATIO_OWNER)
     for path in required:
         if not path.is_file():
             return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
@@ -60,7 +61,8 @@ def _workspace() -> HTMLResponse:
                '<script src="/urbion_workspace_review_gaps_owner.js"></script>'
                '<script src="/urbion_workspace_environment_owner.js"></script>'
                '<script src="/urbion_workspace_mobility_owner.js"></script>'
-               '<script src="/urbion_workspace_development_impact_owner.js"></script>')
+               '<script src="/urbion_workspace_development_impact_owner.js"></script>'
+               '<script src="/urbion_workspace_ratio_owner.js"></script>')
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
     return HTMLResponse(html, media_type="text/html", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
@@ -167,6 +169,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_environment_owner.js": (WORKSPACE_ENVIRONMENT,"URBION HORIZON environment evidence owner missing."),
         "/urbion_workspace_mobility_owner.js": (WORKSPACE_MOBILITY,"URBION HORIZON mobility evidence owner missing."),
         "/urbion_workspace_development_impact_owner.js": (WORKSPACE_DEVELOPMENT_IMPACT,"URBION HORIZON development impact owner missing."),
+        "/urbion_workspace_ratio_owner.js": (WORKSPACE_RATIO_OWNER,"URBION HORIZON plot ratio presentation owner missing."),
     }
     if path in assets:
         target,message=assets[path]
