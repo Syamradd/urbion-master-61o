@@ -26,11 +26,11 @@ Principle: **do not rewrite the deterministic engine; converge existing intellig
 
 ### P0 — Canonical evidence convergence
 - [x] Define canonical evidence-packet contract: site identity → source context → calculations → policy → risks → decision → review gaps
-- [ ] Feed existing site / i-Plan / environmental / station / LCP / policy evidence into the canonical packet where available
+- [x] Assessment presentation surface now attaches the canonical packet and converges existing site / policy / evidence-intelligence fields; external station / LCP enrichment remains pending
 - [x] Preserve evidence states: `USER_PROVIDED` · `CALCULATED` · `SOURCE_CONTEXT` · `VERIFIED` · `UNVERIFIED`
 - [ ] Make `review_gaps` first-class and visible in downstream Decision / Evidence surfaces
 - [ ] Ensure AI/Copilot can only explain the canonical deterministic packet
-- [x] Add integrity tests for packet consistency across the packet contract; downstream UI integration remains pending
+- [x] Add packet-contract tests and a live `/assess` integration smoke; downstream UI consistency remains pending until CI verification
 
 ### P0 — Planning-rule provenance hardening
 - [ ] Audit every RT / GP rule for document title, edition/amendment, page/table/clause, spatial condition and traceability
