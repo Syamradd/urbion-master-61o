@@ -58,6 +58,10 @@ jobs:
           cat /tmp/urbion-server.log || true
           kill "${SERVER_PID}" 2>/dev/null || true
           exit 1
+      - name: Run live environment evidence integration smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_environment_live_integration_smoke.py
       - name: Run live canonical packet integration smoke
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
