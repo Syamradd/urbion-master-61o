@@ -184,6 +184,34 @@ def _canonical_downstream_error(request: Request, exc: Exception) -> JSONRespons
     )
 
 
+def _canonical_response_error(request: Request, response: Response, body: bytes, payload: object) -> Response:
+    """Normalize downstream HTTP error responses, not only raised exceptions."""
+    if response.status_code < 400:
+        return response
+    if isinstance(payload, dict) and payload.get("error") is True and payload.get("version") == "URBION_ERROR_V1":
+        return JSONResponse(payload, status_code=response.status_code, headers={
+            k: v for k, v in dict(response.headers).items()
+            if k.lower() not in {"content-length", "content-type"}
+        })
+    if isinstance(payload, dict):
+        detail = payload.get("detail")
+        if isinstance(detail, dict):
+            code = str(detail.get("code") or f"HTTP_{response.status_code}")
+            message = str(detail.get("message") or detail.get("detail") or "Request failed.")
+        else:
+            code = f"HTTP_{response.status_code}"
+            message = str(detail or payload.get("message") or "Request failed.")
+        return JSONResponse(
+            canonical_error(code=code, message=message, route=request.url.path,
+                            stage="HTTP_ERROR", source="URBION_REQUEST_GATE",
+                            retryable=response.status_code >= 500, details=payload),
+            status_code=response.status_code,
+        )
+    # Preserve non-JSON error assets/pages; the canonical contract applies to API-style JSON responses.
+    return Response(content=body, status_code=response.status_code,
+                    headers=dict(response.headers), media_type=response.media_type)
+
+
 @app.middleware("http")
 async def _urbion_canonical_presentation(request: Request, call_next):
     path = request.url.path
@@ -222,7 +250,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         return FileResponse(WELCOME_BACKGROUND_FILE, media_type="image/png", headers={"Cache-Control":"no-store, max-age=0, must-revalidate","X-URBION-WELCOME-BACKGROUND":"CANONICAL-WELCOME"})
     if path == "/about": return _html(ABOUT_FILE)
     if path == "/workspace": return _workspace()
-    assets={
+    assets = {
         "/urbion_workspace_bridge.js": (WORKSPACE_BRIDGE,"URBION HORIZON workspace bridge missing."),
         "/urbion_workspace_runtime.js": (WORKSPACE_RUNTIME,"URBION HORIZON runtime layer missing."),
         "/urbion_layer_runtime_fix.js": (WORKSPACE_LAYER,"URBION HORIZON live layer renderer missing."),
@@ -240,11 +268,11 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_station_map_owner.js": (WORKSPACE_STATION_MAP,"URBION HORIZON station map owner missing."),
     }
     if path in assets:
-        target,message=assets[path]
+        target, message = assets[path]
         if not target.is_file(): return Response(message,status_code=500,media_type="text/plain; charset=utf-8")
         return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
     if path == "/urbion_workspace_final.js":
-        target=BASE_DIR/"urbion_workspace_final.js"
+        target = BASE_DIR / "urbion_workspace_final.js"
         if not target.is_file(): return Response("URBION HORIZON legacy compatibility asset missing.",status_code=404,media_type="text/plain")
         return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
 
@@ -255,9 +283,13 @@ async def _urbion_canonical_presentation(request: Request, call_next):
     except Exception as exc:
         return _canonical_downstream_error(request, exc)
 
+    if response.status_code >= 400:
+        body, payload = await _response_json(response)
+        return _canonical_response_error(request, response, body, payload)
+
     if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
         body, payload = await _response_json(response)
-        if not isinstance(payload, dict) or response.status_code >= 400:
+        if not isinstance(payload, dict):
             return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
         payload = _attach_packet(payload, path)
         headers = dict(response.headers)
