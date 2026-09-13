@@ -8,6 +8,9 @@ on:
     branches:
       - feature/canonical-workspace-v2
 
+env:
+  PYTHONPATH: .
+
 jobs:
   rule-provenance:
     runs-on: ubuntu-latest
