@@ -1,18 +1,18 @@
 """Live nearest-station intelligence for LCP-oriented site screening.
 
-JPS Public Infobanjir is queried from its public station pages. DOE/APIMS is
-kept as an explicit adapter boundary: if an authorised/public JSON endpoint is
-configured, URBION can consume it; otherwise it reports SOURCE_CONTEXT rather
-than inventing an air-quality value.
+JPS Public Infobanjir and the official JAS MyEQMS/EQMP station layer are
+queried as source context. DOE/APIMS is kept as an explicit adapter boundary:
+if an authorised/public JSON endpoint is configured, URBION can consume it;
+otherwise it reports SOURCE_CONTEXT rather than inventing an air-quality value.
 """
 from __future__ import annotations
 
-import math, os, re, urllib.parse, urllib.request
-from datetime import datetime, timezone
+import json, math, os, re, urllib.parse, urllib.request
 from typing import Any
 
 JPS_RAIN_URL = "https://publicinfobanjir.water.gov.my/hujan/data-hujan/"
 JPS_STATION_URL = "https://publicinfobanjir.water.gov.my/cari-station/"
+EQMP_STATION_URL = "https://geoapp.doe.gov.my/jarvis01/rest/services/Hosted/Stesen_EQMP/FeatureServer/0/query"
 APIMS_URL = os.getenv("URBION_APIMS_URL", "").strip()
 
 STATE_CODES = {"Melaka": "MLK", "Johor": "JHR", "Selangor": "SEL", "Perak": "PRK", "Pulau Pinang": "PNG", "Pahang": "PHG", "Negeri Sembilan": "NSN", "Kedah": "KDH", "Kelantan": "KTN", "Terengganu": "TRG", "Sabah": "SBH", "Sarawak": "SWK", "Perlis": "PLS", "Wilayah Persekutuan Kuala Lumpur": "WLH"}
@@ -65,8 +65,6 @@ def _station_info(state: str, station_id: str) -> dict[str, Any]:
 
 
 def _rainfall_rows(state: str, html: str) -> list[dict[str, Any]]:
-    # The public table is intentionally parsed conservatively; station IDs are
-    # retained even if a future page layout changes other columns.
     rows = []
     for match in re.finditer(r"<tr[^>]*>(.*?)</tr>", html, flags=re.I|re.S):
         cells = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", c)).strip() for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", match.group(1), flags=re.I|re.S)]
@@ -95,12 +93,56 @@ def nearest_jps_stations(site_lat: float, site_lon: float, state: str = "Melaka"
     return {"provider":"JPS Public Infobanjir", "status":"LIVE", "site":{"latitude":site_lat,"longitude":site_lon}, "stations":candidates[:max(1,min(limit,10))], "source":JPS_RAIN_URL, "evidence":"SOURCE_CONTEXT", "decision_boundary":"OBSERVATION_CONTEXT"}
 
 
+def nearest_eqmp_water_stations(site_lat: float, site_lon: float, limit: int = 5, radius_m: float = 10000) -> dict[str, Any]:
+    """Query the official JAS MyEQMS/EQMP station layer near the site."""
+    params = {
+        "f": "json",
+        "where": "1=1",
+        "geometry": f"{site_lon},{site_lat}",
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "distance": str(float(radius_m)),
+        "units": "esriSRUnit_Meter",
+        "outFields": "objectid,bil,id_stesen,longitude,latitude,field5,field6,ph,turbidity__ntu_,conductivity__µs_cm_,field10",
+        "returnGeometry": "false",
+        "outSR": "4326",
+    }
+    try:
+        payload = json.loads(_fetch(f"{EQMP_STATION_URL}?{urllib.parse.urlencode(params)}"))
+        if payload.get("error"):
+            return {"provider":"JAS MyEQMS / EQMP", "status":"UNAVAILABLE", "stations":[], "evidence":"SOURCE_CONTEXT", "decision_boundary":"OBSERVATION_CONTEXT", "error":payload["error"]}
+        stations = []
+        for feature in payload.get("features") or []:
+            a = feature.get("attributes") or {}
+            lat = _clean_number(a.get("latitude")); lon = _clean_number(a.get("longitude"))
+            if lat is None or lon is None: continue
+            item = {
+                "station_id": a.get("id_stesen"),
+                "name": a.get("id_stesen") or f"EQMP {a.get('bil') or 'station'}",
+                "latitude": lat,
+                "longitude": lon,
+                "distance_m": round(haversine_m(site_lat, site_lon, lat, lon), 1),
+                "ph": a.get("ph"),
+                "turbidity_ntu": a.get("turbidity__ntu_"),
+                "conductivity_us_cm": a.get("conductivity__µs_cm_"),
+                "observed_at": a.get("field5"),
+                "source_note": a.get("field6"),
+                "evidence": "SOURCE_CONTEXT",
+                "status": "LIVE_QUERY",
+            }
+            stations.append(item)
+        stations.sort(key=lambda x: x["distance_m"])
+        return {"provider":"JAS MyEQMS / EQMP", "dataset":"Stesen_EQMP", "status":"LIVE", "site":{"latitude":site_lat,"longitude":site_lon}, "radius_m":radius_m, "stations":stations[:max(1,min(limit,10))], "source":EQMP_STATION_URL, "evidence":"SOURCE_CONTEXT", "decision_boundary":"OBSERVATION_CONTEXT"}
+    except Exception as exc:
+        return {"provider":"JAS MyEQMS / EQMP", "dataset":"Stesen_EQMP", "status":"UNAVAILABLE", "stations":[], "radius_m":radius_m, "source":EQMP_STATION_URL, "evidence":"SOURCE_CONTEXT", "decision_boundary":"OBSERVATION_CONTEXT", "error_type":type(exc).__name__}
+
+
 def nearest_air_quality(site_lat: float, site_lon: float, limit: int = 5) -> dict[str, Any]:
     if not APIMS_URL:
         return {"provider":"DOE APIMS", "status":"SOURCE_CONTEXT", "configured":False, "stations":[], "message":"No public/authorised APIMS JSON endpoint configured; air-quality values are not fabricated.", "evidence":"SOURCE_CONTEXT", "decision_boundary":"OBSERVATION_CONTEXT"}
     try:
         payload = _fetch(APIMS_URL)
-        import json
         data = json.loads(payload)
         records = data.get("stations", data if isinstance(data, list) else [])
         candidates=[]
@@ -118,5 +160,6 @@ def build_live_station_snapshot(site_lat: float, site_lon: float, state: str = "
     """Return a judge/LCP-ready snapshot; individual provider failure is isolated."""
     try: jps=nearest_jps_stations(site_lat,site_lon,state,limit)
     except Exception as exc: jps={"provider":"JPS Public Infobanjir","status":"UNAVAILABLE","stations":[],"evidence":"SOURCE_CONTEXT","error_type":type(exc).__name__}
+    eqmp=nearest_eqmp_water_stations(site_lat,site_lon,limit)
     air=nearest_air_quality(site_lat,site_lon,limit)
-    return {"version":"MASTER-184","site":{"latitude":site_lat,"longitude":site_lon,"state":state},"jps_rainfall":jps,"air_quality":air,"lcp_fields":["station_name","station_id","distance_m","reading","unit","timestamp","status","source","evidence"],"statutory_verification":"NOT_CLAIMED"}
+    return {"version":"MASTER-184","site":{"latitude":site_lat,"longitude":site_lon,"state":state},"jps_rainfall":jps,"eqmp_water":eqmp,"air_quality":air,"lcp_fields":["station_name","station_id","distance_m","reading","unit","timestamp","status","source","evidence"],"statutory_verification":"NOT_CLAIMED"}

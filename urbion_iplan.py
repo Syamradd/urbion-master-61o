@@ -7,6 +7,7 @@ pretending that a map hit is a statutory determination.
 """
 from __future__ import annotations
 import json
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -64,11 +65,19 @@ def _query_environment_layer(service: str, layer_id: int, lat: float, lon: float
 def query_environment_context(lat: float, lon: float, radius_m: float = 1000, state: str = "Melaka") -> dict[str, Any]:
     """Query authoritative PLANMalaysia environmental layers around a site."""
     scope = "MELAKA_FOCUSED" if state == "Melaka" else "NATIONAL_LAYER_SCREENED_FOR_REQUESTED_STATE"
-    results: dict[str, Any] = {}
-    for key, (service, layer_id, label) in ENVIRONMENT_LAYERS.items():
+
+    def _run(item: tuple[str, tuple[str, int, str]]) -> tuple[str, dict[str, Any]]:
+        key, (service, layer_id, label) = item
         result = _query_environment_layer(service, layer_id, lat, lon, radius_m)
         result.update({"id":key,"name":label,"provider":"PLANMalaysia","evidence":"SOURCE_CONTEXT","decision_use":"SCREENING_ONLY"})
-        results[key] = result
+        return key, result
+
+    # Keep each source query independently bounded while allowing slow public
+    # ArcGIS services to fail/recover independently instead of serialising the
+    # complete screening window behind the slowest layer.
+    with ThreadPoolExecutor(max_workers=min(11, len(ENVIRONMENT_LAYERS))) as pool:
+        results = dict(pool.map(_run, ENVIRONMENT_LAYERS.items()))
+
     return {"provider":"PLANMalaysia DPFDN","state":state,"scope":scope,"site":{"latitude":lat,"longitude":lon},"radius_m":radius_m,"layers":results,"decision_boundary":"ENVIRONMENTAL_SCREENING_SUPPORT","statutory_verification":"NOT_CLAIMED","disclaimer":"Spatial hits are source context within the configured query radius. Confirm authoritative currency, plan status, technical thresholds and agency requirements before planning reliance."}
 
 def query_iplan_context(lat: float, lon: float, state: str = "Melaka", environment_radius_m: float = 1000) -> dict[str, Any]:

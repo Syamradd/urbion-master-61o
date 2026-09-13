@@ -44,22 +44,29 @@ const renderRail=()=>{
   const has=right.querySelector('.urbion-review-gap-surface[data-owner="canonical"]');
   if(!has) surface('LIVE EVIDENCE');
 };
-const schedule=(context)=>setTimeout(()=>{if(packet()) surface(context);},40);
-const observer=new MutationObserver(()=>{if(document.getElementById('modal')?.classList.contains('show')){
+const liveContext=()=>{
+  const modal=document.getElementById('modal');
+  if(!modal?.classList.contains('show')) return 'REVIEW';
   const title=document.getElementById('modalTitle')?.textContent||'';
-  const context=/DECISION/i.test(title)?'DECISION':/EVIDENCE/i.test(title)?'EVIDENCE':'REVIEW';
-  schedule(context);
-}});
+  if(/DECISION/i.test(title)) return 'DECISION';
+  if(/EVIDENCE/i.test(title)) return 'EVIDENCE';
+  return 'REVIEW';
+};
+let pendingTimer=null;
+const schedule=()=>{
+  clearTimeout(pendingTimer);
+  pendingTimer=setTimeout(()=>{pendingTimer=null;if(packet())surface(liveContext())},40);
+};
+const observer=new MutationObserver(()=>{if(document.getElementById('modal')?.classList.contains('show'))schedule();});
 const boot=async()=>{
   observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
   document.addEventListener('click',event=>{
     const btn=event.target instanceof Element?event.target.closest('button'):null;
     if(!btn) return;
     const mode=(btn.dataset?.mode||'').toLowerCase();
-    if(mode==='evidence') schedule('EVIDENCE');
-    if(mode==='decision') schedule('DECISION');
+    if(mode==='evidence'||mode==='decision')schedule();
   },true);
-  const ready=()=>{renderRail();schedule('REVIEW')};
+  const ready=()=>{renderRail();schedule()};
   for(let i=0;i<120;i++){if(packet()) return ready();await new Promise(r=>setTimeout(r,100))}
 };
 boot();

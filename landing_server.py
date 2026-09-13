@@ -12,6 +12,7 @@ from urbion_environment_api import router as urbion_environment_router
 from urbion_mobility_api import router as urbion_mobility_router
 from urbion_canonical_evidence import build_canonical_evidence_packet
 from urbion_development_impact import build_development_impact
+from urbion_road_intelligence import build_road_intelligence
 
 BASE_DIR = Path(__file__).resolve().parent
 WELCOME_FILE = BASE_DIR / "welcome.html"
@@ -28,8 +29,11 @@ WORKSPACE_UTILITY_OWNER = BASE_DIR / "urbion_workspace_utility_owner.js"
 WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
 WORKSPACE_ENVIRONMENT = BASE_DIR / "urbion_workspace_environment_owner.js"
 WORKSPACE_MOBILITY = BASE_DIR / "urbion_workspace_mobility_owner.js"
-WORKSPACE_DEVELOPMENT_IMPACT = BASE_DIR / "urbion_workspace_development_impact_owner.js"
+WORKSPACE_DEVELOPMENT_IMPACT_V4 = BASE_DIR / "urbion_workspace_development_impact_owner_v4.js"
 WORKSPACE_RATIO_OWNER = BASE_DIR / "urbion_workspace_ratio_owner.js"
+WORKSPACE_ROAD_INTELLIGENCE = BASE_DIR / "urbion_workspace_road_intelligence_owner.js"
+WORKSPACE_ANALYSIS_SUMMARY = BASE_DIR / "urbion_workspace_analysis_summary_owner.js"
+WORKSPACE_STATION_MAP = BASE_DIR / "urbion_workspace_station_map_owner.js"
 
 app.include_router(urbion_wms_router)
 app.include_router(urbion_environment_router)
@@ -46,7 +50,8 @@ def _workspace() -> HTMLResponse:
     required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER,
                 WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
                 WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT,
-                WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT, WORKSPACE_RATIO_OWNER)
+                WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT_V4, WORKSPACE_RATIO_OWNER,
+                WORKSPACE_ROAD_INTELLIGENCE, WORKSPACE_ANALYSIS_SUMMARY, WORKSPACE_STATION_MAP)
     for path in required:
         if not path.is_file():
             return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
@@ -61,8 +66,11 @@ def _workspace() -> HTMLResponse:
                '<script src="/urbion_workspace_review_gaps_owner.js"></script>'
                '<script src="/urbion_workspace_environment_owner.js"></script>'
                '<script src="/urbion_workspace_mobility_owner.js"></script>'
-               '<script src="/urbion_workspace_development_impact_owner.js"></script>'
-               '<script src="/urbion_workspace_ratio_owner.js"></script>')
+               '<script src="/urbion_workspace_development_impact_owner_v4.js"></script>'
+               '<script src="/urbion_workspace_ratio_owner.js"></script>'
+               '<script src="/urbion_workspace_road_intelligence_owner.js"></script>'
+               '<script src="/urbion_workspace_analysis_summary_owner.js"></script>'
+               '<script src="/urbion_workspace_station_map_owner.js"></script>')
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
     return HTMLResponse(html, media_type="text/html", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
@@ -107,6 +115,18 @@ def _canonical_packet(assessment: dict) -> dict:
                                            policy_graph={"policy_coverage": assessment.get("policy_coverage")})
 
 
+def _road_intelligence_from_payload(payload: dict) -> dict:
+    return build_road_intelligence(
+        site_lat=payload.get("site_lat"),
+        site_lon=payload.get("site_lon"),
+        nearest_road_name=payload.get("nearest_road_name"),
+        nearest_road_distance_m=payload.get("nearest_road_distance_m"),
+        road_hierarchy=payload.get("road_hierarchy"),
+        road_source=payload.get("road_source"),
+        centres=payload.get("centres") if isinstance(payload.get("centres"), list) else [],
+    )
+
+
 def _attach_packet(payload: dict, path: str) -> dict:
     assessment = payload if path == "/assess" else payload.get("assessment")
     if isinstance(assessment, dict):
@@ -133,6 +153,16 @@ async def _response_json(response: Response) -> tuple[bytes, object]:
 @app.middleware("http")
 async def _urbion_canonical_presentation(request: Request, call_next):
     path = request.url.path
+    if path == "/road-intelligence" and request.method == "POST":
+        try:
+            raw = await request.body()
+            incoming = json.loads(raw.decode("utf-8")) if raw else {}
+            if not isinstance(incoming, dict):
+                return JSONResponse({"detail": "JSON object required"}, status_code=400)
+            return JSONResponse(_road_intelligence_from_payload(incoming))
+        except Exception as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=400)
+
     if path == "/decision-center" and request.method == "POST":
         try:
             raw = await request.body()
@@ -168,8 +198,11 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_review_gaps_owner.js": (WORKSPACE_REVIEW_GAPS,"URBION HORIZON review-gap presentation owner missing."),
         "/urbion_workspace_environment_owner.js": (WORKSPACE_ENVIRONMENT,"URBION HORIZON environment evidence owner missing."),
         "/urbion_workspace_mobility_owner.js": (WORKSPACE_MOBILITY,"URBION HORIZON mobility evidence owner missing."),
-        "/urbion_workspace_development_impact_owner.js": (WORKSPACE_DEVELOPMENT_IMPACT,"URBION HORIZON development impact owner missing."),
+        "/urbion_workspace_development_impact_owner_v4.js": (WORKSPACE_DEVELOPMENT_IMPACT_V4,"URBION HORIZON development impact owner missing."),
         "/urbion_workspace_ratio_owner.js": (WORKSPACE_RATIO_OWNER,"URBION HORIZON plot ratio presentation owner missing."),
+        "/urbion_workspace_road_intelligence_owner.js": (WORKSPACE_ROAD_INTELLIGENCE,"URBION HORIZON road intelligence owner missing."),
+        "/urbion_workspace_analysis_summary_owner.js": (WORKSPACE_ANALYSIS_SUMMARY,"URBION HORIZON site analysis summary owner missing."),
+        "/urbion_workspace_station_map_owner.js": (WORKSPACE_STATION_MAP,"URBION HORIZON station map owner missing."),
     }
     if path in assets:
         target,message=assets[path]

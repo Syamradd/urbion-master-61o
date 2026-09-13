@@ -84,6 +84,7 @@ def build_canonical_evidence_packet(
         "version": PACKET_VERSION,
         "project": assessment.get("project", "URBION"),
         "site": site,
+        "site_analysis": assessment.get("site_analysis") or {},
         "identity": {
             "state": site.get("state"),
             "district": site.get("district"),

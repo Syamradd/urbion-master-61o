@@ -21,8 +21,6 @@ Scope: improve the judge-facing planning dashboard without changing the determin
 | Public/stakeholder review | Basic | Strong | Strong | Moderate | Strong |
 | Export / presentation | Good | Good | Strong | Strong | Strong |
 
-Sources: ArcGIS Urban documentation describes citywide 3D plans/projects, zoning-rule visualization, scenario comparison, parcel-level planning and custom metrics; Autodesk Forma provides contextual data, 3D site design, automated alternatives and environmental analyses; UrbanFootprint provides existing-conditions dashboards, multi-topic analytics, scenario comparisons and reporting; OpenCities Planner provides live 3D geo-data, WMS, review/dialogue, export and public views. citeturn297237search5turn297237search2turn297237search4turn658659search3turn658659search9turn297237search1turn297237search7turn297237search0
-
 ## P0 — repair / correctness before visual expansion
 
 - [x] Plot ratio presentation uses planning convention `1 : X` while engine value remains numeric.
@@ -35,7 +33,6 @@ Sources: ArcGIS Urban documentation describes citywide 3D plans/projects, zoning
 ## P1 — biggest dashboard gaps
 
 ### A. EXISTING CONDITIONS / CONTEXT
-
 Current gap: dashboard is assessment-centric, but world-class planning products first establish baseline conditions with dense, queryable metrics.
 
 Add to right rail / Evidence:
@@ -47,7 +44,6 @@ Add to right rail / Evidence:
 - timestamp and source per metric.
 
 ### B. SCENARIO COMPARISON
-
 Current gap: What-If is present, but the main dashboard does not visually compare baseline vs alternatives as a persistent decision surface.
 
 Add:
@@ -56,10 +52,7 @@ Add:
 - delta arrows and explicit trade-off labels;
 - best candidate only as a recommendation, never as an authority decision.
 
-ArcGIS Urban and Forma both emphasize comparing multiple proposals/analyses and quantifying trade-offs. citeturn297237search2turn297237search4turn658659search11
-
 ### C. 3D / DEVELOPMENT ENVELOPE
-
 Current gap: URBION is visually map-first and rule-first, while leading planning platforms connect regulation directly to a 3D buildable envelope.
 
 Add later:
@@ -71,10 +64,7 @@ Add later:
 
 Do not build a new 3D engine during the current freeze; first create a clean integration boundary for future massing.
 
-ArcGIS Urban converts zoning parameters into 3D representations; Forma combines site context, 3D editing and metrics. citeturn297237search5turn297237search11turn658659search3
-
 ### D. METRICS / INDICATORS
-
 Current gap: URBION has readiness and evidence counts, but fewer decision KPIs than mature planning products.
 
 Target metric families:
@@ -86,7 +76,6 @@ Target metric families:
 - implementation: KM/OSC readiness.
 
 ### E. EVIDENCE & PROVENANCE — TURN DIFFERENTIATOR INTO HERO FEATURE
-
 Current strength: canonical evidence packet, source context, review gaps, cadastral boundary, live environment/mobility evidence.
 
 Improve presentation:
@@ -96,10 +85,7 @@ Improve presentation:
 - classify gaps as `INPUT`, `SOURCE`, `VERIFICATION`, `BLOCKER`;
 - show why a metric affects the decision.
 
-This is where URBION can beat generic urban dashboards rather than copying them.
-
 ### F. PLANNING RULE EXPLAINER
-
 Current gap: rules appear as result rows, but the planner still has to interpret applicability.
 
 Add a compact rule card:
@@ -109,7 +95,6 @@ For plot ratio specifically:
 `PROPOSED 1 : 4.5` vs `CONTROL 1 : 4.0` rather than displaying bare decimals.
 
 ### G. KM / OSC IMPLEMENTATION PATH
-
 Current gap: most benchmark platforms stop at planning/design/scenario analysis.
 
 Make URBION's downstream workflow a signature path:
@@ -123,7 +108,6 @@ Surface:
 - next submission action.
 
 ### H. COLLABORATION / STAKEHOLDER REVIEW
-
 Current gap: core workspace is primarily single-user.
 
 Future:
@@ -133,10 +117,9 @@ Future:
 - shareable read-only view;
 - stakeholder feedback capture.
 
-OpenCities Planner and ArcGIS Urban both support collaboration/review/public engagement workflows. citeturn297237search0turn297237search5
-
 ## P2 — visual / premium layer
 
+- [x] GIS 25-layer regression coverage added to canonical Browser Gate.
 - [ ] persistent scenario timeline;
 - [ ] cleaner map legend + layer provenance drawer;
 - [ ] richer chart language (distribution, delta, small multiples);
@@ -145,18 +128,13 @@ OpenCities Planner and ArcGIS Urban both support collaboration/review/public eng
 - [ ] high-quality PDF/PNG/CSV export with source footer;
 - [ ] optional 3D view after core 2D evidence flow is stable.
 
-UrbanFootprint explicitly emphasizes presentation-ready charts/tables and exports, while Forma provides polished comparison/presentation workflows. citeturn297237search1turn658659search3
-
 ## P3 — advanced / later
-
 - [ ] automatic layout generation / site automation;
 - [ ] richer environmental simulation (sun, wind, noise, microclimate);
 - [ ] citywide portfolio view;
 - [ ] target tracking / plan monitoring;
 - [ ] saved scenario history;
 - [ ] API/import/export connectors for enterprise GIS/BIM.
-
-Forma already supports automated alternatives and environmental analyses; ArcGIS Urban supports plan-wide metrics and scenario comparisons. citeturn658659search3turn658659search1turn297237search4
 
 ## Judge-winning priority order
 
