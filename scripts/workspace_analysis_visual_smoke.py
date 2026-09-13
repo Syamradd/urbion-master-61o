@@ -14,7 +14,7 @@ with sync_playwright() as p:
     browser=p.chromium.launch(headless=True)
     page=browser.new_page()
     page.goto(BASE+'/workspace',wait_until='domcontentloaded')
-    result=page.evaluate("""async ({base,payload})=>{const r=await fetch(base+'/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();window.URBION_LAST=d;window.dispatchEvent(new CustomEvent('urbion:assessment-ready'));return d}""",{'base':BASE,'payload':PAYLOAD})
+    result=page.evaluate("""async ({base,payload})=>{const r=await fetch(base+'/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();Object.defineProperty(window,'URBION_LAST',{configurable:true,get:()=>d});window.dispatchEvent(new CustomEvent('urbion:assessment-ready'));return d}""",{'base':BASE,'payload':PAYLOAD})
     assert result.get('canonical_evidence_packet'),'canonical packet missing'
     sa=result['canonical_evidence_packet'].get('site_analysis') or {}
     assert isinstance(sa.get('score'),(int,float)),'site suitability score missing'
