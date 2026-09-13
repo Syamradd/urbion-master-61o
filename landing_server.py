@@ -11,6 +11,7 @@ from urbion_wms_proxy import router as urbion_wms_router
 from urbion_environment_api import router as urbion_environment_router
 from urbion_mobility_api import router as urbion_mobility_router
 from urbion_canonical_evidence import build_canonical_evidence_packet
+from urbion_development_impact import build_development_impact
 
 BASE_DIR = Path(__file__).resolve().parent
 WELCOME_FILE = BASE_DIR / "welcome.html"
@@ -27,6 +28,7 @@ WORKSPACE_UTILITY_OWNER = BASE_DIR / "urbion_workspace_utility_owner.js"
 WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
 WORKSPACE_ENVIRONMENT = BASE_DIR / "urbion_workspace_environment_owner.js"
 WORKSPACE_MOBILITY = BASE_DIR / "urbion_workspace_mobility_owner.js"
+WORKSPACE_DEVELOPMENT_IMPACT = BASE_DIR / "urbion_workspace_development_impact_owner.js"
 
 app.include_router(urbion_wms_router)
 app.include_router(urbion_environment_router)
@@ -43,7 +45,7 @@ def _workspace() -> HTMLResponse:
     required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER,
                 WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
                 WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT,
-                WORKSPACE_MOBILITY)
+                WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT)
     for path in required:
         if not path.is_file():
             return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
@@ -57,17 +59,49 @@ def _workspace() -> HTMLResponse:
                '<script src="/urbion_workspace_utility_owner.js"></script>'
                '<script src="/urbion_workspace_review_gaps_owner.js"></script>'
                '<script src="/urbion_workspace_environment_owner.js"></script>'
-               '<script src="/urbion_workspace_mobility_owner.js"></script>')
+               '<script src="/urbion_workspace_mobility_owner.js"></script>'
+               '<script src="/urbion_workspace_development_impact_owner.js"></script>')
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
     return HTMLResponse(html, media_type="text/html", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
 
 
+def _development_impact(assessment: dict) -> dict:
+    """Build impact screening strictly from explicit assessment proposal inputs."""
+    proposal = assessment.get("proposal") or {}
+    spatial = assessment.get("site_analysis") or {}
+    return build_development_impact(
+        development_type=assessment.get("development_type") or proposal.get("development_type") or "",
+        units=proposal.get("units"),
+        site_area_ha=proposal.get("site_area_ha"),
+        commercial_gfa_m2=proposal.get("commercial_gfa_m2"),
+        jobs=proposal.get("jobs"),
+        population=proposal.get("population"),
+        daily_trips=proposal.get("daily_trips"),
+        road_distance_m=proposal.get("road_distance_m", spatial.get("road_distance_m")),
+        flood_exposure=proposal.get("flood_exposure", spatial.get("flood_exposure")),
+        nearby_facilities=proposal.get("nearby_facilities"),
+        source_context={
+            "assessment_inputs": {k: proposal.get(k) for k in (
+                "units", "site_area_ha", "commercial_gfa_m2", "jobs",
+                "population", "daily_trips", "road_distance_m",
+                "flood_exposure", "nearby_facilities") if proposal.get(k) is not None},
+            "plot_ratio": proposal.get("Plot Ratio"),
+            "evidence_policy": "Explicit proposal/spatial inputs only; missing values remain review-required."
+        },
+    )
+
+
 def _canonical_packet(assessment: dict) -> dict:
+    impact = assessment.get("development_impact")
+    if not isinstance(impact, dict):
+        impact = _development_impact(assessment)
+        assessment["development_impact"] = impact
     return build_canonical_evidence_packet(assessment=assessment,
                                            spatial=assessment.get("site_analysis"),
                                            environment=assessment.get("live_environment_evidence") or assessment.get("evidence_intelligence"),
                                            stations=assessment.get("live_station_evidence") or assessment.get("stations"),
+                                           development_impact=impact,
                                            policy_graph={"policy_coverage": assessment.get("policy_coverage")})
 
 
@@ -75,9 +109,11 @@ def _attach_packet(payload: dict, path: str) -> dict:
     assessment = payload if path == "/assess" else payload.get("assessment")
     if isinstance(assessment, dict):
         packet = _canonical_packet(assessment)
+        payload["development_impact"] = packet.get("evidence", {}).get("development_impact", {})
         payload["canonical_evidence_packet"] = packet
         decision = payload.get("decision_center")
         if isinstance(decision, dict):
+            decision["development_impact"] = packet.get("evidence", {}).get("development_impact", {})
             decision["canonical_evidence_packet"] = packet
             decision["review_gaps"] = list(packet.get("review_gaps", []))
             decision["review_required"] = bool(decision["review_gaps"])
@@ -105,6 +141,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
                 packet = _canonical_packet(assessed)
                 result = build_decision_center(assessment=assessed)
                 if isinstance(result, dict):
+                    result["development_impact"] = packet.get("evidence", {}).get("development_impact", {})
                     result["canonical_evidence_packet"] = packet
                     result["review_gaps"] = list(packet.get("review_gaps", []))
                     result["review_required"] = bool(result["review_gaps"])
@@ -129,6 +166,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_review_gaps_owner.js": (WORKSPACE_REVIEW_GAPS,"URBION HORIZON review-gap presentation owner missing."),
         "/urbion_workspace_environment_owner.js": (WORKSPACE_ENVIRONMENT,"URBION HORIZON environment evidence owner missing."),
         "/urbion_workspace_mobility_owner.js": (WORKSPACE_MOBILITY,"URBION HORIZON mobility evidence owner missing."),
+        "/urbion_workspace_development_impact_owner.js": (WORKSPACE_DEVELOPMENT_IMPACT,"URBION HORIZON development impact owner missing."),
     }
     if path in assets:
         target,message=assets[path]
