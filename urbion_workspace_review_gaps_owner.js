@@ -37,6 +37,7 @@ const surface=(context='REVIEW')=>{
     ${list.length?list.map((g,i)=>`<div class="rg-item"><b>${i+1}. REVIEW</b> ${esc(g)}</div>`).join(''):'<div class="rg-empty">No unresolved evidence gaps in the canonical packet.</div>'}`;
   if(box) box.appendChild(el); else target.prepend(el);
 };
+window.URBION_REVIEW_GAPS={render:surface,get count(){return gaps().length}};
 const renderRail=()=>{
   const right=document.querySelector('.right');
   if(!right||!packet()) return;
