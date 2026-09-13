@@ -40,9 +40,12 @@ def main() -> None:
     assert len(impact.get("review_gaps") or []) >= 1, "missing impact inputs must remain explicit review gaps"
     assert isinstance(payload.get("development_impact"), dict), "top-level development impact missing"
 
-    # The presentation decision flow consumes an assessment wrapper; this is
-    # the same request shape emitted by the workspace decision modal.
-    decision = post("/decision-center", {"assessment": PAYLOAD})
+    # The presentation decision flow consumes an assessment wrapper. The route
+    # returns a decision-center envelope, so the canonical packet is accepted
+    # either at the envelope level or inside the nested decision-center object.
+    decision_payload = post("/decision-center", {"assessment": PAYLOAD})
+    decision = decision_payload.get("decision_center") if isinstance(decision_payload.get("decision_center"), dict) else decision_payload
+    assert isinstance(decision, dict), "decision center response missing"
     assert isinstance(decision.get("canonical_evidence_packet"), dict), "decision center canonical packet missing"
     assert isinstance(decision.get("development_impact"), dict), "decision center missing development impact"
     assert decision.get("canonical_evidence_packet", {}).get("version") == "PHASE1.2"
