@@ -1,0 +1,29 @@
+name: URBION Road Intelligence Gate
+
+on:
+  push:
+    branches:
+      - feature/road-intelligence-v1
+  pull_request:
+    branches:
+      - feature/canonical-workspace-v2
+
+jobs:
+  road-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Install test client
+        run: pip install httpx
+      - name: Run road intelligence integration smoke
+        env:
+          PYTHONPATH: .
+        run: python scripts/road_intelligence_contract_smoke.py
