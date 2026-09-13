@@ -87,8 +87,8 @@ def _canonical_packet(assessment: dict) -> dict:
     )
 
 
-async def _with_canonical_packet(response: Response) -> Response:
-    """Attach the canonical packet to successful JSON assessment responses."""
+async def _with_canonical_packet(response: Response, assessment: dict) -> Response:
+    """Attach a canonical evidence packet built from the deterministic assessment only."""
     try:
         body = b"".join([chunk async for chunk in response.body_iterator])
     except Exception:
@@ -99,7 +99,7 @@ async def _with_canonical_packet(response: Response) -> Response:
         return response
     if not isinstance(payload, dict) or response.status_code >= 400:
         return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
-    payload["canonical_evidence_packet"] = _canonical_packet(payload)
+    payload["canonical_evidence_packet"] = _canonical_packet(assessment)
     headers = dict(response.headers)
     headers.pop("content-length", None)
     headers.pop("content-type", None)
@@ -125,6 +125,15 @@ async def _urbion_canonical_presentation(request: Request, call_next):
             pass
         except Exception:
             pass
+
+    request_payload = None
+    if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
+        try:
+            raw = await request.body()
+            request_payload = json.loads(raw.decode("utf-8")) if raw else None
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            request_payload = None
+
     if path in {"/", "/index.html"}:
         return _html(WELCOME_FILE)
     if path == "/background_welcoming_page.png":
@@ -151,6 +160,8 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         if not target.is_file(): return Response("URBION HORIZON legacy compatibility asset missing.",status_code=404,media_type="text/plain")
         return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
     response = await call_next(request)
-    if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
-        return await _with_canonical_packet(response)
+    if path in {"/assess", "/workstation/analysis"} and request.method == "POST" and isinstance(request_payload, dict):
+        assessment = request_payload.get("assessment") if path == "/workstation/analysis" else request_payload
+        if isinstance(assessment, dict):
+            return await _with_canonical_packet(response, assessment)
     return response
