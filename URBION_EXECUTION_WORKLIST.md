@@ -25,12 +25,12 @@
 Principle: **do not rewrite the deterministic engine; converge existing intelligence into one evidence-backed canonical site packet.**
 
 ### P0 — Canonical evidence convergence
-- [ ] Define canonical evidence-packet contract: site identity → source context → calculations → policy → risks → decision → review gaps
+- [x] Define canonical evidence-packet contract: site identity → source context → calculations → policy → risks → decision → review gaps
 - [ ] Feed existing site / i-Plan / environmental / station / LCP / policy evidence into the canonical packet where available
-- [ ] Preserve evidence states: `USER_PROVIDED` · `CALCULATED` · `SOURCE_CONTEXT` · `VERIFIED` · `UNVERIFIED`
+- [x] Preserve evidence states: `USER_PROVIDED` · `CALCULATED` · `SOURCE_CONTEXT` · `VERIFIED` · `UNVERIFIED`
 - [ ] Make `review_gaps` first-class and visible in downstream Decision / Evidence surfaces
 - [ ] Ensure AI/Copilot can only explain the canonical deterministic packet
-- [ ] Add integrity tests for packet consistency across Assess → Evidence → What-If → Decision → Output
+- [x] Add integrity tests for packet consistency across the packet contract; downstream UI integration remains pending
 
 ### P0 — Planning-rule provenance hardening
 - [ ] Audit every RT / GP rule for document title, edition/amendment, page/table/clause, spatial condition and traceability
@@ -71,7 +71,7 @@ Principle: **do not rewrite the deterministic engine; converge existing intellig
 
 ### P1 — Restore lost evidence UX without fake map layers
 - [ ] Add dedicated `LIVE EVIDENCE` surface for JPS Public Infobanjir, MyEQMS/EQMP and JUPEM MyLot
-- [ ] Do **not** re-add portal-only sources to interactive map layers
+- [x] Do **not** re-add portal-only sources to interactive map layers
 - [ ] Show source type, last checked, availability, evidence state and action/open-source link where appropriate
 
 ### P2 — RAG / AI quality
