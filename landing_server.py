@@ -14,6 +14,7 @@ from championship_server import app
 from server import AssessmentRequest, assess_core
 from urbion_decision_center import build_decision_center
 from urbion_wms_proxy import router as urbion_wms_router
+from urbion_canonical_evidence import build_canonical_evidence_packet
 
 BASE_DIR = Path(__file__).resolve().parent
 WELCOME_FILE = BASE_DIR / "welcome.html"
@@ -74,6 +75,15 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opac
     return HTMLResponse(html, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0", "X-URBION-UI": "CANONICAL-V5-ISOLATED"})
 
 
+def _canonical_packet(assessment: dict) -> dict:
+    return build_canonical_evidence_packet(
+        assessment=assessment,
+        spatial=assessment.get("site_analysis"),
+        environment=assessment.get("evidence_intelligence"),
+        policy_graph={"policy_coverage": assessment.get("policy_coverage")},
+    )
+
+
 @app.middleware("http")
 async def _urbion_canonical_presentation(request: Request, call_next):
     path = request.url.path
@@ -84,7 +94,11 @@ async def _urbion_canonical_presentation(request: Request, call_next):
             assessment = payload.get("assessment") if isinstance(payload, dict) else None
             if isinstance(assessment, dict):
                 validated = AssessmentRequest.model_validate(assessment)
-                return JSONResponse(build_decision_center(assessment=assess_core(validated)))
+                assessed = assess_core(validated)
+                result = build_decision_center(assessment=assessed)
+                if isinstance(result, dict):
+                    result["canonical_evidence_packet"] = _canonical_packet(assessed)
+                return JSONResponse(result)
         except (UnicodeDecodeError, json.JSONDecodeError):
             pass
         except Exception:
@@ -113,4 +127,18 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         target=BASE_DIR/"urbion_workspace_final.js"
         if not target.is_file(): return Response("URBION HORIZON legacy compatibility asset missing.",status_code=404,media_type="text/plain")
         return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
-    return await call_next(request)
+    response = await call_next(request)
+    if path == "/assess" and request.method == "POST":
+        try:
+            body = b"".join([chunk async for chunk in response.body_iterator])
+            payload = json.loads(body.decode("utf-8")) if body else None
+            if isinstance(payload, dict) and response.status_code < 400:
+                payload["canonical_evidence_packet"] = _canonical_packet(payload)
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
+                headers.pop("content-type", None)
+                return JSONResponse(payload, status_code=response.status_code, headers=headers)
+            return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
+        except Exception:
+            return response
+    return response
