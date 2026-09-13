@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import JSONResponse
 from server import app, AssessmentRequest, assess_core
 from urbion_spatial_intelligence import build_spatial_intelligence
-from urbion_what_if import build_scenario_plan, compare_assessments
+from urbion_what_if import build_scenario_plan, compare_assessments, execute_what_if
 from urbion_scenario_ranking import rank_scenarios
 from urbion_decision_center import build_decision_center
 from urbion_agent_orchestrator import run_agents
@@ -42,19 +42,39 @@ def _canonical_http_error(*, code: str, message: str, route: str, stage: str, so
 
 @app.middleware("http")
 async def _optional_tod_compat(request: Request, call_next):
-    """Keep only the optional-TOD assessment adapter; public /what-if stays canonical.
+    """Own the public What-If gateway while preserving optional-TOD assessment compatibility.
 
-    Complete and optional-TOD `/what-if` requests now use the same public server
-    route so baseline/scenario packet contracts cannot diverge by middleware path.
+    Every public `/what-if` request uses the shared executable orchestrator, so the
+    route cannot fork into a second scenario execution path. `/assess` keeps its
+    narrow optional-TOD compatibility adapter; all other requests are untouched.
     """
-    if request.method != "POST" or request.url.path != "/assess":
+    if request.method != "POST" or request.url.path not in {"/assess", "/what-if"}:
         return await call_next(request)
 
     body = await request.body()
     try:
-        payload = json.loads(body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return await call_next(request)
+        payload = json.loads(body.decode("utf-8")) if body else {}
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return _canonical_http_error(code="INVALID_JSON", message=str(exc), route=request.url.path, stage="REQUEST_PARSE", source="URBION_REQUEST_GATE", status_code=400)
+
+    if request.url.path == "/what-if":
+        if not isinstance(payload, dict):
+            return _canonical_http_error(code="INVALID_WHAT_IF_PAYLOAD", message="JSON object required for What-If request.", route=request.url.path, stage="WHAT_IF", source="URBION_WHAT_IF")
+        baseline = payload.get("baseline")
+        variants = payload.get("variants") or []
+        if not isinstance(baseline, dict):
+            return _canonical_http_error(code="ASSESSMENT_INPUT_REQUIRED", message="A baseline assessment object is required.", route=request.url.path, stage="WHAT_IF", source="URBION_WHAT_IF")
+        if not isinstance(variants, list) or len(variants) > 12:
+            return _canonical_http_error(code="INVALID_SCENARIO_VARIANTS", message="What-If variants must be a list containing at most 12 scenarios.", route=request.url.path, stage="WHAT_IF", source="URBION_WHAT_IF")
+        try:
+            result = execute_what_if(
+                baseline,
+                variants,
+                lambda scenario_inputs: assess_core(AssessmentRequest(**scenario_inputs)),
+            )
+            return JSONResponse(content=rank_scenarios(result))
+        except Exception as exc:
+            return _canonical_http_error(code="WHAT_IF_ERROR", message=str(exc), route=request.url.path, stage="WHAT_IF", source="URBION_WHAT_IF")
 
     if not isinstance(payload, dict):
         return await call_next(request)
