@@ -1,0 +1,65 @@
+/* URBION HORIZON — canonical review-gap presentation owner.
+   Read-only UI surface over window.URBION_LAST.canonical_evidence_packet.
+   It never creates, edits, scores, or resolves evidence gaps. */
+(()=>{
+'use strict';
+if(window.__URBION_REVIEW_GAPS_OWNER_V1__) return;
+window.__URBION_REVIEW_GAPS_OWNER_V1__=true;
+const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
+const packet=()=>window.URBION_LAST?.canonical_evidence_packet||null;
+const gaps=()=>{const p=packet();return Array.isArray(p?.review_gaps)?p.review_gaps:[]};
+const installStyle=()=>{if(document.getElementById('urbionReviewGapStyle'))return;const style=document.createElement('style');style.id='urbionReviewGapStyle';style.textContent=`
+.urbion-review-gap-surface{border:1px solid rgba(255,203,93,.28);border-radius:10px;background:rgba(255,203,93,.045);padding:10px;margin-top:10px}
+.urbion-review-gap-surface .rg-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
+.urbion-review-gap-surface .rg-title{font-size:8px;font-weight:900;letter-spacing:.07em}
+.urbion-review-gap-surface .rg-count{font-size:7px;color:var(--warn);border:1px solid rgba(255,203,93,.32);border-radius:999px;padding:3px 6px}
+.urbion-review-gap-surface .rg-note{font-size:6.3px;line-height:1.45;color:var(--muted);margin:0 0 7px}
+.urbion-review-gap-surface .rg-item{border-top:1px solid rgba(255,203,93,.13);padding:7px 0 0;margin-top:6px;font-size:6.7px;line-height:1.45}
+.urbion-review-gap-surface .rg-item b{color:var(--warn)}
+.urbion-review-gap-surface .rg-empty{font-size:6.7px;color:var(--good);padding:3px 0}
+.urbion-review-gap-rail{margin-bottom:8px}
+`;document.head.appendChild(style)};
+const surface=(context='REVIEW')=>{
+  installStyle();
+  const modal=document.getElementById('modal');
+  const box=modal?.querySelector('.modalbox');
+  const target=box||document.querySelector('.right');
+  if(!target) return;
+  target.querySelectorAll('.urbion-review-gap-surface[data-owner="canonical"]').forEach(x=>x.remove());
+  const list=gaps();
+  const p=packet();
+  const el=document.createElement('section');
+  el.className='urbion-review-gap-surface'+(box?'':' urbion-review-gap-rail');
+  el.dataset.owner='canonical';
+  el.dataset.testid='canonical-review-gaps';
+  el.innerHTML=`<div class="rg-head"><span class="rg-title">${esc(context)} · REVIEW GAPS</span><span class="rg-count">${list.length} OPEN</span></div>
+    <p class="rg-note">Canonical evidence packet · statutory verification: ${esc(p?.statutory_verification||'NOT_CLAIMED')}. These are traceability/review boundaries, not approval decisions.</p>
+    ${list.length?list.map((g,i)=>`<div class="rg-item"><b>${i+1}. REVIEW</b> ${esc(g)}</div>`).join(''):'<div class="rg-empty">No unresolved evidence gaps in the canonical packet.</div>'}`;
+  if(box) box.appendChild(el); else target.prepend(el);
+};
+const renderRail=()=>{
+  const right=document.querySelector('.right');
+  if(!right||!packet()) return;
+  const has=right.querySelector('.urbion-review-gap-surface[data-owner="canonical"]');
+  if(!has) surface('LIVE EVIDENCE');
+};
+const schedule=(context)=>setTimeout(()=>{if(packet()) surface(context);},40);
+const observer=new MutationObserver(()=>{if(document.getElementById('modal')?.classList.contains('show')){
+  const title=document.getElementById('modalTitle')?.textContent||'';
+  const context=/DECISION/i.test(title)?'DECISION':/EVIDENCE/i.test(title)?'EVIDENCE':'REVIEW';
+  schedule(context);
+}});
+const boot=async()=>{
+  observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+  document.addEventListener('click',event=>{
+    const btn=event.target instanceof Element?event.target.closest('button'):null;
+    if(!btn) return;
+    const mode=(btn.dataset?.mode||'').toLowerCase();
+    if(mode==='evidence') schedule('EVIDENCE');
+    if(mode==='decision') schedule('DECISION');
+  },true);
+  const ready=()=>{renderRail();schedule('REVIEW')};
+  for(let i=0;i<120;i++){if(packet()) return ready();await new Promise(r=>setTimeout(r,100))}
+};
+boot();
+})();
