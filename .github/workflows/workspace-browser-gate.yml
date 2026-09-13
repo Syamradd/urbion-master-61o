@@ -48,6 +48,10 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
         run: python scripts/gis_layer_regression.py
+      - name: Run MyEQMS station contract smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/myeqms_station_contract_smoke.py
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
