@@ -11,7 +11,7 @@ on:
 jobs:
   road-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,8 +22,23 @@ jobs:
       - name: Install application dependencies
         run: pip install -r requirements.txt
       - name: Install test client
-        run: pip install httpx
+        run: pip install httpx playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Start canonical presentation server
+        run: |
+          nohup python -m uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-road-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/workspace >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/workspace >/dev/null
       - name: Run road intelligence integration smoke
         env:
           PYTHONPATH: .
         run: python scripts/road_intelligence_contract_smoke.py
+      - name: Run workspace analysis visual smoke
+        env:
+          PYTHONPATH: .
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/workspace_analysis_visual_smoke.py
