@@ -6,7 +6,7 @@ Status: `ACTIVE — P0 CONVERGENCE`
 
 | Role | Branch | Rule |
 |---|---|---|
-| Canonical baseline | `feature/canonical-workspace-v2` | Protected development baseline; do not fork new competing workspaces from historical branches. |
+| Canonical baseline | `feature/canonical-workspace-v2` | Canonical engineering baseline; do not fork new competing workspaces from historical branches. |
 | Active hardening / release candidate | `feature/championship-convergence-v1` | Only active P0/P1 engineering branch until final release SHA is locked. |
 | Production release | `main` | Must be aligned to the exact approved release SHA before production deployment. |
 
@@ -23,11 +23,15 @@ A historical branch may be deleted only after all of the following are proven:
 3. No open PR or deployment depends on it.
 4. A final release tag/checkpoint provides a rollback reference.
 
-## Verified historical relationships
+## Frozen historical refs
 
-- `feature/road-intelligence-v1` is behind `feature/canonical-workspace-v2` by one commit with no commits ahead of the canonical baseline; its Road Intelligence work is already represented in the canonical merge baseline.
-- `feature/ux-v5-command-center` is behind the canonical baseline with no commits ahead; it is historical and not an active implementation path.
-- `feature/champion-command-center-consolidation` is behind the canonical baseline with no commits ahead; it is historical and not an active implementation path.
+The following legacy branches were audited against `feature/canonical-workspace-v2`, had no open PR, and had zero commits ahead of the canonical baseline. Their refs have been fast-forwarded to the canonical baseline as frozen pointers rather than deleted during P0:
+
+- `feature/road-intelligence-v1`
+- `feature/ux-v5-command-center`
+- `feature/champion-command-center-consolidation`
+
+The underlying historical commits remain reachable through repository history; these branch names are no longer valid development paths.
 
 ## Release convergence rule
 
@@ -35,4 +39,4 @@ The release candidate must converge to one SHA, one frontend architecture, one p
 
 ## Deletion boundary
 
-Branch deletion is intentionally deferred until P0 + P1 + live QA are complete. Preserve historical branches as rollback/reference points during engineering convergence.
+Branch deletion is intentionally deferred until P0 + P1 + live QA are complete. Preserve rollback/reference coverage during engineering convergence. After final release tagging, obsolete frozen refs may be deleted as a cleanup operation.
