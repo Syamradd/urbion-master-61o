@@ -28,6 +28,7 @@ WORKSPACE_CANONICAL_UI = BASE_DIR / "urbion_workspace_canonical_ui.js"
 WORKSPACE_MODAL_OWNER = BASE_DIR / "urbion_workspace_modal_owner.js"
 WORKSPACE_PBT_CATALOG = BASE_DIR / "urbion_workspace_pbt_catalog.js"
 WORKSPACE_UTILITY_OWNER = BASE_DIR / "urbion_workspace_utility_owner.js"
+WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
 
 app.include_router(urbion_wms_router)
 
@@ -48,6 +49,7 @@ def _workspace() -> HTMLResponse:
         WORKSPACE_MODAL_OWNER,
         WORKSPACE_PBT_CATALOG,
         WORKSPACE_UTILITY_OWNER,
+        WORKSPACE_REVIEW_GAPS,
     )
     for path in required:
         if not path.is_file():
@@ -61,6 +63,7 @@ def _workspace() -> HTMLResponse:
         '<script src="/urbion_workspace_modal_owner.js"></script>'
         '<script src="/urbion_workspace_pbt_catalog.js"></script>'
         '<script src="/urbion_workspace_utility_owner.js"></script>'
+        '<script src="/urbion_workspace_review_gaps_owner.js"></script>'
     )
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
@@ -82,6 +85,25 @@ def _canonical_packet(assessment: dict) -> dict:
         environment=assessment.get("evidence_intelligence"),
         policy_graph={"policy_coverage": assessment.get("policy_coverage")},
     )
+
+
+def _with_canonical_packet(response: Response) -> Response:
+    """Attach the canonical packet to successful JSON assessment responses."""
+    try:
+        body = b"".join([chunk async for chunk in response.body_iterator])
+    except Exception:
+        return response
+    try:
+        payload = json.loads(body.decode("utf-8")) if body else None
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return response
+    if not isinstance(payload, dict) or response.status_code >= 400:
+        return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
+    payload["canonical_evidence_packet"] = _canonical_packet(payload)
+    headers = dict(response.headers)
+    headers.pop("content-length", None)
+    headers.pop("content-type", None)
+    return JSONResponse(payload, status_code=response.status_code, headers=headers)
 
 
 @app.middleware("http")
@@ -118,6 +140,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_modal_owner.js": (WORKSPACE_MODAL_OWNER,"URBION HORIZON modal owner missing."),
         "/urbion_workspace_pbt_catalog.js": (WORKSPACE_PBT_CATALOG,"URBION HORIZON PBT catalogue missing."),
         "/urbion_workspace_utility_owner.js": (WORKSPACE_UTILITY_OWNER,"URBION HORIZON utility owner missing."),
+        "/urbion_workspace_review_gaps_owner.js": (WORKSPACE_REVIEW_GAPS,"URBION HORIZON review-gaps presentation owner missing."),
     }
     if path in assets:
         target,message=assets[path]
@@ -128,17 +151,6 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         if not target.is_file(): return Response("URBION HORIZON legacy compatibility asset missing.",status_code=404,media_type="text/plain")
         return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
     response = await call_next(request)
-    if path == "/assess" and request.method == "POST":
-        try:
-            body = b"".join([chunk async for chunk in response.body_iterator])
-            payload = json.loads(body.decode("utf-8")) if body else None
-            if isinstance(payload, dict) and response.status_code < 400:
-                payload["canonical_evidence_packet"] = _canonical_packet(payload)
-                headers = dict(response.headers)
-                headers.pop("content-length", None)
-                headers.pop("content-type", None)
-                return JSONResponse(payload, status_code=response.status_code, headers=headers)
-            return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
-        except Exception:
-            return response
+    if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
+        return await _with_canonical_packet(response)
     return response
