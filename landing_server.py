@@ -26,6 +26,7 @@ WORKSPACE_LAYER = BASE_DIR / "urbion_layer_runtime_fix.js"
 WORKSPACE_CANONICAL_UI = BASE_DIR / "urbion_workspace_canonical_ui.js"
 WORKSPACE_MODAL_OWNER = BASE_DIR / "urbion_workspace_modal_owner.js"
 WORKSPACE_PBT_CATALOG = BASE_DIR / "urbion_workspace_pbt_catalog.js"
+WORKSPACE_UTILITY_OWNER = BASE_DIR / "urbion_workspace_utility_owner.js"
 
 app.include_router(urbion_wms_router)
 
@@ -45,6 +46,7 @@ def _workspace() -> HTMLResponse:
         WORKSPACE_CANONICAL_UI,
         WORKSPACE_MODAL_OWNER,
         WORKSPACE_PBT_CATALOG,
+        WORKSPACE_UTILITY_OWNER,
     )
     for path in required:
         if not path.is_file():
@@ -57,6 +59,7 @@ def _workspace() -> HTMLResponse:
         '<script src="/urbion_workspace_canonical_ui.js"></script>'
         '<script src="/urbion_workspace_modal_owner.js"></script>'
         '<script src="/urbion_workspace_pbt_catalog.js"></script>'
+        '<script src="/urbion_workspace_utility_owner.js"></script>'
     )
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
@@ -100,6 +103,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_canonical_ui.js": (WORKSPACE_CANONICAL_UI,"URBION HORIZON canonical UI owner missing."),
         "/urbion_workspace_modal_owner.js": (WORKSPACE_MODAL_OWNER,"URBION HORIZON modal owner missing."),
         "/urbion_workspace_pbt_catalog.js": (WORKSPACE_PBT_CATALOG,"URBION HORIZON PBT catalogue missing."),
+        "/urbion_workspace_utility_owner.js": (WORKSPACE_UTILITY_OWNER,"URBION HORIZON utility owner missing."),
     }
     if path in assets:
         target,message=assets[path]
