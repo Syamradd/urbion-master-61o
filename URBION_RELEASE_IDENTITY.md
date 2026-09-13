@@ -8,7 +8,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Canonical workspace: `feature/canonical-workspace-v2`
 - Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
 - Current hardening branch: `feature/championship-convergence-v1`
-- Current hardening HEAD: `79495a57bd7a815b7dbfc693ed797e11e9939a5e`
+- Current hardening HEAD: `23c3d7f2bb47a69b01802eb7cefe0dc779c0dd2e`
 - Current hardening PR: `#131`
 
 ## Engineering identity
@@ -26,11 +26,15 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - `URBION_ERROR_V1` canonical API/browser error envelope
 - Decision Center failure visibility without silent fallback
 - KPI evidence-state presentation
-- Public What-If route convergence onto canonical evidence packets
-- Bounded Copilot downstream convergence into the canonical packet
-- Agent/Copilot API failure-contract convergence
+- Public What-If canonical evidence packets
+- Bounded Copilot downstream convergence
+- Agent/Copilot API convergence
+- Planner Handoff consumes the canonical packet
+- Decision OS/Judge Demo contract checks
 - Frontend owner/lifecycle hardening
 - Canonical mobility/station evidence reuse
+- Road Intelligence attached to canonical evidence when a packet exists
+- Rule-provenance amendment-state check
 - Production manifest and release-document consistency
 
 ## Current hardening gates
@@ -39,7 +43,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Rule Provenance: `GREEN` on prior canonical baseline
 - Road Intelligence: `GREEN` on prior canonical baseline
 - Workspace Browser: `GREEN` on prior canonical baseline
-- New convergence/owner contract checks: `PENDING` until CI completes on HEAD `79495a57bd7a815b7dbfc693ed797e11e9939a5e`
+- P0 downstream/error/owner checks: `PENDING` until CI completes on HEAD `23c3d7f2bb47a69b01802eb7cefe0dc779c0dd2e`
 
 ## Deployment gates
 
