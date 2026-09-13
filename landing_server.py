@@ -30,6 +30,7 @@ WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
 WORKSPACE_ENVIRONMENT = BASE_DIR / "urbion_workspace_environment_owner.js"
 WORKSPACE_MOBILITY = BASE_DIR / "urbion_workspace_mobility_owner.js"
 WORKSPACE_DEVELOPMENT_IMPACT = BASE_DIR / "urbion_workspace_development_impact_owner.js"
+WORKSPACE_DEVELOPMENT_IMPACT_V4 = BASE_DIR / "urbion_workspace_development_impact_owner_v4.js"
 WORKSPACE_RATIO_OWNER = BASE_DIR / "urbion_workspace_ratio_owner.js"
 WORKSPACE_ROAD_INTELLIGENCE = BASE_DIR / "urbion_workspace_road_intelligence_owner.js"
 WORKSPACE_ANALYSIS_SUMMARY = BASE_DIR / "urbion_workspace_analysis_summary_owner.js"
@@ -50,8 +51,9 @@ def _workspace() -> HTMLResponse:
     required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER,
                 WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
                 WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT,
-                WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT, WORKSPACE_RATIO_OWNER,
-                WORKSPACE_ROAD_INTELLIGENCE, WORKSPACE_ANALYSIS_SUMMARY, WORKSPACE_STATION_MAP)
+                WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT, WORKSPACE_DEVELOPMENT_IMPACT_V4,
+                WORKSPACE_RATIO_OWNER, WORKSPACE_ROAD_INTELLIGENCE,
+                WORKSPACE_ANALYSIS_SUMMARY, WORKSPACE_STATION_MAP)
     for path in required:
         if not path.is_file():
             return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
@@ -67,6 +69,7 @@ def _workspace() -> HTMLResponse:
                '<script src="/urbion_workspace_environment_owner.js"></script>'
                '<script src="/urbion_workspace_mobility_owner.js"></script>'
                '<script src="/urbion_workspace_development_impact_owner.js"></script>'
+               '<script src="/urbion_workspace_development_impact_owner_v4.js"></script>'
                '<script src="/urbion_workspace_ratio_owner.js"></script>'
                '<script src="/urbion_workspace_road_intelligence_owner.js"></script>'
                '<script src="/urbion_workspace_analysis_summary_owner.js"></script>'
@@ -199,6 +202,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_environment_owner.js": (WORKSPACE_ENVIRONMENT,"URBION HORIZON environment evidence owner missing."),
         "/urbion_workspace_mobility_owner.js": (WORKSPACE_MOBILITY,"URBION HORIZON mobility evidence owner missing."),
         "/urbion_workspace_development_impact_owner.js": (WORKSPACE_DEVELOPMENT_IMPACT,"URBION HORIZON development impact owner missing."),
+        "/urbion_workspace_development_impact_owner_v4.js": (WORKSPACE_DEVELOPMENT_IMPACT_V4,"URBION HORIZON development impact v4 owner missing."),
         "/urbion_workspace_ratio_owner.js": (WORKSPACE_RATIO_OWNER,"URBION HORIZON plot ratio presentation owner missing."),
         "/urbion_workspace_road_intelligence_owner.js": (WORKSPACE_ROAD_INTELLIGENCE,"URBION HORIZON road intelligence owner missing."),
         "/urbion_workspace_analysis_summary_owner.js": (WORKSPACE_ANALYSIS_SUMMARY,"URBION HORIZON site analysis summary owner missing."),
