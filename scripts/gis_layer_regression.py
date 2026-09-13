@@ -54,9 +54,6 @@ def main() -> None:
 
         page.goto(BASE_URL + "/workspace", wait_until="domcontentloaded", timeout=30_000)
         expect(page).to_have_title("URBION HORIZON — Planning Workspace")
-
-        # The canonical drawer is hidden by default; open it through its owner
-        # before checking the rendered layer catalogue.
         page.locator("#layerBtn").click()
         expect(page.locator("#layers")).to_have_class("layers open")
         expect(page.locator("#layerList")).to_be_visible(timeout=15_000)
