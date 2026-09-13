@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
@@ -25,14 +24,13 @@ INSTRUMENT = r"""
   window.__URBION_OBSERVERS__ = observers;
   window.MutationObserver = class extends NativeMO {
     constructor(callback) {
-      let count = 0;
+      const meta = { count: 0 };
       super((records, observer) => {
-        count += 1;
-        this.__urbionCallbackCount = count;
+        meta.count += 1;
         callback(records, observer);
       });
-      this.__urbionCallbackCount = 0;
-      observers.push(this);
+      this.__urbionObserverMeta = meta;
+      observers.push(meta);
     }
   };
   const nativeAdd = EventTarget.prototype.addEventListener;
@@ -86,7 +84,7 @@ def main() -> None:
         page.wait_for_timeout(300)
 
         observer_counts = page.evaluate(
-            """() => (window.__URBION_OBSERVERS__ || []).map(o => o.__urbionCallbackCount || 0)"""
+            """() => (window.__URBION_OBSERVERS__ || []).map(x => x.count || 0)"""
         )
         assert sum(observer_counts) < 40, f"unexpected MutationObserver churn: {observer_counts}"
         assert page.locator('[data-testid="canonical-review-gaps"]').count() <= 1, "duplicate review-gap surface detected"
