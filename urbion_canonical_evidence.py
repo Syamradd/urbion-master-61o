@@ -73,7 +73,8 @@ def build_canonical_evidence_packet(
             jupem_verification=assessment.get("jupem_verification"),
         )
 
-    gaps = _gaps(assessment, spatial, environment, stations, development_impact, policy_graph, lcp)
+    environment_packet = environment or assessment.get("live_environment_evidence") or assessment.get("evidence_intelligence") or {}
+    gaps = _gaps(assessment, spatial, environment_packet, stations, development_impact, policy_graph, lcp)
     gaps.extend(_rule_review_gaps(assessment))
     if cadastral.get("project_reference", {}).get("status") == "NOT_PROVIDED":
         gaps.append("Project-reference lot number is not provided; cadastral identity requires explicit project input or authoritative parcel evidence.")
@@ -104,7 +105,7 @@ def build_canonical_evidence_packet(
         },
         "evidence": {
             "spatial": spatial or {},
-            "environment": environment or {},
+            "environment": environment_packet,
             "stations": stations or {},
             "development_impact": development_impact or {},
             "policy_graph": policy_graph or {},
