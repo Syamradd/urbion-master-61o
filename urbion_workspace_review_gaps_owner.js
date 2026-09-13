@@ -50,9 +50,7 @@ const observer=new MutationObserver(()=>{if(document.getElementById('modal')?.cl
   const context=/DECISION/i.test(title)?'DECISION':/EVIDENCE/i.test(title)?'EVIDENCE':'REVIEW';
   schedule(context);
 }});
-const loadEnvironmentOwner=()=>{if(window.__URBION_ENVIRONMENT_OWNER_V1__)return;const s=document.createElement('script');s.src='/urbion_workspace_environment_owner.js';s.async=true;s.onload=()=>{};s.onerror=()=>console.warn('URBION review-gap owner: environment owner unavailable');document.head.appendChild(s)};
 const boot=async()=>{
-  loadEnvironmentOwner();
   observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
   document.addEventListener('click',event=>{
     const btn=event.target instanceof Element?event.target.closest('button'):null;
