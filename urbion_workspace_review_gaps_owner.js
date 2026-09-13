@@ -19,41 +19,45 @@ const installStyle=()=>{if(document.getElementById('urbionReviewGapStyle'))retur
 .urbion-review-gap-surface .rg-empty{font-size:6.7px;color:var(--good);padding:3px 0}
 .urbion-review-gap-rail{margin-bottom:8px}
 `;document.head.appendChild(style)};
+let rendering=false;
 const surface=(context='REVIEW')=>{
-  installStyle();
+  if(rendering)return;
+  const p=packet();if(!p)return;
   const modal=document.getElementById('modal');
   const box=modal?.classList.contains('show')?modal.querySelector('.modalbox'):null;
   const target=box||document.querySelector('.right');
-  if(!target) return;
-  target.querySelectorAll('.urbion-review-gap-surface[data-owner="canonical"]').forEach(x=>x.remove());
-  const list=gaps();
-  const p=packet();
-  const el=document.createElement('section');
-  el.className='urbion-review-gap-surface'+(box?'':' urbion-review-gap-rail');
-  el.dataset.owner='canonical';
-  el.dataset.testid='canonical-review-gaps';
-  el.innerHTML=`<div class="rg-head"><span class="rg-title">${esc(context)} · REVIEW GAPS</span><span class="rg-count">${list.length} OPEN</span></div>
-    <p class="rg-note">Canonical evidence packet · statutory verification: ${esc(p?.statutory_verification||'NOT_CLAIMED')}. These are traceability/review boundaries, not approval decisions.</p>
-    ${list.length?list.map((g,i)=>`<div class="rg-item"><b>${i+1}. REVIEW</b> ${esc(g)}</div>`).join(''):'<div class="rg-empty">No unresolved evidence gaps in the canonical packet.</div>'}`;
-  if(box) box.appendChild(el); else target.prepend(el);
+  if(!target)return;
+  rendering=true;
+  try{
+    installStyle();
+    target.querySelectorAll('.urbion-review-gap-surface[data-owner="canonical"]').forEach(x=>x.remove());
+    const list=gaps();
+    const el=document.createElement('section');
+    el.className='urbion-review-gap-surface'+(box?'':' urbion-review-gap-rail');
+    el.dataset.owner='canonical';
+    el.dataset.testid='canonical-review-gaps';
+    el.innerHTML=`<div class="rg-head"><span class="rg-title">${esc(context)} · REVIEW GAPS</span><span class="rg-count">${list.length} OPEN</span></div>
+      <p class="rg-note">Canonical evidence packet · statutory verification: ${esc(p?.statutory_verification||'NOT_CLAIMED')}. These are traceability/review boundaries, not approval decisions.</p>
+      ${list.length?list.map((g,i)=>`<div class="rg-item"><b>${i+1}. REVIEW</b> ${esc(g)}</div>`).join(''):'<div class="rg-empty">No unresolved evidence gaps in the canonical packet.</div>'}`;
+    if(box)box.appendChild(el);else target.prepend(el);
+  } finally {rendering=false}
 };
 window.URBION_REVIEW_GAPS={render:surface,get count(){return gaps().length}};
 const renderRail=()=>{
   const right=document.querySelector('.right');
-  if(!right||!packet()) return;
+  if(!right||!packet())return;
   const has=right.querySelector('.urbion-review-gap-surface[data-owner="canonical"]');
-  if(!has) surface('LIVE EVIDENCE');
+  if(!has)surface('LIVE EVIDENCE');
 };
 const liveContext=()=>{
   const modal=document.getElementById('modal');
-  if(!modal?.classList.contains('show')) return 'REVIEW';
+  if(!modal?.classList.contains('show'))return 'REVIEW';
   const title=document.getElementById('modalTitle')?.textContent||'';
-  if(/DECISION/i.test(title)) return 'DECISION';
-  if(/EVIDENCE/i.test(title)) return 'EVIDENCE';
+  if(/DECISION/i.test(title))return 'DECISION';
+  if(/EVIDENCE/i.test(title))return 'EVIDENCE';
   return 'REVIEW';
 };
 let pendingTimer=null;
-let rendering=false;
 const schedule=()=>{
   clearTimeout(pendingTimer);
   pendingTimer=setTimeout(()=>{pendingTimer=null;if(packet()&&!rendering)surface(liveContext())},40);
@@ -63,15 +67,12 @@ const boot=async()=>{
   observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
   document.addEventListener('click',event=>{
     const btn=event.target instanceof Element?event.target.closest('button'):null;
-    if(!btn) return;
+    if(!btn)return;
     const mode=(btn.dataset?.mode||'').toLowerCase();
     if(mode==='evidence'||mode==='decision')schedule();
   },true);
   const ready=()=>{renderRail();schedule()};
-  for(let i=0;i<120;i++){if(packet()) return ready();await new Promise(r=>setTimeout(r,100))}
+  for(let i=0;i<120;i++){if(packet())return ready();await new Promise(r=>setTimeout(r,100))}
 };
-const originalSurface=surface;
-const safeSurface=(...args)=>{rendering=true;try{return originalSurface(...args)}finally{rendering=false}};
-window.URBION_REVIEW_GAPS.render=safeSurface;
 boot();
 })();
