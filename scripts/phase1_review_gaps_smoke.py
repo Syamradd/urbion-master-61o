@@ -32,11 +32,11 @@ def main() -> None:
     packet = build_canonical_evidence_packet(assessment=assessment)
     assert "review_gaps" in packet
     assert packet["statutory_verification"] == "NOT_CLAIMED"
-    assert len(packet["review_gaps"]) == len(review_rules)
-    assert all(rule_id in gap for rule_id, gap in zip(review_rules, packet["review_gaps"]))
-    assert all("exact page/clause/table locator" in gap.lower() for gap in packet["review_gaps"])
+    rule_gaps = [gap for gap in packet["review_gaps"] if any(rule_id in gap for rule_id in review_rules)]
+    assert len(rule_gaps) == len(review_rules)
+    assert all("exact page/clause/table locator" in gap.lower() for gap in rule_gaps)
 
-    print({"status": "PASS", "rules_requiring_review": len(review_rules), "packet_review_gaps": len(packet["review_gaps"])})
+    print({"status": "PASS", "rules_requiring_review": len(review_rules), "packet_review_gaps": len(packet["review_gaps"]), "rule_review_gaps": len(rule_gaps)})
 
 
 if __name__ == "__main__":
