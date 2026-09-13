@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 import urllib.request
 
 from landing_server import app
 
 BASE_URL = os.environ.get("URBION_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+ROOT = Path(__file__).resolve().parents[1]
 PAYLOAD = {
     "assessment": {
         "site_lat": 2.285,
@@ -26,11 +28,14 @@ PAYLOAD = {
 
 
 def main() -> None:
-    matching = [
-        route for route in app.routes
-        if getattr(route, "path", None) == "/copilot/run" and "POST" in (getattr(route, "methods", None) or set())
-    ]
-    assert len(matching) == 1, f"expected exactly one POST /copilot/run owner, found {len(matching)}"
+    agent_source = (ROOT / "urbion_agent_api.py").read_text(encoding="utf-8")
+    compatibility_source = (ROOT / "urbion_copilot_api.py").read_text(encoding="utf-8")
+    assert agent_source.count('@router.post("/copilot/run")') == 1, "agent API must own exactly one /copilot/run route"
+    assert '@router.post("/copilot/run")' not in compatibility_source, "compatibility copilot module must not register a duplicate route"
+    assert "app.include_router(router)" not in compatibility_source, "compatibility copilot module must not mount a duplicate router"
+
+    paths = (app.openapi() or {}).get("paths", {})
+    assert "/copilot/run" in paths and "post" in paths["/copilot/run"], "runtime POST /copilot/run endpoint missing"
 
     request = urllib.request.Request(
         f"{BASE_URL}/copilot/run",
