@@ -1,44 +1,30 @@
 (()=>{
 'use strict';
-if(window.__URBION_DEVELOPMENT_IMPACT_OWNER_V4__)return;
-window.__URBION_DEVELOPMENT_IMPACT_OWNER_V4__=true;
+if(window.__URBION_DEVELOPMENT_IMPACT_OWNER_V5__)return;
+window.__URBION_DEVELOPMENT_IMPACT_OWNER_V5__=true;
 function packet(){return window.URBION_LAST?.canonical_evidence_packet||null}
 function impactFromPacket(p){return p?.evidence?.development_impact||p?.development_impact||null}
 function esc(v){return String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}
+function host(){return document.querySelector('.right')||document.querySelector('.layout > :last-child')}
 function mount(){
-  const p=packet(),impact=impactFromPacket(p),root=document.querySelector('.right');
-  if(!root||!impact||typeof impact!=='object')return false;
-  let card=root.querySelector('[data-testid="development-impact"]');
-  if(!card){
-    card=document.createElement('section');
-    card.className='urbion-live-card urbion-development-impact-card card';
-    card.setAttribute('data-testid','development-impact');
-    card.dataset.owner='canonical';
-    root.appendChild(card);
-  }
-  const domains=['physical','social','economic'];
-  const summary=impact.impact_summary||{};
-  const rows=domains.map(d=>{
-    const s=summary[d]||{};
-    return `<div class="rg-row"><span>${esc(d.toUpperCase())}</span><strong>${Number(s.metric_count||0)} metrics</strong><em>${s.review_required?'REVIEW REQUIRED':'SCREENED'}</em></div>`;
-  }).join('');
-  const gaps=Array.isArray(impact.review_gaps)?impact.review_gaps:[];
-  card.innerHTML=`<div class="cardhead"><h3>DEVELOPMENT IMPACT</h3><span class="tiny">DECISION SUPPORT</span></div><div class="tiny" style="margin-bottom:7px">Physical · Social · Economic screening</div>${rows}<div class="tiny" style="margin-top:7px">${gaps.length?`${gaps.length} input/review gap(s)`:'No open impact gaps'} · ${esc(impact.statutory_verification||'NOT_CLAIMED')}</div>`;
-  return true;
+ const p=packet(),root=host(); if(!root)return false;
+ let impact=impactFromPacket(p);
+ let card=root.querySelector('[data-testid="development-impact"]');
+ if(!card){card=document.createElement('section');card.className='urbion-live-card urbion-development-impact-card card';card.setAttribute('data-testid','development-impact');card.dataset.owner='canonical';root.appendChild(card)}
+ const domains=['physical','social','economic'];
+ const summary=impact&&typeof impact==='object'?(impact.impact_summary||{}):{};
+ const rows=domains.map(d=>{const s=summary[d]||{};return `<div class="rg-row"><span>${esc(d.toUpperCase())}</span><strong>${Number(s.metric_count||0)} metrics</strong><em>${s.review_required?'REVIEW REQUIRED':impact?'SCREENED':'REVIEW REQUIRED'}</em></div>`}).join('');
+ const gaps=impact&&Array.isArray(impact.review_gaps)?impact.review_gaps:[];
+ const state=impact?.statutory_verification||'NOT_CLAIMED';
+ card.innerHTML=`<div class="cardhead"><h3>DEVELOPMENT IMPACT</h3><span class="tiny">DECISION SUPPORT</span></div><div class="tiny" style="margin-bottom:7px">Physical · Social · Economic screening</div>${rows}<div class="tiny" style="margin-top:7px">${impact?(gaps.length?`${gaps.length} input/review gap(s)`:'No open impact gaps'):'Impact packet pending — review required'} · ${esc(state)}</div>`;
+ return true;
 }
 function ensure(){
-  mount();
-  if(!document.body)return;
-  if(!window.__URBION_DEVELOPMENT_IMPACT_OBSERVER__){
-    window.__URBION_DEVELOPMENT_IMPACT_OBSERVER__=new MutationObserver(()=>{if(!document.querySelector('[data-testid="development-impact"]'))mount()});
-    window.__URBION_DEVELOPMENT_IMPACT_OBSERVER__.observe(document.body,{childList:true,subtree:true});
-  }
-  let tries=0;
-  const timer=setInterval(()=>{if(mount()||++tries>=300)clearInterval(timer)},100);
+ mount();
+ if(!document.body)return;
+ if(!window.__URBION_DEVELOPMENT_IMPACT_OBSERVER_V5__){window.__URBION_DEVELOPMENT_IMPACT_OBSERVER_V5__=new MutationObserver(()=>mount());window.__URBION_DEVELOPMENT_IMPACT_OBSERVER_V5__.observe(document.body,{childList:true,subtree:true});}
+ let tries=0;const timer=setInterval(()=>{if(mount()&&impactFromPacket(packet()))clearInterval(timer);if(++tries>=300)clearInterval(timer)},100);
 }
-window.addEventListener('urbion:assessment-ready',ensure);
-window.addEventListener('urbion:environment-ready',ensure);
-window.addEventListener('urbion:mobility-ready',ensure);
-window.addEventListener('urbion:workspace-ready',ensure);
+window.addEventListener('urbion:assessment-ready',ensure);window.addEventListener('urbion:environment-ready',ensure);window.addEventListener('urbion:mobility-ready',ensure);window.addEventListener('urbion:workspace-ready',ensure);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensure,{once:true});else ensure();
 })();
