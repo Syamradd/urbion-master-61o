@@ -23,3 +23,5 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run rule provenance smoke
         run: python scripts/phase1_rule_provenance_smoke.py
+      - name: Run canonical review-gaps contract smoke
+        run: python scripts/phase1_review_gaps_smoke.py
