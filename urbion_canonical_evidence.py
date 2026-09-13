@@ -7,6 +7,7 @@ existing intelligence modules to converge into before the UI is wired to it.
 """
 from __future__ import annotations
 from typing import Any
+from urbion_cadastral_identity import build_cadastral_identity
 
 EVIDENCE_STATES = ("USER_PROVIDED", "CALCULATED", "SOURCE_CONTEXT", "VERIFIED", "UNVERIFIED")
 PACKET_VERSION = "PHASE1.2"
@@ -54,6 +55,7 @@ def build_canonical_evidence_packet(
     development_impact: dict[str, Any] | None = None,
     policy_graph: dict[str, Any] | None = None,
     lcp: dict[str, Any] | None = None,
+    cadastral: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create the single evidence envelope used by downstream decision surfaces."""
     assessment = assessment or {}
@@ -61,8 +63,20 @@ def build_canonical_evidence_packet(
     evidence_state = dict(assessment.get("evidence_state") or {})
     source_registry = list(assessment.get("source_registry") or [])
 
+    if not isinstance(cadastral, dict):
+        cadastral = build_cadastral_identity(
+            state=site.get("state"),
+            district=site.get("district"),
+            mukim=site.get("mukim"),
+            lot_no=site.get("lot_no") if site.get("lot_no") not in (None, "Not specified") else None,
+            iplan_result=assessment.get("cadastral_query"),
+            jupem_verification=assessment.get("jupem_verification"),
+        )
+
     gaps = _gaps(assessment, spatial, environment, stations, development_impact, policy_graph, lcp)
     gaps.extend(_rule_review_gaps(assessment))
+    if cadastral.get("project_reference", {}).get("status") == "NOT_PROVIDED":
+        gaps.append("Project-reference lot number is not provided; cadastral identity requires explicit project input or authoritative parcel evidence.")
     gaps = list(dict.fromkeys(gaps))
 
     return {
@@ -77,6 +91,7 @@ def build_canonical_evidence_packet(
             "identity_evidence": _state(evidence_state.get("site_coordinates", "USER_PROVIDED")),
             "statutory_verification": "NOT_CLAIMED",
         },
+        "cadastral_identity": cadastral,
         "assessment": {
             "final_status": assessment.get("final_status"),
             "classification": assessment.get("classification"),
