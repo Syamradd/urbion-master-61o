@@ -70,6 +70,10 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
         run: python scripts/phase1_canonical_contract_smoke.py
+      - name: Run development impact convergence smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_development_impact_integration_smoke.py
       - name: Run live rule-provenance integration smoke
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
