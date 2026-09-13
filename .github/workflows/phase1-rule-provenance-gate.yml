@@ -30,6 +30,8 @@ jobs:
         run: python scripts/phase1_rule_provenance_smoke.py
       - name: Run canonical review-gaps contract smoke
         run: python scripts/phase1_review_gaps_smoke.py
+      - name: Run cadastral identity contract smoke
+        run: python scripts/phase1_cadastral_identity_smoke.py
       - name: Preflight canonical server import
         run: python -c "import landing_server; print('[PHASE1] landing_server import PASS')"
       - name: Start canonical presentation server
