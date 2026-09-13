@@ -19,6 +19,28 @@ from urbion_network_intelligence import network_distance_m
 from urbion_canonical_evidence import build_canonical_evidence_packet
 
 
+def _enrich_canonical_packet(packet: dict, *, spatial: dict, knowledge: dict, impact: dict, scenarios: dict, decision: dict, evidence_ledger: dict, evidence_quality: dict) -> dict:
+    """Attach deterministic downstream intelligence to the one canonical packet."""
+    packet = dict(packet or {})
+    evidence = dict(packet.get("evidence") or {})
+    evidence.update({
+        "spatial": spatial or {},
+        "development_impact": impact or {},
+        "policy_graph": knowledge.get("policy_graph") if isinstance(knowledge, dict) else {},
+    })
+    packet["evidence"] = evidence
+    packet["knowledge"] = knowledge or {}
+    packet["what_if"] = scenarios or {}
+    packet["decision_center"] = decision or {}
+    packet["evidence_ledger"] = evidence_ledger or {}
+    packet["evidence_quality"] = evidence_quality or {}
+    packet["review_gaps"] = list(dict.fromkeys(list(packet.get("review_gaps", []) or []) + list((impact or {}).get("review_gaps", []) or []) + list((scenarios or {}).get("review_gaps", []) or []) + list((decision or {}).get("review_gaps", []) or [])))
+    packet["trace"] = "SITE → SPATIAL → POLICY → ENVIRONMENT/IMPACT → WHAT-IF → DECISION → REVIEW"
+    packet["convergence"] = {"status": "CANONICAL", "downstream_modules": ["SPATIAL", "KNOWLEDGE", "IMPACT", "WHAT_IF", "DECISION", "EVIDENCE_LEDGER", "EVIDENCE_QUALITY"]}
+    packet["statutory_verification"] = "NOT_CLAIMED"
+    return packet
+
+
 def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constraints=None,
                          environmental_context=None, canonical_evidence_packet=None):
     raw = dict(inputs or {})
@@ -63,6 +85,7 @@ def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constrai
     preferred = ranked[0] if ranked else None
     evidence_ledger = build_evidence_ledger(assessment=assessment, spatial=spatial, knowledge=knowledge, impact=impact, scenarios=scenario_intelligence, decision=decision)
     evidence_quality = build_evidence_quality(evidence_ledger)
+    canonical_packet = _enrich_canonical_packet(canonical_packet, spatial=spatial, knowledge=knowledge, impact=impact, scenarios=scenario_intelligence, decision=decision, evidence_ledger=evidence_ledger, evidence_quality=evidence_quality)
     next_actions = [
         "Review retrieved policy evidence and source traceability.",
         "Validate spatial and environmental context against authoritative sources.",
