@@ -14,7 +14,10 @@ RULE_SOURCE_DEFAULT = {
     "document_family": "Rancangan Tempatan MBMB 2035",
     "version_status": "CURRENT_PLAN_REFERENCE",
     "adopted_amendment_status": "PENGUBAHAN_5_LISTED_BY_OFFICIAL_PORTAL",
-    "latest_draft_note": "Pengubahan 6 was presented as a DRAFT RT MBMB 2035 briefing in MBMB news; do not treat it as adopted statutory text.",
+    "latest_official_amendment_check": "2026-09-14",
+    "latest_official_notice": "https://www.mbmb.gov.my/en/mbmb/media-centre/news/mesyuarat-majlis-penuh-mbmb-terima-taklimat-draf-blueprint-sm-wez-2-0-rt-mbmb-2035",
+    "latest_official_notice_status": "PENGUBAHAN_6_PRESENTED_AS_DRAFT",
+    "latest_draft_note": "MBMB reported a briefing on the Draft RT MBMB 2035 (Pengubahan 6) on 30 April 2026; do not treat it as adopted statutory text.",
     "source_status": "PRIMARY_REFERENCE_PARTIAL",
     "verification_status": "REQUIRES_REVIEW",
     "citation_locator": None,
@@ -52,6 +55,8 @@ def audit_rule_set(rules: list[dict[str, Any]]) -> dict[str, Any]:
                 "document": p["document"],
                 "version_status": p["version_status"],
                 "adopted_amendment_status": p["adopted_amendment_status"],
+                "latest_official_amendment_check": p["latest_official_amendment_check"],
+                "latest_official_notice_status": p["latest_official_notice_status"],
                 "page": p["page"],
                 "clause": p["clause"],
                 "table": p["table"],
@@ -60,7 +65,7 @@ def audit_rule_set(rules: list[dict[str, Any]]) -> dict[str, Any]:
             }
         )
     return {
-        "audit_version": "P0.2.1",
+        "audit_version": "P0.2.2",
         "jurisdiction": RULE_SOURCE_DEFAULT["jurisdiction"],
         "rules": audited,
         "statutory_verification": "NOT_CLAIMED",
