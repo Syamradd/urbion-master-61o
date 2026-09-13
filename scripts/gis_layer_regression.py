@@ -23,6 +23,7 @@ def main():
   page.locator("#layerBtn").click(); expect(page.locator("#layers")).to_have_class("layers open"); expect(page.locator("#layerList")).to_be_visible(timeout=15000)
   wait_until(lambda: page.locator("#layerList input[data-urbion-layer]").count()==25)
   ids=set(page.locator("#layerList input[data-urbion-layer]").evaluate_all("els => els.map(e => e.dataset.urbionLayer)")); assert ids==EXPECTED_LAYER_IDS
+  assert page.locator("#layerList input[data-urbion-layer]").evaluate_all("els => new Set(els.map(e => e.dataset.urbionLayer)).size")==25
   for lid in EXPECTED_LAYER_IDS:
    assert page.locator(f"#layerList input[data-urbion-layer='{lid}']").count()==1
    assert page.locator(f"#layerList .layerstate[data-layer-state='{lid}']").count()==1
