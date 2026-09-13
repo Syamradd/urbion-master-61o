@@ -42,13 +42,12 @@ def _canonical_http_error(*, code: str, message: str, route: str, stage: str, so
 
 @app.middleware("http")
 async def _optional_tod_compat(request: Request, call_next):
-    """Route only TOD-optional UI payloads through the existing optional adapter.
+    """Keep only the optional-TOD assessment adapter; public /what-if stays canonical.
 
-    Complete TOD payloads continue through the original production endpoints, so
-    deterministic planning behaviour is unchanged unless the caller actually
-    exercises the optional-TOD contract.
+    Complete and optional-TOD `/what-if` requests now use the same public server
+    route so baseline/scenario packet contracts cannot diverge by middleware path.
     """
-    if request.method != "POST" or request.url.path not in {"/assess", "/what-if"}:
+    if request.method != "POST" or request.url.path != "/assess":
         return await call_next(request)
 
     body = await request.body()
@@ -57,20 +56,17 @@ async def _optional_tod_compat(request: Request, call_next):
     except (UnicodeDecodeError, json.JSONDecodeError):
         return await call_next(request)
 
-    target = payload.get("baseline") if request.url.path == "/what-if" and isinstance(payload, dict) else payload
-    if not isinstance(target, dict):
+    if not isinstance(payload, dict):
         return await call_next(request)
 
     tod_keys = ("tod_lat", "tod_lon")
-    missing_tod = all(target.get(key) in (None, "") for key in tod_keys)
-    partial_tod = (target.get("tod_lat") in (None, "")) != (target.get("tod_lon") in (None, ""))
+    missing_tod = all(payload.get(key) in (None, "") for key in tod_keys)
+    partial_tod = (payload.get("tod_lat") in (None, "")) != (payload.get("tod_lon") in (None, ""))
     if not (missing_tod or partial_tod):
         return await call_next(request)
 
     try:
-        if request.url.path == "/assess":
-            return JSONResponse(content=assess_optional(payload))
-        return JSONResponse(content=what_if_ui(payload))
+        return JSONResponse(content=assess_optional(payload))
     except HTTPException as exc:
         return _canonical_http_error(code="OPTIONAL_TOD_INPUT_ERROR", message=str(exc.detail), route=request.url.path, stage="OPTIONAL_TOD", source="URBION_OPTIONAL_TOD", details=exc.detail, status_code=exc.status_code)
     except Exception as exc:
