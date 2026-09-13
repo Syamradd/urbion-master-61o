@@ -1,6 +1,7 @@
 """Validate downstream decision, planner handoff and judge-demo surfaces keep the canonical packet boundary."""
 from __future__ import annotations
 import json, os
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 BASE = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8000")
@@ -15,9 +16,13 @@ PAYLOAD = {
 
 def post(path: str, payload: dict) -> dict:
     req = Request(BASE + path, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST")
-    with urlopen(req, timeout=90) as response:
-        assert response.status == 200, f"{path}: expected 200, got {response.status}"
-        return json.loads(response.read().decode())
+    try:
+        with urlopen(req, timeout=90) as response:
+            assert response.status == 200, f"{path}: expected 200, got {response.status}"
+            return json.loads(response.read().decode())
+    except HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise AssertionError(f"{path}: HTTP {exc.code} body={body}") from exc
 
 
 def main() -> None:
