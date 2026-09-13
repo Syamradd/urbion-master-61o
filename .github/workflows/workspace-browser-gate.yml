@@ -45,6 +45,10 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
         run: python scripts/what_if_canonical_contract_smoke.py
+      - name: Run frontend owner contract smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/frontend_owner_contract_smoke.py
       - name: Run Phase 1 canonical evidence smoke
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
