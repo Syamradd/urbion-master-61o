@@ -16,31 +16,12 @@ from playwright.sync_api import expect, sync_playwright
 BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8000")
 
 EXPECTED_LAYER_IDS = {
-    "iplan-current",
-    "iplan-zoning",
-    "iplan-committed",
-    "iplan-rfn",
-    "iplan-rsn",
-    "iplan-flood",
-    "iplan-disaster-risk",
-    "iplan-ksas",
-    "iplan-cfs",
-    "iplan-ecology",
-    "iplan-heritage",
-    "iplan-affordable-housing",
-    "iplan-topography",
-    "iplan-hutan",
-    "iplan-coastal-erosion",
-    "iplan-rmm",
-    "iplan-contours",
-    "mygems-faults",
-    "mygems-quarries",
-    "mygems-groundwater",
-    "mygems-geowarisan",
-    "mygems-lithology",
-    "mygems-seismic",
-    "mygems-mineral",
-    "iplan-cadastral",
+    "iplan-current", "iplan-zoning", "iplan-committed", "iplan-rfn", "iplan-rsn",
+    "iplan-flood", "iplan-disaster-risk", "iplan-ksas", "iplan-cfs", "iplan-ecology",
+    "iplan-heritage", "iplan-affordable-housing", "iplan-topography", "iplan-hutan",
+    "iplan-coastal-erosion", "iplan-rmm", "iplan-contours", "mygems-faults",
+    "mygems-quarries", "mygems-groundwater", "mygems-geowarisan", "mygems-lithology",
+    "mygems-seismic", "mygems-mineral", "iplan-cadastral",
 }
 
 
@@ -57,7 +38,6 @@ def wait_until(predicate, timeout: float = 15.0, interval: float = 0.2) -> None:
 
 def main() -> None:
     assert len(EXPECTED_LAYER_IDS) == 25
-
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         context = browser.new_context(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
@@ -74,31 +54,34 @@ def main() -> None:
 
         page.goto(BASE_URL + "/workspace", wait_until="domcontentloaded", timeout=30_000)
         expect(page).to_have_title("URBION HORIZON — Planning Workspace")
+
+        # The canonical drawer is hidden by default; open it through its owner
+        # before checking the rendered layer catalogue.
+        page.locator("#layerBtn").click()
+        expect(page.locator("#layers")).to_have_class("layers open")
         expect(page.locator("#layerList")).to_be_visible(timeout=15_000)
 
-        wait_until(lambda: page.locator("#layerList input[data-layer]").count() == 25)
-        dom_ids = set(page.locator("#layerList input[data-layer]").evaluate_all("els => els.map(e => e.dataset.layer)"))
+        wait_until(lambda: page.locator("#layerList input[data-urbion-layer]").count() == 25)
+        dom_ids = set(page.locator("#layerList input[data-urbion-layer]").evaluate_all(
+            "els => els.map(e => e.dataset.urbionLayer)"))
         assert dom_ids == EXPECTED_LAYER_IDS, {
             "missing": sorted(EXPECTED_LAYER_IDS - dom_ids),
             "unexpected": sorted(dom_ids - EXPECTED_LAYER_IDS),
         }
 
-        page.locator("#layerBtn").click()
-        expect(page.locator("#layers")).to_have_class("layers open")
-        expect(page.locator("#layerList input[data-layer]")).to_have_count(25)
-        assert page.locator("#layerList input[data-layer]").evaluate_all("els => new Set(els.map(e => e.dataset.layer)).size") == 25
+        expect(page.locator("#layerList input[data-urbion-layer]")).to_have_count(25)
+        assert page.locator("#layerList input[data-urbion-layer]").evaluate_all(
+            "els => new Set(els.map(e => e.dataset.urbionLayer)).size") == 25
 
         for layer_id in sorted(EXPECTED_LAYER_IDS):
-            row = page.locator(f"#layerList input[data-layer='{layer_id}']")
+            row = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
             assert row.count() == 1, layer_id
             state = page.locator(f"#layerList .layerstate[data-layer-state='{layer_id}']")
             assert state.count() == 1, f"missing layer state for {layer_id}"
 
         browser.close()
-
     print("GIS 25-layer regression: PASS")
 
 
 if __name__ == "__main__":
     main()
-# CI trigger: execute this regression on the latest browser-gate workflow definition.
