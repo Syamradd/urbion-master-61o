@@ -44,6 +44,10 @@ jobs:
           URBION_BASE_URL: http://127.0.0.1:8000
           URBION_ARTIFACT_DIR: artifacts/workspace-browser
         run: python scripts/workspace_browser_smoke_ci.py
+      - name: Run GIS 25-layer regression
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/gis_layer_regression.py
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
