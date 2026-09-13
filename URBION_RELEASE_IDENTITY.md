@@ -8,7 +8,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Canonical workspace: `feature/canonical-workspace-v2`
 - Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
 - Current hardening branch: `feature/championship-convergence-v1`
-- Current hardening HEAD: `ebc0cc3da168656b852857d30dbe7d63c1446434`
+- Current hardening HEAD: `3bc3cb184c3fd1664f6063146a6b992167250560`
 - Current hardening PR: `#131`
 
 ## Engineering identity
