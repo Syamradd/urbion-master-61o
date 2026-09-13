@@ -35,6 +35,10 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
         run: python scripts/phase1_canonical_contract_smoke.py
+      - name: Run planning rule provenance smoke
+        env:
+          PYTHONPATH: .
+        run: python scripts/phase1_rule_provenance_smoke.py
       - name: Run browser smoke gate
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
