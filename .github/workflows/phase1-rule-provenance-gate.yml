@@ -24,6 +24,8 @@ jobs:
           python-version: '3.12'
       - name: Install application dependencies
         run: pip install -r requirements.txt
+      - name: Install Playwright Python package
+        run: pip install playwright
       - name: Run rule provenance smoke
         run: python scripts/phase1_rule_provenance_smoke.py
       - name: Run canonical review-gaps contract smoke
