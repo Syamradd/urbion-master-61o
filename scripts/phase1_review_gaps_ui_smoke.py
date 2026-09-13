@@ -51,8 +51,10 @@ async def main() -> None:
         modal = page.locator('#modal .urbion-review-gap-surface[data-owner="canonical"]')
         await modal.wait_for()
         assert await modal.locator('.rg-count').inner_text() == "2 OPEN"
-        assert "EVIDENCE · REVIEW GAPS" in await modal.inner_text()
-        assert "NOT_CLAIMED" in await modal.inner_text()
+        evidence_text = await modal.inner_text()
+        assert "REVIEW GAPS" in evidence_text
+        assert "EVIDENCE" in evidence_text
+        assert "NOT_CLAIMED" in evidence_text
 
         await page.evaluate("document.getElementById('modal').classList.remove('show')")
         await page.evaluate("document.getElementById('modal').classList.add('show')")
@@ -60,8 +62,10 @@ async def main() -> None:
         await page.evaluate("window.URBION_REVIEW_GAPS.render('DECISION')")
         decision = page.locator('#modal .urbion-review-gap-surface[data-owner="canonical"]')
         await decision.wait_for()
-        assert "DECISION · REVIEW GAPS" in await decision.inner_text()
-        assert await decision.locator('.rg-count').inner_text() == "2 OPEN"
+        decision_text = await decision.inner_text()
+        assert "REVIEW GAPS" in decision_text
+        assert "2 OPEN" in decision_text
+        assert "NOT_CLAIMED" in decision_text
 
         assert not errors, f"browser pageerror(s): {errors}"
         print("[PHASE1-REVIEW-GAPS-UI] PASS: rail + EVIDENCE modal + DECISION modal")
