@@ -53,11 +53,12 @@ const liveContext=()=>{
   return 'REVIEW';
 };
 let pendingTimer=null;
+let rendering=false;
 const schedule=()=>{
   clearTimeout(pendingTimer);
-  pendingTimer=setTimeout(()=>{pendingTimer=null;if(packet())surface(liveContext())},40);
+  pendingTimer=setTimeout(()=>{pendingTimer=null;if(packet()&&!rendering)surface(liveContext())},40);
 };
-const observer=new MutationObserver(()=>{if(document.getElementById('modal')?.classList.contains('show'))schedule();});
+const observer=new MutationObserver(()=>{if(rendering)return;if(document.getElementById('modal')?.classList.contains('show'))schedule();});
 const boot=async()=>{
   observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
   document.addEventListener('click',event=>{
@@ -69,5 +70,8 @@ const boot=async()=>{
   const ready=()=>{renderRail();schedule()};
   for(let i=0;i<120;i++){if(packet()) return ready();await new Promise(r=>setTimeout(r,100))}
 };
+const originalSurface=surface;
+const safeSurface=(...args)=>{rendering=true;try{return originalSurface(...args)}finally{rendering=false}};
+window.URBION_REVIEW_GAPS.render=safeSurface;
 boot();
 })();
