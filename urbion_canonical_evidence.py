@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 EVIDENCE_STATES = ("USER_PROVIDED", "CALCULATED", "SOURCE_CONTEXT", "VERIFIED", "UNVERIFIED")
-PACKET_VERSION = "PHASE1.1"
+PACKET_VERSION = "PHASE1.2"
 
 
 def _state(value: Any) -> str:
@@ -26,6 +26,23 @@ def _gaps(*sections: dict[str, Any] | None) -> list[str]:
         if isinstance(raw, list):
             values.extend(str(x) for x in raw if x)
     return list(dict.fromkeys(values))
+
+
+def _rule_review_gaps(assessment: dict[str, Any]) -> list[str]:
+    """Translate untraceable rule provenance into explicit review gaps."""
+    gaps: list[str] = []
+    for rule in assessment.get("retrieved_rules", []) or []:
+        if not isinstance(rule, dict):
+            continue
+        provenance = rule.get("provenance") or {}
+        verification = str(rule.get("verification_status") or provenance.get("verification_status") or "").upper()
+        source_status = str(rule.get("source_status") or provenance.get("source_status") or "").upper()
+        missing_locator = not any(provenance.get(key) for key in ("page", "clause", "table", "citation_locator"))
+        if verification == "REQUIRES_REVIEW" or source_status == "PRIMARY_REFERENCE_PARTIAL" or missing_locator:
+            rule_id = rule.get("rule_id") or "UNSPECIFIED_RULE"
+            document = provenance.get("document") or rule.get("source_document") or "planning source"
+            gaps.append(f"{rule_id}: exact page/clause/table locator and current applicability require review ({document}).")
+    return gaps
 
 
 def build_canonical_evidence_packet(
@@ -45,6 +62,8 @@ def build_canonical_evidence_packet(
     source_registry = list(assessment.get("source_registry") or [])
 
     gaps = _gaps(assessment, spatial, environment, stations, development_impact, policy_graph, lcp)
+    gaps.extend(_rule_review_gaps(assessment))
+    gaps = list(dict.fromkeys(gaps))
 
     return {
         "version": PACKET_VERSION,
