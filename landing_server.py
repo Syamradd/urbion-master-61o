@@ -87,7 +87,7 @@ def _canonical_packet(assessment: dict) -> dict:
     )
 
 
-def _with_canonical_packet(response: Response) -> Response:
+async def _with_canonical_packet(response: Response) -> Response:
     """Attach the canonical packet to successful JSON assessment responses."""
     try:
         body = b"".join([chunk async for chunk in response.body_iterator])
