@@ -19,11 +19,16 @@ PAYLOAD = {
     "lot_no": "",
 }
 
-def main() -> None:
-    req = Request(BASE + "/assess", data=json.dumps(PAYLOAD).encode(), headers={"Content-Type": "application/json"}, method="POST")
+
+def post(path: str, payload: dict) -> dict:
+    req = Request(BASE + path, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST")
     with urlopen(req, timeout=30) as r:
         assert r.status == 200
-        payload = json.load(r)
+        return json.load(r)
+
+
+def main() -> None:
+    payload = post("/assess", PAYLOAD)
     packet = payload.get("canonical_evidence_packet")
     assert isinstance(packet, dict), "canonical_evidence_packet missing"
     assert packet.get("version") == "PHASE1.2"
@@ -35,16 +40,17 @@ def main() -> None:
     assert len(impact.get("review_gaps") or []) >= 1, "missing impact inputs must remain explicit review gaps"
     assert isinstance(payload.get("development_impact"), dict), "top-level development impact missing"
 
-    dreq = Request(BASE + "/decision-center", data=json.dumps(PAYLOAD).encode(), headers={"Content-Type": "application/json"}, method="POST")
-    with urlopen(dreq, timeout=30) as r:
-        assert r.status == 200
-        decision = json.load(r)
-    assert isinstance(decision.get("canonical_evidence_packet"), dict)
+    # The presentation decision flow consumes an assessment wrapper; this is
+    # the same request shape emitted by the workspace decision modal.
+    decision = post("/decision-center", {"assessment": PAYLOAD})
+    assert isinstance(decision.get("canonical_evidence_packet"), dict), "decision center canonical packet missing"
     assert isinstance(decision.get("development_impact"), dict), "decision center missing development impact"
+    assert decision.get("canonical_evidence_packet", {}).get("version") == "PHASE1.2"
     print("DEVELOPMENT IMPACT CONVERGENCE PASS")
     print("domains: physical, social, economic")
     print("statutory_verification: NOT_CLAIMED")
     print("canonical_packet_version:", packet.get("version"))
+
 
 if __name__ == "__main__":
     main()
