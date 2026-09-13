@@ -12,6 +12,7 @@ from urbion_environment_api import router as urbion_environment_router
 from urbion_mobility_api import router as urbion_mobility_router
 from urbion_canonical_evidence import build_canonical_evidence_packet
 from urbion_development_impact import build_development_impact
+from urbion_road_intelligence import build_road_intelligence
 
 BASE_DIR = Path(__file__).resolve().parent
 WELCOME_FILE = BASE_DIR / "welcome.html"
@@ -107,6 +108,18 @@ def _canonical_packet(assessment: dict) -> dict:
                                            policy_graph={"policy_coverage": assessment.get("policy_coverage")})
 
 
+def _road_intelligence_from_payload(payload: dict) -> dict:
+    return build_road_intelligence(
+        site_lat=payload.get("site_lat"),
+        site_lon=payload.get("site_lon"),
+        nearest_road_name=payload.get("nearest_road_name"),
+        nearest_road_distance_m=payload.get("nearest_road_distance_m"),
+        road_hierarchy=payload.get("road_hierarchy"),
+        road_source=payload.get("road_source"),
+        centres=payload.get("centres") if isinstance(payload.get("centres"), list) else [],
+    )
+
+
 def _attach_packet(payload: dict, path: str) -> dict:
     assessment = payload if path == "/assess" else payload.get("assessment")
     if isinstance(assessment, dict):
@@ -133,6 +146,16 @@ async def _response_json(response: Response) -> tuple[bytes, object]:
 @app.middleware("http")
 async def _urbion_canonical_presentation(request: Request, call_next):
     path = request.url.path
+    if path == "/road-intelligence" and request.method == "POST":
+        try:
+            raw = await request.body()
+            incoming = json.loads(raw.decode("utf-8")) if raw else {}
+            if not isinstance(incoming, dict):
+                return JSONResponse({"detail": "JSON object required"}, status_code=400)
+            return JSONResponse(_road_intelligence_from_payload(incoming))
+        except Exception as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=400)
+
     if path == "/decision-center" and request.method == "POST":
         try:
             raw = await request.body()
