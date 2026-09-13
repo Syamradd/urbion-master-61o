@@ -48,8 +48,8 @@ def build_live_environment_evidence(
         "evidence": "SOURCE_CONTEXT",
         "statutory_verification": "NOT_CLAIMED",
     }
-    if query_errors:
-        intelligence["status"] = "QUERY_ERROR" if not intelligence.get("flagged_count") else intelligence.get("status")
+    if query_errors and not (intelligence.get("summary") or {}).get("flagged_count"):
+        intelligence["status"] = "QUERY_ERROR"
     return intelligence
 
 
