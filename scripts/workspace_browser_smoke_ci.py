@@ -21,6 +21,14 @@ source = source.replace(
     "querySelector('input,select,textarea')",
 )
 
+# The canonical analysis path exposes window.URBION_LAST as its deterministic
+# completion signal. Do not make the gate depend on a presentation string
+# that can vary by shell/theme/UI state.
+source = source.replace(
+    "page.wait_for_function(\"document.body.innerText.includes('ANALYSIS COMPLETE')\", timeout=20000)",
+    "page.wait_for_function(\"!!window.URBION_LAST\", timeout=60000)",
+)
+
 # Strip the source's __main__ execution block. We will call main() only after
 # installing the CI fixture override below.
 source = re.sub(
