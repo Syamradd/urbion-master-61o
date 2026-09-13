@@ -68,3 +68,7 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
         run: python scripts/phase1_review_gaps_ui_smoke.py
+      - name: Run copilot canonical parity smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_copilot_canonical_smoke.py
