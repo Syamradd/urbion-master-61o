@@ -8,6 +8,7 @@ from championship_server import app
 from server import AssessmentRequest, assess_core
 from urbion_decision_center import build_decision_center
 from urbion_wms_proxy import router as urbion_wms_router
+from urbion_environment_api import router as urbion_environment_router
 from urbion_canonical_evidence import build_canonical_evidence_packet
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -25,6 +26,7 @@ WORKSPACE_UTILITY_OWNER = BASE_DIR / "urbion_workspace_utility_owner.js"
 WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
 
 app.include_router(urbion_wms_router)
+app.include_router(urbion_environment_router)
 
 
 def _html(path: Path) -> HTMLResponse:
@@ -57,7 +59,7 @@ def _workspace() -> HTMLResponse:
 def _canonical_packet(assessment: dict) -> dict:
     return build_canonical_evidence_packet(assessment=assessment,
                                            spatial=assessment.get("site_analysis"),
-                                           environment=assessment.get("evidence_intelligence"),
+                                           environment=assessment.get("live_environment_evidence") or assessment.get("evidence_intelligence"),
                                            policy_graph={"policy_coverage": assessment.get("policy_coverage")})
 
 
