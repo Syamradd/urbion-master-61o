@@ -20,6 +20,7 @@ const installStyle=()=>{if(document.getElementById('urbionReviewGapStyle'))retur
 .urbion-review-gap-rail{margin-bottom:8px}
 `;document.head.appendChild(style)};
 let rendering=false;
+let suppressObserverUntil=0;
 const surface=(context='REVIEW')=>{
   if(rendering)return;
   const p=packet();if(!p)return;
@@ -28,6 +29,7 @@ const surface=(context='REVIEW')=>{
   const target=box||document.querySelector('.right');
   if(!target)return;
   rendering=true;
+  suppressObserverUntil=Date.now()+250;
   try{
     installStyle();
     target.querySelectorAll('.urbion-review-gap-surface[data-owner="canonical"]').forEach(x=>x.remove());
@@ -60,9 +62,9 @@ const liveContext=()=>{
 let pendingTimer=null;
 const schedule=()=>{
   clearTimeout(pendingTimer);
-  pendingTimer=setTimeout(()=>{pendingTimer=null;if(packet()&&!rendering)surface(liveContext())},40);
+  pendingTimer=setTimeout(()=>{pendingTimer=null;if(packet()&&!rendering&&Date.now()>=suppressObserverUntil)surface(liveContext())},40);
 };
-const observer=new MutationObserver(()=>{if(rendering)return;if(document.getElementById('modal')?.classList.contains('show'))schedule();});
+const observer=new MutationObserver(()=>{if(rendering||Date.now()<suppressObserverUntil)return;if(document.getElementById('modal')?.classList.contains('show'))schedule();});
 const boot=async()=>{
   observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
   document.addEventListener('click',event=>{
