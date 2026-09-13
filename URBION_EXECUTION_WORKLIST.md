@@ -19,7 +19,7 @@
 - [x] Decision center
 - [x] Output generation / print
 - [x] Utility buttons / theme / language / responsive checks
-- [x] Browser Gate GREEN — run 149 / commit `ab043127a55899a923608bc7cd240dbf29134600`
+- [x] Browser Gate GREEN — run 158 / commit `9b7a0ae1ea45222daadbcb3f9052801b2431f03e`
 
 ## Phase 1 — Data / Decision Integrity (CURRENT)
 Principle: **do not rewrite the deterministic engine; converge existing intelligence into one evidence-backed canonical site packet.**
@@ -30,7 +30,7 @@ Principle: **do not rewrite the deterministic engine; converge existing intellig
 - [x] Preserve evidence states: `USER_PROVIDED` · `CALCULATED` · `SOURCE_CONTEXT` · `VERIFIED` · `UNVERIFIED`
 - [ ] Make `review_gaps` first-class and visible in downstream Decision / Evidence surfaces
 - [ ] Ensure AI/Copilot can only explain the canonical deterministic packet
-- [x] Add packet-contract tests and a live `/assess` integration smoke; downstream UI consistency remains pending until CI verification
+- [x] Packet-contract tests + live `/assess` integration smoke GREEN; downstream UI consistency remains pending
 
 ### P0 — Planning-rule provenance hardening
 - [ ] Audit every RT / GP rule for document title, edition/amendment, page/table/clause, spatial condition and traceability
