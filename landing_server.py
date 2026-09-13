@@ -2,7 +2,8 @@
 from pathlib import Path
 import json
 
-from fastapi import Request
+from fastapi import Request, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
 from championship_server import app
 from server import AssessmentRequest, assess_core
@@ -151,6 +152,38 @@ async def _response_json(response: Response) -> tuple[bytes, object]:
         return b"", None
 
 
+def _canonical_downstream_error(request: Request, exc: Exception) -> JSONResponse:
+    path = request.url.path
+    if isinstance(exc, RequestValidationError):
+        return JSONResponse(
+            canonical_error(code="REQUEST_VALIDATION_ERROR", message="Request validation failed.", route=path,
+                            stage="REQUEST_VALIDATION", source="URBION_REQUEST_GATE", details=exc.errors()),
+            status_code=422,
+        )
+    if isinstance(exc, HTTPException):
+        status = int(exc.status_code or 500)
+        detail = exc.detail
+        if isinstance(detail, dict):
+            code = str(detail.get("code") or f"HTTP_{status}")
+            message = str(detail.get("message") or detail.get("detail") or "Request failed.")
+            details = detail
+        else:
+            code = f"HTTP_{status}"
+            message = str(detail or "Request failed.")
+            details = None
+        return JSONResponse(
+            canonical_error(code=code, message=message, route=path, stage="HTTP_ERROR",
+                            source="URBION_REQUEST_GATE", details=details, retryable=status >= 500),
+            status_code=status,
+        )
+    return JSONResponse(
+        canonical_error(code="INTERNAL_ERROR", message="Unexpected server error.", route=path,
+                        stage="SERVER", source="URBION_PRESENTATION_GATE", retryable=True,
+                        details={"exception_type": type(exc).__name__}),
+        status_code=500,
+    )
+
+
 @app.middleware("http")
 async def _urbion_canonical_presentation(request: Request, call_next):
     path = request.url.path
@@ -215,7 +248,13 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         if not target.is_file(): return Response("URBION HORIZON legacy compatibility asset missing.",status_code=404,media_type="text/plain")
         return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
 
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except (RequestValidationError, HTTPException) as exc:
+        return _canonical_downstream_error(request, exc)
+    except Exception as exc:
+        return _canonical_downstream_error(request, exc)
+
     if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
         body, payload = await _response_json(response)
         if not isinstance(payload, dict) or response.status_code >= 400:
