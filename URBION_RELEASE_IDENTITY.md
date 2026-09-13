@@ -8,7 +8,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Canonical workspace: `feature/canonical-workspace-v2`
 - Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
 - Current hardening branch: `feature/championship-convergence-v1`
-- Current hardening HEAD: `3bc3cb184c3fd1664f6063146a6b992167250560`
+- Current hardening HEAD: `75e58725dbfa444bcf6579629f44d6502e7f1ebb`
 - Current hardening PR: `#131`
 
 ## Engineering identity
@@ -28,14 +28,21 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Public What-If route convergence onto canonical evidence packets
 - Bounded Copilot downstream convergence into the canonical packet
 - Agent/Copilot API failure-contract convergence
+- Frontend owner/lifecycle hardening
 - Production manifest and release-document consistency
 
-## Release gates
+## Current hardening gates
 
-- Pre-convergence CI on merged baseline: `GREEN` — Workspace Source, Browser, Rule Provenance, Road Intelligence
-- Current hardening CI: `PENDING` for latest HEAD
+- Workspace Source: `GREEN` on prior canonical baseline
+- Rule Provenance: `GREEN` on prior canonical baseline
+- Road Intelligence: `GREEN` on prior canonical baseline
+- Workspace Browser: `GREEN` on prior canonical baseline
+- New convergence/owner contract checks: `PENDING` until CI completes on HEAD `75e58725dbfa444bcf6579629f44d6502e7f1ebb`
+
+## Deployment gates
+
 - Production Render: `HOLD`
-- Production branch alignment: `NOT YET ALIGNED`
+- Production branch parity: `NOT YET PROVEN`
 - Live production smoke: `NOT RUN`
 - Deployment readiness: `FALSE` until final convergence + parity + live smoke
 
