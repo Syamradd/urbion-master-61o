@@ -18,17 +18,31 @@ MAX_OUTPUT_CHARS = 4000
 
 
 def _fallback(packet: dict) -> str:
+    """Deterministic planner-facing answer when no LLM key is available."""
     assessment = packet.get("assessment") or {}
     decision = packet.get("decision") or {}
     ledger = packet.get("evidence_ledger") or {}
+    site_analysis = assessment.get("site_analysis") or {}
+    score = site_analysis.get("score")
+    band = site_analysis.get("band") or "REQUIRES FURTHER STUDY"
+    rec = (site_analysis.get("recommendation") or {}).get("headline") or decision.get("headline") or "PROCEED WITH PLANNER REVIEW"
     status = assessment.get("final_status") or decision.get("status") or "REQUIRES REVIEW"
-    score = (assessment.get("site_analysis") or {}).get("score")
     review = ledger.get("review_required_items", 0)
-    score_text = f" with a deterministic score of {score}" if isinstance(score, (int, float)) else ""
-    return (f"URBION HORIZON screens this proposal as {status}{score_text}. "
-            f"The evidence ledger contains {ledger.get('total_items', 0)} item(s), "
-            f"including {review} requiring review. Validate source currency, geometry, "
-            "planning rules and agency requirements before relying on the result.")
+    assessed = (site_analysis.get("score_coverage") or {}).get("assessed_dimensions")
+    total = (site_analysis.get("score_coverage") or {}).get("total_dimensions")
+    if isinstance(score, (int, float)):
+        score_line = f"Site screening returns {score:.0f}% suitability ({band.lower()})."
+        if isinstance(assessed, int) and isinstance(total, int):
+            score_line += f" {assessed} of {total} assessment dimensions are currently evidenced; unverified dimensions are excluded."
+    else:
+        score_line = f"The site remains {band.lower()} on the available screening evidence."
+    return (
+        f"FINDING — URBION HORIZON screens the proposal as {status.lower()}. "
+        f"{score_line} "
+        f"EVIDENCE — the deterministic packet records {ledger.get('total_items', 0)} evidence item(s), "
+        f"with {review} requiring review. "
+        f"ACTION — {rec.lower()}; verify source currency, cadastral/site conditions, applicable planning controls and agency requirements before a planning decision."
+    )
 
 
 def _prompt(packet: dict) -> str:
@@ -40,7 +54,8 @@ def _prompt(packet: dict) -> str:
             "Summarize ONLY the supplied deterministic packet. Do not invent facts, policies, "
             "measurements, sources, approvals, or confidence. Distinguish CALCULATED, SOURCE_CONTEXT, "
             "USER_PROVIDED and VERIFIED evidence. Never say a proposal is approved or compliant. "
-            "Return concise planner-facing prose with: finding, evidence caveat, and next action.\n\n"
+            "Return concise planner-facing prose with three labelled parts: FINDING, EVIDENCE, ACTION. "
+            "Use precise, professional wording suitable for a town planner briefing.\n\n"
             + payload)
 
 
