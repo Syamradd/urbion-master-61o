@@ -19,7 +19,7 @@
 - [x] Decision center
 - [x] Output generation / print
 - [x] Utility buttons / theme / language / responsive checks
-- [x] Browser Gate GREEN — run 158 / commit `9b7a0ae1ea45222daadbcb3f9052801b2431f03e`
+- [x] Browser Gate GREEN — validated across canonical browser checkpoints
 
 ## Phase 1 — Data / Decision Integrity (CURRENT)
 Principle: **do not rewrite the deterministic engine; converge existing intelligence into one evidence-backed canonical site packet.**
@@ -28,16 +28,16 @@ Principle: **do not rewrite the deterministic engine; converge existing intellig
 - [x] Define canonical evidence-packet contract: site identity → source context → calculations → policy → risks → decision → review gaps
 - [x] Assessment presentation surface now attaches the canonical packet and converges existing site / policy / evidence-intelligence fields; external station / LCP enrichment remains pending
 - [x] Preserve evidence states: `USER_PROVIDED` · `CALCULATED` · `SOURCE_CONTEXT` · `VERIFIED` · `UNVERIFIED`
-- [ ] Make `review_gaps` first-class and visible in downstream Decision / Evidence surfaces
-- [ ] Ensure AI/Copilot can only explain the canonical deterministic packet
-- [x] Packet-contract tests + live `/assess` integration smoke GREEN; downstream UI consistency remains pending
+- [x] Make `review_gaps` first-class and visible in downstream Decision / Evidence surfaces
+- [x] Ensure AI/Copilot can only explain the canonical deterministic packet
+- [x] Packet-contract tests + live `/assess` integration smoke GREEN; downstream UI consistency validated
 
 ### P0 — Planning-rule provenance hardening
 - [ ] Audit every RT / GP rule for document title, edition/amendment, page/table/clause, spatial condition and traceability
 - [ ] Resolve current RT MBMB amendment/version status before treating a control as current
 - [ ] Expand only high-value deterministic controls first; target ~15–25 decision-relevant controls, not a bloated rule database
-- [ ] Keep unsupported controls as `REQUIRES REVIEW`; never invent local standards
-- [ ] Add provenance freshness / source-status fields without overstating verification
+- [x] Keep unsupported controls as `REQUIRES REVIEW`; never invent local standards
+- [x] Add provenance freshness / source-status fields without overstating verification
 
 ### P1 — Cadastral / site identity
 - [ ] Reconcile project-reference / i-Plan LOT / JUPEM MyLot identity chain
