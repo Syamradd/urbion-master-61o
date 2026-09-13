@@ -8,7 +8,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Canonical workspace: `feature/canonical-workspace-v2`
 - Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
 - Current hardening branch: `feature/championship-convergence-v1`
-- Current hardening HEAD: `75e58725dbfa444bcf6579629f44d6502e7f1ebb`
+- Current hardening HEAD: `79495a57bd7a815b7dbfc693ed797e11e9939a5e`
 - Current hardening PR: `#131`
 
 ## Engineering identity
@@ -16,6 +16,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Engine contract: `PHASE-E.8`
 - Evidence packet: `PHASE1.2`
 - Canonical UI: `V5 Planning Workspace`
+- Canonical runtime topology: `bridge → compatibility bootstrap → layer manager → canonical UI → specialist owners`
 - Evidence states: `USER_PROVIDED`, `CALCULATED`, `SOURCE_CONTEXT`, `VERIFIED`, `UNVERIFIED`
 - Statutory verification: `NOT_CLAIMED`
 - Decision authority: `NONE`
@@ -29,6 +30,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Bounded Copilot downstream convergence into the canonical packet
 - Agent/Copilot API failure-contract convergence
 - Frontend owner/lifecycle hardening
+- Canonical mobility/station evidence reuse
 - Production manifest and release-document consistency
 
 ## Current hardening gates
@@ -37,7 +39,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Rule Provenance: `GREEN` on prior canonical baseline
 - Road Intelligence: `GREEN` on prior canonical baseline
 - Workspace Browser: `GREEN` on prior canonical baseline
-- New convergence/owner contract checks: `PENDING` until CI completes on HEAD `75e58725dbfa444bcf6579629f44d6502e7f1ebb`
+- New convergence/owner contract checks: `PENDING` until CI completes on HEAD `79495a57bd7a815b7dbfc693ed797e11e9939a5e`
 
 ## Deployment gates
 
