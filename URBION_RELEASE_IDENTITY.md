@@ -8,7 +8,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Canonical workspace: `feature/canonical-workspace-v2`
 - Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
 - Current hardening branch: `feature/championship-convergence-v1`
-- Current hardening HEAD: `49723a74fcd1418babc0d5448356d15e45c68cbb`
+- Current hardening HEAD: `ebc0cc3da168656b852857d30dbe7d63c1446434`
 - Current hardening PR: `#131`
 
 ## Engineering identity
@@ -28,6 +28,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Public What-If route convergence onto canonical evidence packets
 - Bounded Copilot downstream convergence into the canonical packet
 - Agent/Copilot API failure-contract convergence
+- Production manifest and release-document consistency
 
 ## Release gates
 
@@ -36,9 +37,10 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Production Render: `HOLD`
 - Production branch alignment: `NOT YET ALIGNED`
 - Live production smoke: `NOT RUN`
+- Deployment readiness: `FALSE` until final convergence + parity + live smoke
 
 ## Render boundary
 
-Do not treat any existing Render deployment as the current championship release until its deployed commit matches the approved canonical release identity and passes live smoke.
+Do not treat any existing Render deployment as the current championship release until its deployed commit matches this approved canonical release identity and passes live smoke.
 
 Existing production service configuration is tracked separately from this release identity and must be reconciled before deployment.
