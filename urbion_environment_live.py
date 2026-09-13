@@ -26,13 +26,41 @@ def build_live_environment_evidence(
 
     layers = raw.get("layers") or {}
     query_errors = [
-        key for key, item in layers.items()
+        key
+        for key, item in layers.items()
         if str((item or {}).get("status") or "").upper() in {"QUERY_UNAVAILABLE", "QUERY_ERROR"}
     ]
     no_feature = [
-        key for key, item in layers.items()
+        key
+        for key, item in layers.items()
         if str((item or {}).get("status") or "").upper() == "NO_FEATURE"
     ]
+
+    # Preserve the intelligence contract but surface connector failures as
+    # explicit review gaps instead of allowing a missing feature count to be
+    # interpreted as a genuine NO_FLAG.
+    metrics_by_id = {item.get("id"): item for item in intelligence.get("metrics", [])}
+    review_gaps = list(intelligence.get("review_gaps") or [])
+    for layer_id in query_errors:
+        metric = metrics_by_id.get(layer_id)
+        if metric is not None:
+            metric["value"] = None
+            metric["risk_flag"] = None
+            metric["status"] = "QUERY_ERROR"
+            metric["decision_use"] = "SCREENING_ONLY"
+        gap = f"environment:{layer_id}"
+        if gap not in review_gaps:
+            review_gaps.append(gap)
+    intelligence["review_gaps"] = review_gaps
+    summary = dict(intelligence.get("summary") or {})
+    summary["review_gap_count"] = len(review_gaps)
+    summary["screened_count"] = sum(
+        1
+        for item in intelligence.get("metrics", [])
+        if item.get("value") is not None and item.get("status") != "REVIEW_REQUIRED"
+    )
+    summary["flagged_count"] = sum(1 for item in intelligence.get("metrics", []) if item.get("risk_flag") is True)
+    intelligence["summary"] = summary
 
     intelligence["live_query"] = {
         "provider": raw.get("provider"),
@@ -48,7 +76,7 @@ def build_live_environment_evidence(
         "evidence": "SOURCE_CONTEXT",
         "statutory_verification": "NOT_CLAIMED",
     }
-    if query_errors and not (intelligence.get("summary") or {}).get("flagged_count"):
+    if query_errors and not summary.get("flagged_count"):
         intelligence["status"] = "QUERY_ERROR"
     return intelligence
 
