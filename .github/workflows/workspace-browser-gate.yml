@@ -37,6 +37,10 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
         run: python scripts/error_envelope_contract_smoke.py
+      - name: Run global error envelope smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/global_error_contract_smoke.py
       - name: Run canonical convergence smoke
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
