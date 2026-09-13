@@ -1,15 +1,9 @@
-"""URBION HORIZON public presentation entrypoint.
-
-The existing FastAPI application and planning engines remain unchanged. This
-adapter owns only the judge-facing presentation routes so legacy championship
-frontend layers cannot be injected into the canonical pages.
-"""
+"""URBION HORIZON public presentation entrypoint."""
 from pathlib import Path
 import json
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
-
 from championship_server import app
 from server import AssessmentRequest, assess_core
 from urbion_decision_center import build_decision_center
@@ -40,70 +34,52 @@ def _html(path: Path) -> HTMLResponse:
 
 
 def _workspace() -> HTMLResponse:
-    required = (
-        WORKSPACE_FILE,
-        WORKSPACE_BRIDGE,
-        WORKSPACE_RUNTIME,
-        WORKSPACE_LAYER,
-        WORKSPACE_CANONICAL_UI,
-        WORKSPACE_MODAL_OWNER,
-        WORKSPACE_PBT_CATALOG,
-        WORKSPACE_UTILITY_OWNER,
-        WORKSPACE_REVIEW_GAPS,
-    )
+    required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER,
+                WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
+                WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS)
     for path in required:
         if not path.is_file():
             return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
     html = WORKSPACE_FILE.read_text(encoding="utf-8")
-    scripts = (
-        '<script src="/urbion_workspace_bridge.js"></script>'
-        '<script src="/urbion_workspace_runtime.js"></script>'
-        '<script src="/urbion_layer_runtime_fix.js"></script>'
-        '<script src="/urbion_workspace_canonical_ui.js"></script>'
-        '<script src="/urbion_workspace_modal_owner.js"></script>'
-        '<script src="/urbion_workspace_pbt_catalog.js"></script>'
-        '<script src="/urbion_workspace_utility_owner.js"></script>'
-        '<script src="/urbion_workspace_review_gaps_owner.js"></script>'
-    )
+    scripts = ('<script src="/urbion_workspace_bridge.js"></script>'
+               '<script src="/urbion_workspace_runtime.js"></script>'
+               '<script src="/urbion_layer_runtime_fix.js"></script>'
+               '<script src="/urbion_workspace_canonical_ui.js"></script>'
+               '<script src="/urbion_workspace_modal_owner.js"></script>'
+               '<script src="/urbion_workspace_pbt_catalog.js"></script>'
+               '<script src="/urbion_workspace_utility_owner.js"></script>'
+               '<script src="/urbion_workspace_review_gaps_owner.js"></script>')
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
-    atmosphere = '''<style id="urbion-presentation-atmosphere">
-html,body{background-color:#020b12!important}
-body{position:relative}
-body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.42;background-image:radial-gradient(circle at 7% 14%,rgba(255,255,255,.65) 0 1px,transparent 1.7px),radial-gradient(circle at 18% 24%,rgba(81,224,244,.5) 0 1px,transparent 1.7px),radial-gradient(circle at 34% 10%,rgba(255,255,255,.48) 0 1px,transparent 1.7px),radial-gradient(circle at 53% 17%,rgba(92,232,205,.42) 0 1px,transparent 1.8px),radial-gradient(circle at 71% 8%,rgba(255,255,255,.54) 0 1px,transparent 1.7px),radial-gradient(circle at 89% 18%,rgba(86,220,242,.5) 0 1px,transparent 1.8px),radial-gradient(ellipse at 73% -10%,rgba(42,231,236,.12),transparent 40%)}
-.top,.layout{position:relative;z-index:1}
-</style>'''
-    if "urbion-presentation-atmosphere" not in html and "</head>" in html:
-        html = html.replace("</head>", atmosphere + "</head>", 1)
-    return HTMLResponse(html, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0", "X-URBION-UI": "CANONICAL-V5-ISOLATED"})
+    return HTMLResponse(html, media_type="text/html; charset=utf-8", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
 
 
 def _canonical_packet(assessment: dict) -> dict:
-    return build_canonical_evidence_packet(
-        assessment=assessment,
-        spatial=assessment.get("site_analysis"),
-        environment=assessment.get("evidence_intelligence"),
-        policy_graph={"policy_coverage": assessment.get("policy_coverage")},
-    )
+    return build_canonical_evidence_packet(assessment=assessment,
+                                           spatial=assessment.get("site_analysis"),
+                                           environment=assessment.get("evidence_intelligence"),
+                                           policy_graph={"policy_coverage": assessment.get("policy_coverage")})
 
 
-async def _with_canonical_packet(response: Response, assessment: dict) -> Response:
-    """Attach a canonical evidence packet built from the deterministic assessment only."""
+def _attach_packet(payload: dict, path: str) -> dict:
+    assessment = payload if path == "/assess" else payload.get("assessment")
+    if isinstance(assessment, dict):
+        packet = _canonical_packet(assessment)
+        payload["canonical_evidence_packet"] = packet
+        decision = payload.get("decision_center")
+        if isinstance(decision, dict):
+            decision["canonical_evidence_packet"] = packet
+            decision["review_gaps"] = list(packet.get("review_gaps", []))
+            decision["review_required"] = bool(decision["review_gaps"])
+    return payload
+
+
+async def _response_json(response: Response) -> tuple[bytes, object]:
     try:
         body = b"".join([chunk async for chunk in response.body_iterator])
+        return body, json.loads(body.decode("utf-8")) if body else None
     except Exception:
-        return response
-    try:
-        payload = json.loads(body.decode("utf-8")) if body else None
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return response
-    if not isinstance(payload, dict) or response.status_code >= 400:
-        return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
-    payload["canonical_evidence_packet"] = _canonical_packet(assessment)
-    headers = dict(response.headers)
-    headers.pop("content-length", None)
-    headers.pop("content-type", None)
-    return JSONResponse(payload, status_code=response.status_code, headers=headers)
+        return b"", None
 
 
 @app.middleware("http")
@@ -112,30 +88,21 @@ async def _urbion_canonical_presentation(request: Request, call_next):
     if path == "/decision-center" and request.method == "POST":
         try:
             raw = await request.body()
-            payload = json.loads(raw.decode("utf-8")) if raw else None
-            assessment = payload.get("assessment") if isinstance(payload, dict) else None
-            if isinstance(assessment, dict):
-                validated = AssessmentRequest.model_validate(assessment)
-                assessed = assess_core(validated)
+            incoming = json.loads(raw.decode("utf-8")) if raw else None
+            source = incoming.get("assessment") if isinstance(incoming, dict) else None
+            if isinstance(source, dict):
+                assessed = assess_core(AssessmentRequest.model_validate(source))
+                packet = _canonical_packet(assessed)
                 result = build_decision_center(assessment=assessed)
                 if isinstance(result, dict):
-                    result["canonical_evidence_packet"] = _canonical_packet(assessed)
+                    result["canonical_evidence_packet"] = packet
+                    result["review_gaps"] = list(packet.get("review_gaps", []))
+                    result["review_required"] = bool(result["review_gaps"])
                 return JSONResponse(result)
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            pass
         except Exception:
             pass
 
-    request_payload = None
-    if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
-        try:
-            raw = await request.body()
-            request_payload = json.loads(raw.decode("utf-8")) if raw else None
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            request_payload = None
-
-    if path in {"/", "/index.html"}:
-        return _html(WELCOME_FILE)
+    if path in {"/", "/index.html"}: return _html(WELCOME_FILE)
     if path == "/background_welcoming_page.png":
         if not WELCOME_BACKGROUND_FILE.is_file(): return Response("URBION HORIZON welcome background missing", status_code=404, media_type="text/plain")
         return FileResponse(WELCOME_BACKGROUND_FILE, media_type="image/png", headers={"Cache-Control":"no-store, max-age=0, must-revalidate","X-URBION-WELCOME-BACKGROUND":"CANONICAL-WELCOME"})
@@ -159,9 +126,15 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         target=BASE_DIR/"urbion_workspace_final.js"
         if not target.is_file(): return Response("URBION HORIZON legacy compatibility asset missing.",status_code=404,media_type="text/plain")
         return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
+
     response = await call_next(request)
-    if path in {"/assess", "/workstation/analysis"} and request.method == "POST" and isinstance(request_payload, dict):
-        assessment = request_payload.get("assessment") if path == "/workstation/analysis" else request_payload
-        if isinstance(assessment, dict):
-            return await _with_canonical_packet(response, assessment)
+    if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
+        body, payload = await _response_json(response)
+        if not isinstance(payload, dict) or response.status_code >= 400:
+            return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
+        payload = _attach_packet(payload, path)
+        headers = dict(response.headers)
+        headers.pop("content-length", None)
+        headers.pop("content-type", None)
+        return JSONResponse(payload, status_code=response.status_code, headers=headers)
     return response
