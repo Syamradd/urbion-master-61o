@@ -1,38 +1,40 @@
 # URBION HORIZON — Final Dashboard Freeze
 
 ## Scope
-The canonical dashboard prototype is now in final functional-freeze mode for the PlanMalaysia / UrbanMind AI Challenge.
+The canonical dashboard remains protected from speculative feature work while engineering convergence and release hardening are completed.
 
-## Verified product journey
-WELCOME → WORKSPACE → CASE BUILDER → LOCATION → GIS → SITE ANALYSIS → EVIDENCE → WHAT-IF → DECISION → OUTPUT
+## Canonical product journey
+WELCOME → WORKSPACE → CASE BUILDER → LOCATION → GIS → SITE ANALYSIS → EVIDENCE → WHAT-IF → DECISION → PLANNER REVIEW → KM / OSC → OUTPUT
 
-## Verified areas
-- Canonical presentation routes: `/`, `/about`, `/workspace`
-- GIS map and basemap controls
-- GT1 → GT2 → GT3 cascading planning taxonomy
-- Spatial rings and context controls
-- Map layers
-- Site analysis
-- Evidence
-- What-If scenarios
-- Decision support
-- Output flow
-- AI planning synthesis
-- BM / EN controls
-- Theme controls
-- Utility controls
+## Protected capabilities
+- Canonical V5 Planning Workspace
+- GIS map, basemaps, rings and layer manager
+- GT1 → GT2 → GT3 planning taxonomy
+- Site analysis and deterministic planning assessment
+- Evidence-state / provenance model
+- What-If scenario comparison
+- Decision support and bounded AI synthesis
+- JPS / MyEQMS / MyGEMS source-context integrations
+- Road intelligence
+- Planner review and KM readiness paths
+- BM / EN and theme controls
 - Legacy frontend isolation
-- Browser smoke gate on the preceding canonical presentation commit
 
 ## Freeze rules
-- No new feature development unless an actual defect is discovered.
-- No architectural rewrite of the canonical workspace.
-- No Render deployment during this freeze.
-- Visual changes are limited to material judge-facing defects.
+- No speculative feature development.
+- No planning-engine/scoring rewrite.
+- Material defects and convergence failures may be repaired.
+- Premium visual work starts only after functional convergence is proven.
+- No Render deployment during engineering convergence.
 - Final deployment requires explicit authorization: `DEPLOY RENDER NOW`.
 
-## Release posture
-CORE DASHBOARD: FUNCTIONALLY VERIFIED
-BROWSER GATE: GREEN ON PRECEDING CANONICAL PRESENTATION CHECKPOINT
+## Current release posture
+CORE ENGINE: PROTECTED
+CANONICAL V5: ACTIVE
+P0 CONVERGENCE: IN PROGRESS
+RELEASE IDENTITY: BEING RECONCILED
+PRODUCTION PARITY: NOT YET PROVEN
 RENDER: LOCKED
-STATUS: FINAL DASHBOARD FREEZE
+
+## Final gate
+The dashboard is not considered final-release-ready until one canonical application path, one packet contract, one frontend runtime topology, one release SHA, and live production smoke are all proven together.
