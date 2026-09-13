@@ -1,41 +1,34 @@
-# URBION HORIZON — CHAMPIONSHIP LOCK
+# URBION HORIZON — CHAMPIONSHIP RELEASE LOCK
 
-**Lock baseline:** `main`
-**Locked commit baseline:** `9b9b0be8308c4c4bd720747862927299bc80079a`
-**Previous baseline:** `baf22725d32b236953163500fc3ff744a6ea276b`
+**Current posture:** `ENGINEERING P0 CONVERGENCE — NOT RELEASE LOCKED`
+**Canonical workspace:** `feature/canonical-workspace-v2`
+**Hardening branch:** `feature/championship-convergence-v1`
+**Production Render:** `HOLD`
 
-## Locked workstreams
+## What is locked
 
 | Workstream | Status | Action |
 |---|---|---|
-| Core planning engines | GREEN | LOCK |
-| Regression lanes | GREEN | LOCK |
-| Runtime smoke | GREEN | LOCK |
-| Responsive QA | GREEN | LOCK |
-| UX Contract | GREEN | LOCK |
-| Landing / welcoming page | GREEN | KEEP |
-| Dashboard visual system | GREEN | KEEP |
-| Theme BM/EN | GREEN | LOCK |
-| Layer drawer | GREEN | LOCK after verified browser gate |
-| Browser QA | GREEN | LOCK |
-| Cross-browser QA | GREEN | LOCK |
-| Final integrity / release audit | GREEN | LOCK |
-| Render deployment | LIVE | LOCK |
-| Live Render QA | VERIFIED at deployment gate | LOCK |
-| Cinematic smart-city artwork | SKIPPED | DO NOT BLOCK |
+| Core planning engines | GREEN | DO NOT REWRITE |
+| GIS layer runtime | GREEN | DO NOT REWRITE |
+| Evidence-state model | GREEN | PRESERVE |
+| Statutory boundary | GREEN | PRESERVE `NOT_CLAIMED` |
+| Canonical V5 workspace | CANONICAL | CONVERGE / HARDEN |
+| API convergence | IN PROGRESS | REPAIR |
+| What-If convergence | IN PROGRESS | REPAIR |
+| Frontend owner topology | IN PROGRESS | AUDIT |
+| Release identity | IN PROGRESS | RECONCILE |
+| Production parity | NOT ALIGNED | BLOCK RELEASE |
+| Render deployment | HOLD | DO NOT DEPLOY |
+| Live Render QA | NOT RUN | BLOCK RELEASE |
+| Cinematic demo/video | NOT STARTED | AFTER RELEASE GATE |
 
-## Verification baseline
+## Release rule
 
-- Championship Full CI: PASS
-- Runtime Smoke: PASS
-- Browser QA: PASS
-- Full Regression: PASS
-- UX Contract: PASS
-- Responsive Visual QA: PASS
-- Render deployment for locked baseline: LIVE
+No Render deployment is considered the championship release until one canonical SHA, one production entrypoint, one frontend architecture, and one evidence/decision contract are proven together by CI and live smoke.
 
-## Freeze rule
+## Explicit deployment boundary
 
-No application-logic, planning-engine, UI-behaviour, or visual-system changes should be made after this lock unless a newly observed release-blocking failure is reproduced and documented.
+The production deployment remains frozen until the final release gate is green and the user explicitly authorizes deployment with:
 
-Documentation and submission-material changes may proceed independently, provided they do not alter the locked application baseline.
+`DEPLOY RENDER NOW`
