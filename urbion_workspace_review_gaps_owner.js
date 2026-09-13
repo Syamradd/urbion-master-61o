@@ -22,7 +22,7 @@ const installStyle=()=>{if(document.getElementById('urbionReviewGapStyle'))retur
 const surface=(context='REVIEW')=>{
   installStyle();
   const modal=document.getElementById('modal');
-  const box=modal?.querySelector('.modalbox');
+  const box=modal?.classList.contains('show')?modal.querySelector('.modalbox'):null;
   const target=box||document.querySelector('.right');
   if(!target) return;
   target.querySelectorAll('.urbion-review-gap-surface[data-owner="canonical"]').forEach(x=>x.remove());
