@@ -67,10 +67,21 @@ def main() -> None:
             fail(f"AI orchestration route missing: {route}")
     ok("AI orchestration API routes present")
 
-    workspace = texts["workspace_v5.html"] + texts["urbion_workspace_final.js"] + texts["urbion_workspace_runtime.js"]
-    for token in ("/workstation/analysis", "/what-if", "/decision-center", "/map/layers", "landuse1", "landuse2", "landuse3", "runtimeHelp"):
+    # Canonical V5 owns the visible utility controls; the compatibility runtime
+    # is intentionally not their implementation owner. Validate integration
+    # across the canonical surface instead of requiring legacy runtime tokens.
+    workspace = (
+        texts["workspace_v5.html"]
+        + texts["urbion_workspace_final.js"]
+        + texts["urbion_workspace_runtime.js"]
+    )
+    utility_path = ROOT / "urbion_workspace_utility_owner.js"
+    utility = utility_path.read_text(encoding="utf-8") if utility_path.is_file() else ""
+    for token in ("/workstation/analysis", "/what-if", "/decision-center", "/map/layers", "landuse1", "landuse2", "landuse3"):
         if token not in workspace:
             fail(f"workspace integration token missing: {token}")
+    if "runtimeHelp" not in (texts["workspace_v5.html"] + utility):
+        fail("canonical utility control token missing: runtimeHelp")
     ok("workspace-to-engine integration contracts present")
 
     all_source = "\n".join(texts.values())
