@@ -1,0 +1,25 @@
+name: URBION Phase 1 Rule Provenance Gate
+
+on:
+  push:
+    branches:
+      - feature/canonical-workspace-v2
+  pull_request:
+    branches:
+      - feature/canonical-workspace-v2
+
+jobs:
+  rule-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Run rule provenance smoke
+        run: python scripts/phase1_rule_provenance_smoke.py
