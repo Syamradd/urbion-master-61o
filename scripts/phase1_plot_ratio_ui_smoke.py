@@ -11,7 +11,7 @@ def main() -> None:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         page.goto(BASE + "/workspace", wait_until="domcontentloaded")
-        page.wait_for_timeout(1200)
+        page.wait_for_timeout(1600)
         ratio = page.locator("#plot_ratio")
         assert ratio.count() == 1, "plot ratio control missing"
         assert ratio.get_attribute("data-ratio-owner") == "1", "plot ratio presentation owner did not bind"
