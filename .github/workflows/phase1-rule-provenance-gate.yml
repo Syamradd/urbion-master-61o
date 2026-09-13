@@ -11,7 +11,7 @@ on:
 jobs:
   rule-provenance:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,3 +25,15 @@ jobs:
         run: python scripts/phase1_rule_provenance_smoke.py
       - name: Run canonical review-gaps contract smoke
         run: python scripts/phase1_review_gaps_smoke.py
+      - name: Start canonical presentation server
+        run: |
+          nohup uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/health >/dev/null
+      - name: Run live rule-provenance integration smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_rule_provenance_integration_smoke.py
