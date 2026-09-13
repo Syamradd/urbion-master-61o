@@ -13,6 +13,7 @@ from urbion_mobility_api import router as urbion_mobility_router
 from urbion_canonical_evidence import build_canonical_evidence_packet
 from urbion_development_impact import build_development_impact
 from urbion_road_intelligence import build_road_intelligence
+from urbion_error_contract import canonical_error
 
 BASE_DIR = Path(__file__).resolve().parent
 WELCOME_FILE = BASE_DIR / "welcome.html"
@@ -158,28 +159,29 @@ async def _urbion_canonical_presentation(request: Request, call_next):
             raw = await request.body()
             incoming = json.loads(raw.decode("utf-8")) if raw else {}
             if not isinstance(incoming, dict):
-                return JSONResponse({"detail": "JSON object required"}, status_code=400)
+                return JSONResponse(canonical_error(code="INVALID_JSON_OBJECT", message="JSON object required", route=path, stage="ROAD_INTELLIGENCE", review_required=True), status_code=400)
             return JSONResponse(_road_intelligence_from_payload(incoming))
         except Exception as exc:
-            return JSONResponse({"detail": str(exc)}, status_code=400)
+            return JSONResponse(canonical_error(code="ROAD_INTELLIGENCE_ERROR", message=str(exc), route=path, stage="ROAD_INTELLIGENCE", source="URBION_ROAD_INTELLIGENCE", review_required=True, retryable=True), status_code=422)
 
     if path == "/decision-center" and request.method == "POST":
+        raw = await request.body()
         try:
-            raw = await request.body()
             incoming = json.loads(raw.decode("utf-8")) if raw else None
             source = incoming.get("assessment") if isinstance(incoming, dict) else None
-            if isinstance(source, dict):
-                assessed = assess_core(AssessmentRequest.model_validate(source))
-                packet = _canonical_packet(assessed)
-                result = build_decision_center(assessment=assessed)
-                if isinstance(result, dict):
-                    result["development_impact"] = packet.get("evidence", {}).get("development_impact", {})
-                    result["canonical_evidence_packet"] = packet
-                    result["review_gaps"] = list(packet.get("review_gaps", []))
-                    result["review_required"] = bool(result["review_gaps"])
-                return JSONResponse(result)
-        except Exception:
-            pass
+            if not isinstance(source, dict):
+                return JSONResponse(canonical_error(code="ASSESSMENT_INPUT_REQUIRED", message="A canonical assessment object is required.", route=path, stage="DECISION_CENTER", review_required=True), status_code=422)
+            assessed = assess_core(AssessmentRequest.model_validate(source))
+            packet = _canonical_packet(assessed)
+            result = build_decision_center(assessment=assessed)
+            if isinstance(result, dict):
+                result["development_impact"] = packet.get("evidence", {}).get("development_impact", {})
+                result["canonical_evidence_packet"] = packet
+                result["review_gaps"] = list(packet.get("review_gaps", []))
+                result["review_required"] = bool(result["review_gaps"])
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse(canonical_error(code="DECISION_CENTER_ERROR", message=str(exc), route=path, stage="DECISION_CENTER", source="URBION_DECISION_CENTER", evidence_state="UNVERIFIED", review_required=True, retryable=False, canonical_packet_available=False), status_code=422)
 
     if path in {"/", "/index.html"}: return _html(WELCOME_FILE)
     if path == "/background_welcoming_page.png":
