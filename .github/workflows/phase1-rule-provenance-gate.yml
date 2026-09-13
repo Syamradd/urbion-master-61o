@@ -28,14 +28,30 @@ jobs:
         run: python scripts/phase1_rule_provenance_smoke.py
       - name: Run canonical review-gaps contract smoke
         run: python scripts/phase1_review_gaps_smoke.py
+      - name: Preflight canonical server import
+        run: python -c "import landing_server; print('[PHASE1] landing_server import PASS')"
       - name: Start canonical presentation server
         run: |
-          nohup uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-server.log 2>&1 &
+          set -o pipefail
+          rm -f /tmp/urbion-server.log
+          PYTHONPATH=. python -m uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-server.log 2>&1 &
+          SERVER_PID=$!
           for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:8000/health >/dev/null && break
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+              echo "[PHASE1] canonical server ready pid=${SERVER_PID}"
+              exit 0
+            fi
+            if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
+              echo "[PHASE1] canonical server exited during startup"
+              cat /tmp/urbion-server.log || true
+              exit 1
+            fi
             sleep 1
           done
-          curl -fsS http://127.0.0.1:8000/health >/dev/null
+          echo "[PHASE1] canonical server did not become ready"
+          cat /tmp/urbion-server.log || true
+          kill "${SERVER_PID}" 2>/dev/null || true
+          exit 1
       - name: Run live canonical packet integration smoke
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
