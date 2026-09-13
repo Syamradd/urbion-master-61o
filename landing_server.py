@@ -24,6 +24,7 @@ WORKSPACE_MODAL_OWNER = BASE_DIR / "urbion_workspace_modal_owner.js"
 WORKSPACE_PBT_CATALOG = BASE_DIR / "urbion_workspace_pbt_catalog.js"
 WORKSPACE_UTILITY_OWNER = BASE_DIR / "urbion_workspace_utility_owner.js"
 WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
+WORKSPACE_ENVIRONMENT = BASE_DIR / "urbion_workspace_environment_owner.js"
 
 app.include_router(urbion_wms_router)
 app.include_router(urbion_environment_router)
@@ -38,7 +39,7 @@ def _html(path: Path) -> HTMLResponse:
 def _workspace() -> HTMLResponse:
     required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER,
                 WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
-                WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS)
+                WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT)
     for path in required:
         if not path.is_file():
             return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
@@ -50,7 +51,8 @@ def _workspace() -> HTMLResponse:
                '<script src="/urbion_workspace_modal_owner.js"></script>'
                '<script src="/urbion_workspace_pbt_catalog.js"></script>'
                '<script src="/urbion_workspace_utility_owner.js"></script>'
-               '<script src="/urbion_workspace_review_gaps_owner.js"></script>')
+               '<script src="/urbion_workspace_review_gaps_owner.js"></script>'
+               '<script src="/urbion_workspace_environment_owner.js"></script>')
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
     return HTMLResponse(html, media_type="text/html; charset=utf-8", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
@@ -118,7 +120,8 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_modal_owner.js": (WORKSPACE_MODAL_OWNER,"URBION HORIZON modal owner missing."),
         "/urbion_workspace_pbt_catalog.js": (WORKSPACE_PBT_CATALOG,"URBION HORIZON PBT catalogue missing."),
         "/urbion_workspace_utility_owner.js": (WORKSPACE_UTILITY_OWNER,"URBION HORIZON utility owner missing."),
-        "/urbion_workspace_review_gaps_owner.js": (WORKSPACE_REVIEW_GAPS,"URBION HORIZON review-gaps presentation owner missing."),
+        "/urbion_workspace_review_gaps_owner.js": (WORKSPACE_REVIEW_GAPS,"URBION HORIZON review-gap presentation owner missing."),
+        "/urbion_workspace_environment_owner.js": (WORKSPACE_ENVIRONMENT,"URBION HORIZON environment evidence owner missing."),
     }
     if path in assets:
         target,message=assets[path]
