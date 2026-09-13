@@ -8,7 +8,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Canonical workspace: `feature/canonical-workspace-v2`
 - Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
 - Current hardening branch: `feature/championship-convergence-v1`
-- Current hardening HEAD: `189d09d24ab6950c57e7181b4a750b3df34528f3`
+- Current hardening HEAD: `49723a74fcd1418babc0d5448356d15e45c68cbb`
 - Current hardening PR: `#131`
 
 ## Engineering identity
@@ -25,13 +25,14 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - `URBION_ERROR_V1` canonical API/browser error envelope
 - Decision Center failure visibility without silent fallback
 - KPI evidence-state presentation
-- What-If scenario canonical evidence packets
+- Public What-If route convergence onto canonical evidence packets
 - Bounded Copilot downstream convergence into the canonical packet
+- Agent/Copilot API failure-contract convergence
 
 ## Release gates
 
 - Pre-convergence CI on merged baseline: `GREEN` — Workspace Source, Browser, Rule Provenance, Road Intelligence
-- Post-convergence CI: `PENDING` on current hardening HEAD
+- Current hardening CI: `PENDING` for latest HEAD
 - Production Render: `HOLD`
 - Production branch alignment: `NOT YET ALIGNED`
 - Live production smoke: `NOT RUN`
