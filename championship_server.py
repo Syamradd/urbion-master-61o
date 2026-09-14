@@ -217,7 +217,7 @@ def _exact_asset_handler(asset_name: str):
 
 @app.middleware("http")
 async def _championship_frontend_override(request: Request, call_next):
-    if request.url.path in {"/", "/index.html", "/championship.html"}:
+    if request.url.path == "/championship.html":
         return _frontend_root()
     if request.url.path == "/about.html":
         return _about_page()
@@ -226,8 +226,6 @@ async def _championship_frontend_override(request: Request, call_next):
     return await call_next(request)
 
 
-app.add_api_route("/", _frontend_root, methods=["GET"], include_in_schema=False)
-app.add_api_route("/index.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/championship.html", _frontend_root, methods=["GET"], include_in_schema=False)
 app.add_api_route("/about.html", _about_page, methods=["GET"], include_in_schema=False)
 app.add_api_route("/what-if.html", _what_if_page, methods=["GET"], include_in_schema=False)
@@ -291,8 +289,6 @@ _PRIORITY_PATHS = (
     "/about.html",
     "/what-if.html",
     "/championship.html",
-    "/index.html",
-    "/",
 )
 for _path in _PRIORITY_PATHS:
     for _idx, _route in enumerate(app.router.routes):
