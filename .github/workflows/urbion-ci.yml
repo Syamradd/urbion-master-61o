@@ -2,7 +2,7 @@ name: URBION CI
 
 on:
   push:
-    branches: [main, feature/ux-v5-command-center]
+    branches: [main, feature/championship-convergence-v1]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -68,27 +68,35 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
-      - name: Launch Render-equivalent Uvicorn command
+      - name: Launch Render-equivalent canonical Uvicorn command
         env:
           PYTHONPATH: .
           PORT: 8765
         run: |
           set -euo pipefail
-          python -m uvicorn championship_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-uvicorn.log 2>&1 &
+          python -m uvicorn landing_server:app --host 0.0.0.0 --port "$PORT" > /tmp/urbion-uvicorn.log 2>&1 &
           PID=$!
           trap 'kill "$PID" 2>/dev/null || true' EXIT
           python - <<'PY'
           import json, time, urllib.error, urllib.request
           base = 'http://127.0.0.1:8765'
-          endpoints = ['/health', '/metadata', '/championship-gate', '/', '/championship.html']
+          endpoints = ['/health', '/metadata', '/', '/about', '/workspace']
           critical_assets = [
-              '/urbion_championship_final_command_center.js',
-              '/urbion_championship_final_command_center_hotfix.js',
-              '/urbion_championship_final_command_center_polish.js',
-              '/urbion_championship_final_command_center_policy.js',
-              '/urbion_championship_champion_review.js',
-              '/urbion_championship_final_runtime_enforcer.js',
-              '/urbion_map_identify_runtime.js',
+              '/urbion_workspace_bridge.js',
+              '/urbion_workspace_runtime.js',
+              '/urbion_layer_runtime_fix.js',
+              '/urbion_workspace_canonical_ui.js',
+              '/urbion_workspace_modal_owner.js',
+              '/urbion_workspace_pbt_catalog.js',
+              '/urbion_workspace_utility_owner.js',
+              '/urbion_workspace_review_gaps_owner.js',
+              '/urbion_workspace_environment_owner.js',
+              '/urbion_workspace_mobility_owner.js',
+              '/urbion_workspace_development_impact_owner_v4.js',
+              '/urbion_workspace_ratio_owner.js',
+              '/urbion_workspace_road_intelligence_owner.js',
+              '/urbion_workspace_analysis_summary_owner.js',
+              '/urbion_workspace_station_map_owner.js',
           ]
           last_error = None
           for _ in range(30):
@@ -100,19 +108,19 @@ jobs:
                           if response.status != 200 or not body:
                               raise RuntimeError(f'{path}: unexpected HTTP {response.status}')
                           responses[path] = body.decode('utf-8')
-                          if path in {'/metadata', '/championship-gate'}:
+                          if path == '/metadata':
                               json.loads(responses[path])
 
-                  html = responses['/']
-                  workstation = responses['/championship.html']
-                  assert '<title>URBION HORIZON — Planning Command Centre</title>' in workstation
-                  assert 'window.__URBION_FRONTEND_BOOT__' in workstation
-                  assert 'release:"MASTER-331"' in workstation
-                  assert 'id="urbion-championship"' in workstation
-                  assert '<div id="urbion-championship-shell"></div>' in workstation
-                  assert 'Site + Development Inputs' not in workstation
-                  assert 'Decision OS' not in workstation
-                  assert 'Planner Workstation' not in workstation
+                  workspace = responses['/workspace']
+                  assert '<title>URBION HORIZON — Planning Workspace</title>' in workspace
+                  assert 'CANONICAL-V5-ISOLATED' in responses['/workspace'] or 'urbion_workspace_bridge.js' in workspace
+                  assert 'class="layout"' in workspace
+                  assert 'id="map"' in workspace
+                  assert 'id="run"' in workspace
+                  assert 'id="evidenceBtn"' in workspace
+                  assert 'id="whatifBtn"' in workspace
+                  assert 'id="decisionBtn"' in workspace
+                  assert 'id="outputBtn"' in workspace
 
                   for asset in critical_assets:
                       with urllib.request.urlopen(base + asset, timeout=3) as response:
@@ -124,7 +132,7 @@ jobs:
                       health = json.loads(response.read().decode('utf-8'))
                   assert health.get('status') == 'healthy', health
                   assert health.get('engine') == 'URBION PHASE-E.8', health
-                  print('RUNTIME_SMOKE_OK')
+                  print('CANONICAL_RUNTIME_SMOKE_OK')
                   raise SystemExit(0)
               except (urllib.error.URLError, TimeoutError, RuntimeError, AssertionError, json.JSONDecodeError) as exc:
                   last_error = exc
