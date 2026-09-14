@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>URBION HORIZON — About Us</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020b12;font-family:Inter,system-ui,sans-serif}
+body{display:grid;place-items:center}
+.stage{position:relative;width:min(100vw,177.683316vh);aspect-ratio:1672/941;overflow:hidden;background:#020b12}
+.master{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:contain;animation:aboutMasterIn .72s ease-out both}
+.motion-layer{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden;isolation:isolate}
+.cursor-glow,.hover-glow,.ambient-glow,.ambient-ring,.city-motion{position:absolute;pointer-events:none;will-change:transform,opacity}
+.cursor-glow{left:0;top:0;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(73,242,255,.16) 0,rgba(73,242,255,.08) 18%,rgba(73,242,255,.025) 44%,transparent 72%);filter:blur(5px);transform:translate3d(-50%,-50%,0);opacity:0;mix-blend-mode:screen}
+.hover-glow{left:0;top:0;width:220px;height:140px;border-radius:50%;background:radial-gradient(ellipse,rgba(52,240,255,.19) 0,rgba(52,240,255,.07) 35%,transparent 72%);filter:blur(10px);transform:translate3d(-50%,-50%,0) scale(.65);opacity:0;mix-blend-mode:screen;transition:opacity .22s ease,transform .28s cubic-bezier(.2,.8,.2,1)}
+.hover-glow.on{opacity:1;transform:translate3d(-50%,-50%,0) scale(1)}
+.ambient-glow{inset:-12%;background:radial-gradient(ellipse at 35% 22%,rgba(45,228,244,.06),transparent 28%),radial-gradient(ellipse at 78% 76%,rgba(65,255,210,.045),transparent 26%);filter:blur(14px);animation:ambientFloat 7s ease-in-out infinite alternate}
+.ambient-ring{left:50%;top:54%;width:58%;height:78%;border-radius:50%;border:1px solid rgba(61,235,243,.055);transform:translate(-50%,-50%) rotate(-6deg);filter:blur(.2px);animation:ringDrift 11s ease-in-out infinite alternate}
+/* Decorative city-depth treatment: intentionally soft and transparent; it never replaces or transforms the canonical PNG. */
+.city-motion{left:4%;top:7%;width:92%;height:27%;opacity:.22;mix-blend-mode:screen;background:linear-gradient(90deg,transparent 0 7%,rgba(74,241,255,.045) 11%,transparent 18% 30%,rgba(74,241,255,.035) 38%,transparent 46% 58%,rgba(85,255,218,.04) 66%,transparent 74% 86%,rgba(74,241,255,.03) 92%,transparent);filter:blur(1.8px);transform:translate3d(var(--city-x,0px),var(--city-y,0px),0) scaleX(1.002);transition:transform .24s cubic-bezier(.2,.8,.2,1),opacity .35s ease}
+.city-motion.active{opacity:.34}
+.hit-layer{position:absolute;inset:0;z-index:5;pointer-events:none}.hit{position:absolute;pointer-events:auto;border:0;background:transparent;padding:0;cursor:pointer}
+.hit:focus-visible{outline:1px solid rgba(83,240,245,.9);outline-offset:2px}
+@keyframes aboutMasterIn{from{opacity:.92}to{opacity:1}}
+@keyframes ambientFloat{from{transform:translate3d(-1%,-.5%,0) scale(1)}to{transform:translate3d(1.5%,1%,0) scale(1.035)}}
+@keyframes ringDrift{from{transform:translate(-50%,-50%) rotate(-7deg) scale(.985)}to{transform:translate(-49%,-51%) rotate(-4deg) scale(1.01)}}
+@media(prefers-reduced-motion:reduce){.master,.ambient-glow,.ambient-ring,.city-motion{animation:none;transition:none}.cursor-glow,.hover-glow{transition:none}}
+.modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(1,7,12,.82);backdrop-filter:blur(10px)}
+.modal.open{display:flex}.dialog{width:min(780px,92vw);max-height:82vh;overflow:auto;border:1px solid rgba(69,224,227,.3);border-radius:16px;background:linear-gradient(145deg,#061923,#031018);box-shadow:0 30px 90px rgba(0,0,0,.55);color:#eafcff}
+.dh{display:flex;justify-content:space-between;gap:18px;padding:17px 20px;border-bottom:1px solid rgba(70,210,224,.13);position:sticky;top:0;background:rgba(5,18,27,.95);backdrop-filter:blur(12px)}
+.dk{font-size:8px;letter-spacing:.2em;color:#56e7c1;font-weight:900}.dt{font:700 23px/1.05 Inter,system-ui;margin:5px 0 0}
+.close{border:1px solid rgba(71,218,226,.18);border-radius:8px;background:#081c26;color:#e9ffff;padding:7px 10px;font-size:8px;font-weight:900;cursor:pointer}.db{padding:20px}
+.dl{font-size:12px;line-height:1.7;color:#c2d2d7;margin:0 0 15px}.dg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.dc{padding:13px;border:1px solid rgba(77,208,221,.12);border-radius:10px;background:rgba(255,255,255,.018)}.dc h3{margin:0 0 5px;font-size:10px}.dc p{margin:0;color:#9eb6bf;font-size:9px;line-height:1.55}
+@media(max-width:760px){.dialog{max-height:88vh}.dg{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+<img class="master" src="/about_master.png" alt="URBION HORIZON About Us">
+<div class="motion-layer" id="motionLayer" aria-hidden="true">
+<div class="ambient-glow"></div>
+<div class="ambient-ring"></div>
+<div class="city-motion" id="cityMotion"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+<div class="hover-glow" id="hoverGlow"></div>
+</div>
+<div class="hit-layer">
+<!-- Top navigation follows the exact visible controls in the canonical PNG. -->
+<button class="hit" data-href="/" aria-label="URBION HORIZON home" style="left:5.45%;top:1.35%;width:15.5%;height:6.2%"></button>
+<button class="hit" data-href="/" aria-label="Home" style="left:32.4%;top:1.35%;width:4.55%;height:6.2%"></button>
+<button class="hit" data-href="/about" aria-label="About" style="left:37.2%;top:1.35%;width:4.55%;height:6.2%"></button>
+<button class="hit" data-modal="how" aria-label="How It Works" style="left:42%;top:1.35%;width:6.85%;height:6.2%"></button>
+<button class="hit" data-modal="features" aria-label="Features" style="left:49%;top:1.35%;width:4.8%;height:6.2%"></button>
+<button class="hit" data-modal="sources" aria-label="Data Sources" style="left:53.8%;top:1.35%;width:6.3%;height:6.2%"></button>
+<button class="hit" data-modal="contact" aria-label="Contact" style="left:60.2%;top:1.35%;width:4.95%;height:6.2%"></button>
+<button class="hit" data-href="/workspace" aria-label="Open Workspace" style="left:85.2%;top:1.15%;width:9.8%;height:6.5%"></button>
+
+<!-- Main information cards -->
+<button class="hit" data-modal="mission" aria-label="Mission" style="left:5.5%;top:34%;width:28.8%;height:13.3%"></button>
+<button class="hit" data-modal="vision" aria-label="Vision" style="left:35.5%;top:34%;width:28.8%;height:13.3%"></button>
+<button class="hit" data-modal="journey" aria-label="Our Journey" style="left:65.7%;top:34%;width:28.9%;height:13.3%"></button>
+
+<!-- Team -->
+<button class="hit" data-modal="syamir" aria-label="Muhammad Syamir Aidid" style="left:14%;top:59.4%;width:14%;height:32%"></button>
+<button class="hit" data-modal="alea" aria-label="Wan Nur Alea Najihah" style="left:28.55%;top:59.4%;width:14.45%;height:32%"></button>
+<button class="hit" data-modal="fahmi" aria-label="Nur Isam Fahmi" style="left:43.45%;top:59.4%;width:14.65%;height:32%"></button>
+<button class="hit" data-modal="education" aria-label="Universiti Teknologi MARA" style="left:67.7%;top:64%;width:20%;height:21.8%"></button>
+</div>
+</div>
+
+<div class="modal" id="modal">
+<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+<div class="dh"><div><div class="dk" id="modalKicker">URBION HORIZON</div><div class="dt" id="modalTitle"></div></div><button class="close" id="close">CLOSE</button></div>
+<div class="db" id="modalBody"></div>
+</div></div>
+
+<script>
+const content={
+mission:["MISSION","Planning with people at the centre.","URBION HORIZON connects planning knowledge, spatial intelligence and practical decision support to help create places that are more inclusive, resilient and people-focused.",["People-first planning","Evidence-led decisions","Actionable urban strategies"]],
+vision:["VISION","Planning for a better tomorrow.","We imagine a future where planning decisions are clearer, faster and more connected—bringing people, places, policies and possibilities together.",["Smarter decisions","Sustainable places","Connected futures"]],
+journey:["OUR JOURNEY","From planning knowledge to planning intelligence.","URBION HORIZON turns planning workflows into an accessible digital experience that supports analysis, communication and better decisions.",["GIS + planning","AI-assisted insight","Human-centred delivery"]],
+how:["HOW IT WORKS","From question to planning decision.","The platform brings planning inputs, spatial evidence and intelligence into one connected workflow so users can move from a planning question to an evidence-supported action.",["Define the planning task","Connect spatial evidence","Review insight and act"]],
+features:["FEATURES","One planning intelligence workspace.","URBION HORIZON combines spatial analysis, evidence, planning intelligence and decision support in a single workflow.",["Spatial intelligence","Planning & policy intelligence","Decision support"]],
+sources:["DATA SOURCES","Evidence from connected planning sources.","The workspace is designed to connect authoritative planning documents, spatial datasets, live information and project evidence while preserving source context.",["Planning documents","Spatial datasets","Live & project evidence"]],
+contact:["CONTACT","Connect with URBION HORIZON.","Use the platform's workspace for the main planning workflow, or return to the home surface to continue exploring the project.",["Open Workspace","Explore the platform","Continue the journey"]],
+syamir:["TEAM","Muhammad Syamir Aidid","Town & Regional Planning student with a focus on spatial planning, GIS, research and digital planning workflows.",["Planning","GIS","Product direction"]],
+alea:["TEAM","Wan Nur Alea Najihah","Town & Regional Planning student supporting research, communication, design and collaborative development.",["Research","Communication","Design"]],
+fahmi:["TEAM","Nur Isam Fahmi","Town & Regional Planning team member supporting the project's planning, research and development workflow.",["Planning","Research","Development"]],
+education:["EDUCATION","Universiti Teknologi MARA","Our planning foundation comes from UiTM and the Town & Regional Planning learning environment, strengthened through studio work, research and applied planning practice.",["Planning education","Applied research","Future-ready planners"]]
+};
+const modal=document.getElementById("modal"),title=document.getElementById("modalTitle"),kicker=document.getElementById("modalKicker"),body=document.getElementById("modalBody");
+function openModal(key){const c=content[key];if(!c)return;kicker.textContent=c[0];title.textContent=c[1];body.innerHTML='<p class="dl">'+c[2]+'</p><div class="dg">'+c[3].map((x,i)=>'<div class="dc"><h3>'+x+'</h3><p>'+["Turning planning principles into clear action.","Supporting evidence-based thinking and practical decisions.","Building better outcomes through collaboration."][i]+'</p></div>').join("")+'</div>';modal.classList.add("open");document.body.style.overflow="hidden"}
+function closeModal(){modal.classList.remove("open");document.body.style.overflow=""}
+document.querySelectorAll("[data-modal]").forEach(b=>b.addEventListener("click",()=>openModal(b.dataset.modal)));
+document.querySelectorAll("[data-href]").forEach(b=>b.addEventListener("click",()=>{window.location.href=b.dataset.href}));
+document.getElementById("close").addEventListener("click",closeModal);
+modal.addEventListener("click",e=>{if(e.target===modal)closeModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+const cursorGlow=document.getElementById("cursorGlow"),hoverGlow=document.getElementById("hoverGlow"),cityMotion=document.getElementById("cityMotion");
+let targetX=0,targetY=0,currentX=0,currentY=0,raf=0,pointerInside=false;
+function placeGlow(x,y){targetX=x;targetY=y;pointerInside=true;cursorGlow.style.opacity="1";if(!raf)raf=requestAnimationFrame(stepMotion)}
+function stepMotion(){currentX+=(targetX-currentX)*.12;currentY+=(targetY-currentY)*.12;cursorGlow.style.left=currentX+"px";cursorGlow.style.top=currentY+"px";if(pointerInside||Math.abs(targetX-currentX)>0.25||Math.abs(targetY-currentY)>0.25){raf=requestAnimationFrame(stepMotion)}else{raf=0}}
+const stageEl=document.getElementById("stage");
+stageEl.addEventListener("pointermove",e=>{const r=stageEl.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;placeGlow(x,y);const nx=(x/r.width-.5),ny=(y/r.height-.5);const cityZone=y/r.height<.36;const focus=Math.max(0,1-Math.hypot(nx,ny*1.15)*1.55);if(cityZone){cityMotion.classList.add("active");cityMotion.style.setProperty("--city-x",(nx*2.4).toFixed(2)+"px");cityMotion.style.setProperty("--city-y",(ny*1.4).toFixed(2)+"px")}else{cityMotion.classList.remove("active");cityMotion.style.setProperty("--city-x","0px");cityMotion.style.setProperty("--city-y","0px")}});
+stageEl.addEventListener("pointerenter",()=>{pointerInside=true;cursorGlow.style.opacity="1"});
+stageEl.addEventListener("pointerleave",()=>{pointerInside=false;cursorGlow.style.opacity="0";hoverGlow.classList.remove("on");cityMotion.classList.remove("active");cityMotion.style.setProperty("--city-x","0px");cityMotion.style.setProperty("--city-y","0px")});
+document.querySelectorAll(".hit").forEach(btn=>{btn.addEventListener("pointerenter",()=>{const r=btn.getBoundingClientRect(),sr=stageEl.getBoundingClientRect();hoverGlow.style.left=(r.left-sr.left+r.width/2)+"px";hoverGlow.style.top=(r.top-sr.top+r.height/2)+"px";hoverGlow.style.transformOrigin="center center";const scale=Math.min(1.45,Math.max(.85,Math.sqrt((r.width*r.height)/(220*140))*1.35));hoverGlow.style.setProperty("--hover-scale",scale);hoverGlow.style.transform="translate3d(-50%,-50%,0) scale("+scale+")";hoverGlow.classList.add("on")});btn.addEventListener("pointerleave",()=>hoverGlow.classList.remove("on"))});
+window.URBION_ABOUT={openModal,closeModal};
+</script>
+</body>
+</html>

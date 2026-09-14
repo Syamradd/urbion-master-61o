@@ -4,6 +4,7 @@
 # ============================================================
 
 from urbion_rules import URBION_RULES
+from urbion_rule_provenance import enrich_rule_provenance
 
 
 def urbion_retrieve_rules(
@@ -28,130 +29,47 @@ def urbion_retrieve_rules(
     """
 
     candidates = []
-
-    development_type = (
-        development_type or ""
-    ).strip()
-
-    authority = (
-        authority or "MBMB"
-    ).strip()
-
-    spatial_context = (
-        spatial_context or {}
-    )
-
-    # --------------------------------------------------------
-    # AUTHORITY FILTER
-    # --------------------------------------------------------
+    development_type = (development_type or "").strip()
+    authority = (authority or "MBMB").strip()
+    spatial_context = spatial_context or {}
 
     # Current database is RT MBMB.
     # If another authority is selected, no MBMB rule should
     # automatically be treated as authoritative.
-
     if authority != "MBMB":
-
         return candidates
 
-
-    # --------------------------------------------------------
-    # DEVELOPMENT TYPE NORMALISATION
-    # --------------------------------------------------------
-
-    development_lower = (
-        development_type.lower()
-    )
-
-
-    # --------------------------------------------------------
-    # RETRIEVE CANDIDATE RULES
-    # --------------------------------------------------------
+    development_lower = development_type.lower()
 
     for rule in URBION_RULES:
+        rule_type = rule.get("development_type", "").lower()
+        development_match = development_lower in rule_type
+        if not development_match:
+            continue
 
-        rule_type = (
-            rule.get(
-                "development_type",
-                ""
-            ).lower()
-        )
+        # Preserve the complete rule provenance contract in the candidate
+        # packet so downstream review-gap generation can see it.
+        enriched = enrich_rule_provenance(rule)
 
-        development_match = False
-
-
-        # ====================================================
-        # TYPOLOGY MATCH
-        # ====================================================
-        # Candidate retrieval is deliberately limited to the selected
-        # rule typology. Applicability then evaluates spatial and
-        # verification conditions without cross-typology rule leakage.
-        if development_lower in rule_type:
-
-            development_match = True
-
-
-        # ----------------------------------------------------
-        # ADD CANDIDATE
-        # ----------------------------------------------------
-
-        if development_match:
-
-            candidates.append({
-
-                "rule_id":
-                    rule["rule_id"],
-
-                "parameter":
-                    rule["parameter"],
-
-                "requirement":
-                    rule["requirement"],
-
-                "value":
-                    rule.get(
-                        "value"
-                    ),
-
-                "unit":
-                    rule.get(
-                        "unit"
-                    ),
-
-                "development_type":
-                    rule["development_type"],
-
-                "land_use":
-                    rule.get(
-                        "land_use"
-                    ),
-
-                "spatial_condition":
-                    rule["spatial_condition"],
-
-                "applicability":
-                    rule["applicability"],
-
-                "source_document":
-                    rule["source_document"],
-
-                "source_section":
-                    rule["source_section"],
-
-                "evidence_text":
-                    rule["evidence_text"],
-
-                "evidence_classification":
-                    rule["evidence_classification"],
-
-                "traceability":
-                    rule["traceability"],
-
-                "notes":
-                    rule.get(
-                        "notes",
-                        ""
-                    )
-            })
-
+        candidates.append({
+            "rule_id": enriched["rule_id"],
+            "parameter": enriched["parameter"],
+            "requirement": enriched["requirement"],
+            "value": enriched.get("value"),
+            "unit": enriched.get("unit"),
+            "development_type": enriched["development_type"],
+            "land_use": enriched.get("land_use"),
+            "spatial_condition": enriched["spatial_condition"],
+            "applicability": enriched["applicability"],
+            "source_document": enriched["source_document"],
+            "source_section": enriched["source_section"],
+            "evidence_text": enriched["evidence_text"],
+            "evidence_classification": enriched["evidence_classification"],
+            "traceability": enriched["traceability"],
+            "notes": enriched.get("notes", ""),
+            "provenance": enriched["provenance"],
+            "source_status": enriched["source_status"],
+            "verification_status": enriched["verification_status"],
+        })
 
     return candidates

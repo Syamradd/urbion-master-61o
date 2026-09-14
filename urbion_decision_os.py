@@ -15,14 +15,34 @@ def _score(value: Any) -> float:
         return 0.0
 
 
+def _review_items(evidence: dict[str, Any]) -> list[Any]:
+    """Normalize evidence-quality review flags without mistaking a count for a list."""
+    raw_items = evidence.get("review_required_items")
+    if isinstance(raw_items, list):
+        return raw_items
+    if isinstance(raw_items, tuple):
+        return list(raw_items)
+    # Current evidence-quality contract exposes review_required_items as a
+    # count; retain that semantic while giving downstream callers a stable list.
+    try:
+        count = int(raw_items or 0)
+    except (TypeError, ValueError):
+        count = 0
+    return ["REVIEW_REQUIRED"] * max(0, count)
+
+
 def build_decision_os(packet: dict[str, Any]) -> dict[str, Any]:
     evidence = packet.get("evidence_quality") or {}
     quality = _score(evidence.get("score"))
     coverage = _score(evidence.get("coverage"))
     verified = _score(evidence.get("verified_ratio"))
-    review_items = list(evidence.get("review_required_items") or [])
+    review_items = _review_items(evidence)
     assessment = packet.get("assessment") or {}
-    status = str((packet.get("decision") or {}).get("decision", {}).get("status") or assessment.get("final_status") or "REQUIRES REVIEW").upper()
+    decision_payload = packet.get("decision") or {}
+    decision_state = decision_payload.get("decision") if isinstance(decision_payload, dict) else {}
+    if not isinstance(decision_state, dict):
+        decision_state = {}
+    status = str(decision_state.get("status") or assessment.get("final_status") or "REQUIRES REVIEW").upper()
     scenario = packet.get("scenario_intelligence") or {}
     ranked = list(scenario.get("ranked_scenarios") or [])
 

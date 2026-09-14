@@ -11,6 +11,17 @@ from urbion_agent_orchestrator import run_agents
 
 router = APIRouter(tags=["planner-workstation"])
 
+@router.get("/workstation/metadata")
+def workstation_metadata():
+    return {
+        "project": "URBION HORIZON",
+        "version": "PHASE-E.8",
+        "status": "ready",
+        "workflow": "Planner Decision Workstation",
+        "decision_authority": "NONE",
+        "statutory_verification": "NOT_CLAIMED",
+    }
+
 @router.post("/workstation/analysis")
 def workstation_analysis(payload: dict = Body(default_factory=dict)):
     raw = payload.get("assessment") or payload.get("assessment_inputs")

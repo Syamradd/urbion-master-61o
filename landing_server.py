@@ -1,104 +1,299 @@
-"""Production entrypoint that adds a standalone URBION HORIZON welcome page.
-
-The existing championship application is imported unchanged. Only the public
-root entrypoint and the canonical workstation presentation layer are intercepted.
-"""
+"""URBION HORIZON public presentation entrypoint."""
 from pathlib import Path
+import json
 
-from fastapi import Request
-from fastapi.responses import HTMLResponse, Response
-
-from championship_server import _frontend_root, app
+from fastapi import Request, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
+from championship_server import app
+from server import AssessmentRequest, assess_core
+from urbion_decision_center import build_decision_center
+from urbion_wms_proxy import router as urbion_wms_router
+from urbion_environment_api import router as urbion_environment_router
+from urbion_mobility_api import router as urbion_mobility_router
+from urbion_canonical_evidence import build_canonical_evidence_packet
+from urbion_development_impact import build_development_impact
+from urbion_road_intelligence import build_road_intelligence
+from urbion_error_contract import canonical_error
 
 BASE_DIR = Path(__file__).resolve().parent
-LANDING_FILE = BASE_DIR / "urbion_horizon_landing.html"
-LANGUAGE_BOOTSTRAP = BASE_DIR / "urbion_horizon_language_bootstrap.js"
-HORIZON_UI_ASSET = BASE_DIR / "urbion_championship_horizon_ui.js"
-VISUAL_V1 = BASE_DIR / "urbion_championship_visual_system_v1.js"
-VISUAL_OVERHAUL = BASE_DIR / "urbion_horizon_visual_overhaul.js"
-VISUAL_V2 = BASE_DIR / "urbion_championship_visual_system_v2.js"
-LAYER_TOGGLE_REPAIR = BASE_DIR / "urbion_layer_toggle_repair.js"
-HORIZON_H1_CONTRACT = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.03!important;"
-HORIZON_H1_SAFE = "body.horizon-ui .hero h1{font-size:clamp(38px,4vw,58px)!important;line-height:1.2!important;"
-HORIZON_H1_STYLE = "body.horizon-ui .hero h1{line-height:1.2!important;height:auto!important;min-height:0!important;overflow:visible!important;box-sizing:border-box!important;}"
-MAP_SIZE_STYLE = "body.horizon-ui .map-panel-canonical .leaflet-container{height:clamp(520px,62vh,760px)!important;min-height:500px!important;}@media(max-width:1120px){body.horizon-ui .map-panel-canonical .leaflet-container{height:600px!important;min-height:520px!important;}}@media(max-width:760px){body.horizon-ui .map-panel-canonical .leaflet-container{height:540px!important;min-height:0!important;}}"
+WELCOME_FILE = BASE_DIR / "welcome.html"
+WELCOME_BACKGROUND_FILE = BASE_DIR / "background_welcoming_page.png"
+ABOUT_FILE = BASE_DIR / "urbion_horizon_about.html"
+WORKSPACE_FILE = BASE_DIR / "workspace_v5.html"
+WORKSPACE_BRIDGE = BASE_DIR / "urbion_workspace_bridge.js"
+WORKSPACE_RUNTIME = BASE_DIR / "urbion_workspace_runtime.js"
+WORKSPACE_LAYER = BASE_DIR / "urbion_layer_runtime_fix.js"
+WORKSPACE_CANONICAL_UI = BASE_DIR / "urbion_workspace_canonical_ui.js"
+WORKSPACE_MODAL_OWNER = BASE_DIR / "urbion_workspace_modal_owner.js"
+WORKSPACE_PBT_CATALOG = BASE_DIR / "urbion_workspace_pbt_catalog.js"
+WORKSPACE_UTILITY_OWNER = BASE_DIR / "urbion_workspace_utility_owner.js"
+WORKSPACE_REVIEW_GAPS = BASE_DIR / "urbion_workspace_review_gaps_owner.js"
+WORKSPACE_ENVIRONMENT = BASE_DIR / "urbion_workspace_environment_owner.js"
+WORKSPACE_MOBILITY = BASE_DIR / "urbion_workspace_mobility_owner.js"
+WORKSPACE_DEVELOPMENT_IMPACT_V4 = BASE_DIR / "urbion_workspace_development_impact_owner_v4.js"
+WORKSPACE_RATIO_OWNER = BASE_DIR / "urbion_workspace_ratio_owner.js"
+WORKSPACE_ROAD_INTELLIGENCE = BASE_DIR / "urbion_workspace_road_intelligence_owner.js"
+WORKSPACE_ANALYSIS_SUMMARY = BASE_DIR / "urbion_workspace_analysis_summary_owner.js"
+WORKSPACE_STATION_MAP = BASE_DIR / "urbion_workspace_station_map_owner.js"
+
+app.include_router(urbion_wms_router)
+app.include_router(urbion_environment_router)
+app.include_router(urbion_mobility_router)
 
 
-def _canonical_championship_page() -> HTMLResponse:
-    response = _frontend_root()
-    body = getattr(response, "body", b"")
-    if not isinstance(body, bytes):
-        body = str(body).encode("utf-8")
-    html = body.decode("utf-8")
-    marker = "</body>"
-    if marker in html:
-        if "urbion_championship_visual_system_v1.js" not in html:
-            html = html.replace(marker, '<script src="/urbion_championship_visual_system_v1.js"></script>' + marker, 1)
-        if "urbion_horizon_visual_overhaul.js" not in html:
-            html = html.replace(marker, '<script src="/urbion_horizon_visual_overhaul.js"></script>' + marker, 1)
-        if "urbion_championship_visual_system_v2.js" not in html:
-            html = html.replace(marker, '<script src="/urbion_championship_visual_system_v2.js"></script>' + marker, 1)
-        if "urbion_horizon_language_bootstrap.js" not in html:
-            html = html.replace(marker, '<script src="/urbion_horizon_language_bootstrap.js"></script>' + marker, 1)
-        if "urbion_layer_toggle_repair.js" not in html:
-            html = html.replace(marker, '<script src="/urbion_layer_toggle_repair.js"></script>' + marker, 1)
-        if "horizon-h1-visual-contract" not in html:
-            html = html.replace(marker, f'<style id="horizon-h1-visual-contract">{HORIZON_H1_STYLE}</style>' + marker, 1)
-        if "horizon-map-size-visual-contract" not in html:
-            html = html.replace(marker, f'<style id="horizon-map-size-visual-contract">{MAP_SIZE_STYLE}</style>' + marker, 1)
-    for asset in (VISUAL_V1, VISUAL_OVERHAUL, VISUAL_V2, LAYER_TOGGLE_REPAIR):
-        if not asset.is_file():
-            return HTMLResponse(f"URBION HORIZON presentation asset missing: {asset.name}", status_code=500)
-    return HTMLResponse(
-        html,
-        status_code=response.status_code,
-        media_type="text/html; charset=utf-8",
-        headers={"Cache-Control": "no-store, max-age=0"},
+def _html(path: Path) -> HTMLResponse:
+    if not path.is_file():
+        return HTMLResponse(f"URBION HORIZON presentation asset missing: {path.name}", status_code=500)
+    return HTMLResponse(path.read_text(encoding="utf-8"), media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
+
+
+def _workspace() -> HTMLResponse:
+    required = (WORKSPACE_FILE, WORKSPACE_BRIDGE, WORKSPACE_RUNTIME, WORKSPACE_LAYER,
+                WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
+                WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT,
+                WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT_V4, WORKSPACE_RATIO_OWNER,
+                WORKSPACE_ROAD_INTELLIGENCE, WORKSPACE_ANALYSIS_SUMMARY, WORKSPACE_STATION_MAP)
+    for path in required:
+        if not path.is_file():
+            return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
+    html = WORKSPACE_FILE.read_text(encoding="utf-8")
+    scripts = ('<script src="/urbion_workspace_bridge.js"></script>'
+               '<script src="/urbion_workspace_runtime.js"></script>'
+               '<script src="/urbion_layer_runtime_fix.js"></script>'
+               '<script src="/urbion_workspace_canonical_ui.js"></script>'
+               '<script src="/urbion_workspace_modal_owner.js"></script>'
+               '<script src="/urbion_workspace_pbt_catalog.js"></script>'
+               '<script src="/urbion_workspace_utility_owner.js"></script>'
+               '<script src="/urbion_workspace_review_gaps_owner.js"></script>'
+               '<script src="/urbion_workspace_environment_owner.js"></script>'
+               '<script src="/urbion_workspace_mobility_owner.js"></script>'
+               '<script src="/urbion_workspace_development_impact_owner_v4.js"></script>'
+               '<script src="/urbion_workspace_ratio_owner.js"></script>'
+               '<script src="/urbion_workspace_road_intelligence_owner.js"></script>'
+               '<script src="/urbion_workspace_analysis_summary_owner.js"></script>'
+               '<script src="/urbion_workspace_station_map_owner.js"></script>')
+    if "</body>" in html:
+        html = html.replace("</body>", scripts + "</body>", 1)
+    return HTMLResponse(html, media_type="text/html", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
+
+
+def _development_impact(assessment: dict) -> dict:
+    """Build impact screening strictly from explicit assessment proposal inputs."""
+    proposal = assessment.get("proposal") or {}
+    spatial = assessment.get("site_analysis") or {}
+    return build_development_impact(
+        development_type=assessment.get("development_type") or proposal.get("development_type") or "",
+        units=proposal.get("units"),
+        site_area_ha=proposal.get("site_area_ha"),
+        commercial_gfa_m2=proposal.get("commercial_gfa_m2"),
+        jobs=proposal.get("jobs"),
+        population=proposal.get("population"),
+        daily_trips=proposal.get("daily_trips"),
+        road_distance_m=proposal.get("road_distance_m", spatial.get("road_distance_m")),
+        flood_exposure=proposal.get("flood_exposure", spatial.get("flood_exposure")),
+        nearby_facilities=proposal.get("nearby_facilities"),
+        source_context={
+            "assessment_inputs": {k: proposal.get(k) for k in (
+                "units", "site_area_ha", "commercial_gfa_m2", "jobs",
+                "population", "daily_trips", "road_distance_m",
+                "flood_exposure", "nearby_facilities") if proposal.get(k) is not None},
+            "plot_ratio": proposal.get("Plot Ratio"),
+            "evidence_policy": "Explicit proposal/spatial inputs only; missing values remain review-required."
+        },
     )
 
 
-@app.middleware("http")
-async def _urbion_landing_override(request: Request, call_next):
-    if request.url.path in {"/", "/index.html"}:
-        if not LANDING_FILE.is_file():
-            return HTMLResponse("URBION HORIZON landing page is missing.", status_code=500)
-        landing_html = LANDING_FILE.read_text(encoding="utf-8")
-        visual_script = '<script src="/urbion_horizon_visual_overhaul.js"></script>'
-        if visual_script not in landing_html and "</body>" in landing_html:
-            landing_html = landing_html.replace("</body>", visual_script + "</body>", 1)
-        return HTMLResponse(
-            landing_html,
-            media_type="text/html; charset=utf-8",
-            headers={"Cache-Control": "no-store, max-age=0"},
+def _canonical_packet(assessment: dict) -> dict:
+    impact = assessment.get("development_impact")
+    if not isinstance(impact, dict):
+        impact = _development_impact(assessment)
+        assessment["development_impact"] = impact
+    return build_canonical_evidence_packet(assessment=assessment,
+                                           spatial=assessment.get("site_analysis"),
+                                           environment=assessment.get("live_environment_evidence") or assessment.get("evidence_intelligence"),
+                                           stations=assessment.get("live_station_evidence") or assessment.get("stations"),
+                                           development_impact=impact,
+                                           policy_graph={"policy_coverage": assessment.get("policy_coverage")})
+
+
+def _road_intelligence_from_payload(payload: dict) -> dict:
+    return build_road_intelligence(
+        site_lat=payload.get("site_lat"),
+        site_lon=payload.get("site_lon"),
+        nearest_road_name=payload.get("nearest_road_name"),
+        nearest_road_distance_m=payload.get("nearest_road_distance_m"),
+        road_hierarchy=payload.get("road_hierarchy"),
+        road_source=payload.get("road_source"),
+        centres=payload.get("centres") if isinstance(payload.get("centres"), list) else [],
+    )
+
+
+def _attach_packet(payload: dict, path: str) -> dict:
+    assessment = payload if path == "/assess" else payload.get("assessment")
+    if isinstance(assessment, dict):
+        packet = _canonical_packet(assessment)
+        payload["development_impact"] = packet.get("evidence", {}).get("development_impact", {})
+        payload["canonical_evidence_packet"] = packet
+        decision = payload.get("decision_center")
+        if isinstance(decision, dict):
+            decision["development_impact"] = packet.get("evidence", {}).get("development_impact", {})
+            decision["canonical_evidence_packet"] = packet
+            decision["review_gaps"] = list(packet.get("review_gaps", []))
+            decision["review_required"] = bool(decision["review_gaps"])
+    return payload
+
+
+async def _response_json(response: Response) -> tuple[bytes, object]:
+    try:
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        return body, json.loads(body.decode("utf-8")) if body else None
+    except Exception:
+        return b"", None
+
+
+def _canonical_downstream_error(request: Request, exc: Exception) -> JSONResponse:
+    path = request.url.path
+    if isinstance(exc, RequestValidationError):
+        return JSONResponse(
+            canonical_error(code="REQUEST_VALIDATION_ERROR", message="Request validation failed.", route=path,
+                            stage="REQUEST_VALIDATION", source="URBION_REQUEST_GATE", details=exc.errors()),
+            status_code=422,
         )
-    if request.url.path == "/championship.html":
-        return _canonical_championship_page()
-    if request.url.path == "/urbion_horizon_language_bootstrap.js":
-        if not LANGUAGE_BOOTSTRAP.is_file():
-            return Response("URBION HORIZON language bootstrap is missing.", status_code=500, media_type="text/plain; charset=utf-8")
-        return Response(LANGUAGE_BOOTSTRAP.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
-    if request.url.path == "/urbion_championship_visual_system_v1.js":
-        if not VISUAL_V1.is_file():
-            return Response("Visual system v1 is missing.", status_code=500, media_type="text/plain; charset=utf-8")
-        return Response(VISUAL_V1.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
-    if request.url.path == "/urbion_horizon_visual_overhaul.js":
-        if not VISUAL_OVERHAUL.is_file():
-            return Response("Visual overhaul is missing.", status_code=500, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
-        return Response(VISUAL_OVERHAUL.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
-    if request.url.path == "/urbion_championship_visual_system_v2.js":
-        if not VISUAL_V2.is_file():
-            return Response("Visual system v2 is missing.", status_code=500, media_type="text/plain; charset=utf-8")
-        return Response(VISUAL_V2.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
-    if request.url.path == "/urbion_layer_toggle_repair.js":
-        if not LAYER_TOGGLE_REPAIR.is_file():
-            return Response("Layer toggle repair asset is missing.", status_code=500, media_type="application/javascript; charset=utf-8")
-        return Response(LAYER_TOGGLE_REPAIR.read_text(encoding="utf-8"), media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
-    if request.url.path == "/urbion_championship_horizon_ui.js":
-        if not HORIZON_UI_ASSET.is_file():
-            return Response("URBION HORIZON UI asset is missing.", status_code=500, media_type="application/javascript; charset=utf-8")
-        payload = HORIZON_UI_ASSET.read_text(encoding="utf-8")
-        if HORIZON_H1_CONTRACT not in payload:
-            return Response("URBION HORIZON heading visual contract is missing.", status_code=500, media_type="text/plain; charset=utf-8")
-        payload = payload.replace(HORIZON_H1_CONTRACT, HORIZON_H1_SAFE, 1)
-        return Response(payload, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0"})
-    return await call_next(request)
+    if isinstance(exc, HTTPException):
+        status = int(exc.status_code or 500)
+        detail = exc.detail
+        if isinstance(detail, dict):
+            code = str(detail.get("code") or f"HTTP_{status}")
+            message = str(detail.get("message") or detail.get("detail") or "Request failed.")
+            details = detail
+        else:
+            code = f"HTTP_{status}"
+            message = str(detail or "Request failed.")
+            details = None
+        return JSONResponse(
+            canonical_error(code=code, message=message, route=path, stage="HTTP_ERROR",
+                            source="URBION_REQUEST_GATE", details=details, retryable=status >= 500),
+            status_code=status,
+        )
+    return JSONResponse(
+        canonical_error(code="INTERNAL_ERROR", message="Unexpected server error.", route=path,
+                        stage="SERVER", source="URBION_PRESENTATION_GATE", retryable=True,
+                        details={"exception_type": type(exc).__name__}),
+        status_code=500,
+    )
+
+
+def _canonical_response_error(request: Request, response: Response, body: bytes, payload: object) -> Response:
+    """Normalize downstream HTTP error responses, not only raised exceptions."""
+    if response.status_code < 400:
+        return response
+    if isinstance(payload, dict) and payload.get("error") is True and payload.get("version") == "URBION_ERROR_V1":
+        return JSONResponse(payload, status_code=response.status_code, headers={
+            k: v for k, v in dict(response.headers).items()
+            if k.lower() not in {"content-length", "content-type"}
+        })
+    if isinstance(payload, dict):
+        detail = payload.get("detail")
+        if isinstance(detail, dict):
+            code = str(detail.get("code") or f"HTTP_{response.status_code}")
+            message = str(detail.get("message") or detail.get("detail") or "Request failed.")
+        else:
+            code = f"HTTP_{response.status_code}"
+            message = str(detail or payload.get("message") or "Request failed.")
+        return JSONResponse(
+            canonical_error(code=code, message=message, route=request.url.path,
+                            stage="HTTP_ERROR", source="URBION_REQUEST_GATE",
+                            retryable=response.status_code >= 500, details=payload),
+            status_code=response.status_code,
+        )
+    # Preserve non-JSON error assets/pages; the canonical contract applies to API-style JSON responses.
+    return Response(content=body, status_code=response.status_code,
+                    headers=dict(response.headers), media_type=response.media_type)
+
+
+@app.middleware("http")
+async def _urbion_canonical_presentation(request: Request, call_next):
+    path = request.url.path
+    if path == "/road-intelligence" and request.method == "POST":
+        try:
+            raw = await request.body()
+            incoming = json.loads(raw.decode("utf-8")) if raw else {}
+            if not isinstance(incoming, dict):
+                return JSONResponse(canonical_error(code="INVALID_JSON_OBJECT", message="JSON object required", route=path, stage="ROAD_INTELLIGENCE", review_required=True), status_code=400)
+            return JSONResponse(_road_intelligence_from_payload(incoming))
+        except Exception as exc:
+            return JSONResponse(canonical_error(code="ROAD_INTELLIGENCE_ERROR", message=str(exc), route=path, stage="ROAD_INTELLIGENCE", source="URBION_ROAD_INTELLIGENCE", review_required=True, retryable=True), status_code=422)
+
+    if path == "/decision-center" and request.method == "POST":
+        raw = await request.body()
+        try:
+            incoming = json.loads(raw.decode("utf-8")) if raw else None
+            source = incoming.get("assessment") if isinstance(incoming, dict) else None
+            if not isinstance(source, dict):
+                return JSONResponse(canonical_error(code="ASSESSMENT_INPUT_REQUIRED", message="A canonical assessment object is required.", route=path, stage="DECISION_CENTER", review_required=True), status_code=422)
+            assessed = assess_core(AssessmentRequest.model_validate(source))
+            packet = _canonical_packet(assessed)
+            result = build_decision_center(assessment=assessed)
+            if isinstance(result, dict):
+                result["development_impact"] = packet.get("evidence", {}).get("development_impact", {})
+                result["canonical_evidence_packet"] = packet
+                result["review_gaps"] = list(packet.get("review_gaps", []))
+                result["review_required"] = bool(result["review_gaps"])
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse(canonical_error(code="DECISION_CENTER_ERROR", message=str(exc), route=path, stage="DECISION_CENTER", source="URBION_DECISION_CENTER", evidence_state="UNVERIFIED", review_required=True, retryable=False, canonical_packet_available=False), status_code=422)
+
+    if path in {"/", "/index.html"}: return _html(WELCOME_FILE)
+    if path == "/background_welcoming_page.png":
+        if not WELCOME_BACKGROUND_FILE.is_file(): return Response("URBION HORIZON welcome background missing", status_code=404, media_type="text/plain")
+        return FileResponse(WELCOME_BACKGROUND_FILE, media_type="image/png", headers={"Cache-Control":"no-store, max-age=0, must-revalidate","X-URBION-WELCOME-BACKGROUND":"CANONICAL-WELCOME"})
+    if path == "/about": return _html(ABOUT_FILE)
+    if path == "/workspace": return _workspace()
+    assets = {
+        "/urbion_workspace_bridge.js": (WORKSPACE_BRIDGE,"URBION HORIZON workspace bridge missing."),
+        "/urbion_workspace_runtime.js": (WORKSPACE_RUNTIME,"URBION HORIZON runtime layer missing."),
+        "/urbion_layer_runtime_fix.js": (WORKSPACE_LAYER,"URBION HORIZON live layer renderer missing."),
+        "/urbion_workspace_canonical_ui.js": (WORKSPACE_CANONICAL_UI,"URBION HORIZON canonical UI owner missing."),
+        "/urbion_workspace_modal_owner.js": (WORKSPACE_MODAL_OWNER,"URBION HORIZON modal owner missing."),
+        "/urbion_workspace_pbt_catalog.js": (WORKSPACE_PBT_CATALOG,"URBION HORIZON PBT catalogue missing."),
+        "/urbion_workspace_utility_owner.js": (WORKSPACE_UTILITY_OWNER,"URBION HORIZON utility owner missing."),
+        "/urbion_workspace_review_gaps_owner.js": (WORKSPACE_REVIEW_GAPS,"URBION HORIZON review-gap presentation owner missing."),
+        "/urbion_workspace_environment_owner.js": (WORKSPACE_ENVIRONMENT,"URBION HORIZON environment evidence owner missing."),
+        "/urbion_workspace_mobility_owner.js": (WORKSPACE_MOBILITY,"URBION HORIZON mobility evidence owner missing."),
+        "/urbion_workspace_development_impact_owner_v4.js": (WORKSPACE_DEVELOPMENT_IMPACT_V4,"URBION HORIZON development impact owner missing."),
+        "/urbion_workspace_ratio_owner.js": (WORKSPACE_RATIO_OWNER,"URBION HORIZON plot ratio presentation owner missing."),
+        "/urbion_workspace_road_intelligence_owner.js": (WORKSPACE_ROAD_INTELLIGENCE,"URBION HORIZON road intelligence owner missing."),
+        "/urbion_workspace_analysis_summary_owner.js": (WORKSPACE_ANALYSIS_SUMMARY,"URBION HORIZON site analysis summary owner missing."),
+        "/urbion_workspace_station_map_owner.js": (WORKSPACE_STATION_MAP,"URBION HORIZON station map owner missing."),
+    }
+    if path in assets:
+        target, message = assets[path]
+        if not target.is_file(): return Response(message,status_code=500,media_type="text/plain; charset=utf-8")
+        return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
+    if path == "/urbion_workspace_final.js":
+        target = BASE_DIR / "urbion_workspace_final.js"
+        if not target.is_file(): return Response("URBION HORIZON legacy compatibility asset missing.",status_code=404,media_type="text/plain")
+        return Response(target.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0"})
+
+    try:
+        response = await call_next(request)
+    except (RequestValidationError, HTTPException) as exc:
+        return _canonical_downstream_error(request, exc)
+    except Exception as exc:
+        return _canonical_downstream_error(request, exc)
+
+    if response.status_code >= 400:
+        body, payload = await _response_json(response)
+        return _canonical_response_error(request, response, body, payload)
+
+    if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
+        body, payload = await _response_json(response)
+        if not isinstance(payload, dict):
+            return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
+        payload = _attach_packet(payload, path)
+        headers = dict(response.headers)
+        headers.pop("content-length", None)
+        headers.pop("content-type", None)
+        return JSONResponse(payload, status_code=response.status_code, headers=headers)
+    return response

@@ -17,6 +17,38 @@ def decision_intelligence(request: AssessmentRequest):
         "statutory_verification": "NOT_CLAIMED",
     }
 
+@app.post("/decision-center")
+def decision_center(request: dict):
+    """Compatibility adapter for the canonical workspace decision button.
+
+    The workspace sends {"assessment": {...}}, while the production decision
+    engine accepts AssessmentRequest directly. Keep the adapter deterministic
+    and reuse the same decision-intelligence engine; no approval authority is
+    implied by this route.
+    """
+    raw = request.get("assessment") if isinstance(request, dict) else None
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=422, detail="assessment object is required")
+    try:
+        assessment_request = AssessmentRequest.model_validate(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="Invalid assessment payload") from exc
+    assessment = assess_core(assessment_request)
+    di = build_decision_intelligence(assessment)
+    actions = di.get("priority_actions") or assessment.get("review_gaps") or [
+        "Verify adopted plan and authority requirements"
+    ]
+    return {
+        "status": assessment.get("final_status", "REQUIRES REVIEW"),
+        "recommendation": assessment.get("final_status", "REQUIRES REVIEW"),
+        "rationale": di.get("rationale") or di.get("summary") or "Decision support generated from the deterministic assessment packet.",
+        "next_actions": actions,
+        "assessment": assessment,
+        "decision_intelligence": di,
+        "decision_authority": "NONE",
+        "statutory_verification": "NOT_CLAIMED",
+    }
+
 @app.post("/intelligence/decision/batch")
 def decision_intelligence_batch(requests: list[AssessmentRequest]):
     if not requests:

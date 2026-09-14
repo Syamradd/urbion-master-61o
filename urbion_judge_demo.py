@@ -15,6 +15,7 @@ def build_judge_demo(inputs: dict[str, Any], copilot_fn: Callable[..., dict[str,
         "demo_mode": "CHAMPIONSHIP_JUDGE_DEMO",
         "headline": "Evidence-grounded planning copilot",
         "flow": ["ASSESSMENT", "SPATIAL", "KNOWLEDGE", "IMPACT", "SCENARIO", "DECISION", "EVIDENCE LEDGER"],
+        "canonical_evidence_packet": packet.get("canonical_evidence_packet"),
         "snapshot": {
             "decision": decision.get("status") or decision.get("decision_status"),
             "agent_mode": agents.get("mode"),

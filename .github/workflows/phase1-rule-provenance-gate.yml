@@ -1,0 +1,98 @@
+name: URBION Phase 1 Rule Provenance Gate
+
+on:
+  push:
+    branches:
+      - feature/canonical-workspace-v2
+  pull_request:
+    branches:
+      - feature/canonical-workspace-v2
+
+env:
+  PYTHONPATH: .
+
+jobs:
+  rule-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Install Playwright Python package
+        run: pip install playwright
+      - name: Install Playwright Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Run rule provenance smoke
+        run: python scripts/phase1_rule_provenance_smoke.py
+      - name: Run canonical review-gaps contract smoke
+        run: python scripts/phase1_review_gaps_smoke.py
+      - name: Run cadastral identity contract smoke
+        run: python scripts/phase1_cadastral_identity_smoke.py
+      - name: Run environment live evidence contract smoke
+        run: python scripts/phase1_environment_live_smoke.py
+      - name: Preflight canonical server import
+        run: python -c "import landing_server; print('[PHASE1] landing_server import PASS')"
+      - name: Start canonical presentation server
+        run: |
+          set -o pipefail
+          rm -f /tmp/urbion-server.log
+          PYTHONPATH=. python -m uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-server.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+              echo "[PHASE1] canonical server ready pid=${SERVER_PID}"
+              exit 0
+            fi
+            if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
+              echo "[PHASE1] canonical server exited during startup"
+              cat /tmp/urbion-server.log || true
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "[PHASE1] canonical server did not become ready"
+          cat /tmp/urbion-server.log || true
+          kill "${SERVER_PID}" 2>/dev/null || true
+          exit 1
+      - name: Run live environment evidence integration smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_environment_live_integration_smoke.py
+      - name: Run live mobility station integration smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_mobility_live_integration_smoke.py
+      - name: Run live canonical packet integration smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_canonical_contract_smoke.py
+      - name: Run plot ratio browser UI smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_plot_ratio_ui_smoke.py
+      - name: Run development impact convergence smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_development_impact_integration_smoke.py
+      - name: Run live rule-provenance integration smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_rule_provenance_integration_smoke.py
+      - name: Run development impact browser UI smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_development_impact_ui_smoke.py
+      - name: Run review-gaps browser UI smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_review_gaps_ui_smoke.py
+      - name: Run copilot canonical parity smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/phase1_copilot_canonical_smoke.py

@@ -1,6 +1,7 @@
 """Executable what-if scenario orchestration for URBION Phase D."""
 from __future__ import annotations
 from typing import Any, Callable
+from urbion_canonical_evidence import build_canonical_evidence_packet
 
 
 def build_scenario_plan(baseline_inputs: dict[str, Any], variants: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -8,22 +9,14 @@ def build_scenario_plan(baseline_inputs: dict[str, Any], variants: list[dict[str
     plans = []
     for i, v in enumerate(variants or [], 1):
         overrides = v.get("overrides", {}) if isinstance(v, dict) else {}
-        if not isinstance(overrides, dict):
-            overrides = {}
-        plans.append({
-            "id": str(v.get("id") or f"SCENARIO-{i}"),
-            "name": v.get("name", str(v.get("id") or f"Scenario {i}")),
-            "baseline_inputs": dict(base),
-            "overrides": dict(overrides),
-            "inputs": {**base, **dict(overrides)},
-        })
+        if not isinstance(overrides, dict): overrides = {}
+        plans.append({"id": str(v.get("id") or f"SCENARIO-{i}"), "name": v.get("name", str(v.get("id") or f"Scenario {i}")), "baseline_inputs": dict(base), "overrides": dict(overrides), "inputs": {**base, **dict(overrides)}})
     return plans
 
 
 def _indicator_map(assessment: dict[str, Any]) -> dict[str, float]:
     items = (assessment or {}).get("site_analysis", {}).get("indicators", []) or []
-    if isinstance(items, dict):
-        items = [{"name": key, "score": value if isinstance(value, (int, float)) else (value or {}).get("score")} for key, value in items.items()]
+    if isinstance(items, dict): items = [{"name": key, "score": value if isinstance(value, (int, float)) else (value or {}).get("score")} for key, value in items.items()]
     out: dict[str, float] = {}
     for item in items:
         if not isinstance(item, dict): continue
@@ -40,9 +33,7 @@ def _input_changes(base_inputs: dict[str, Any], scenario_inputs: dict[str, Any])
 
 
 def _score(assessment: dict[str, Any]) -> float:
-    site_analysis = (assessment or {}).get("site_analysis", {}) or {}
-    planning_value = (assessment or {}).get("planning_value", {}) or {}
-    value = site_analysis.get("score", planning_value.get("score", 0))
+    site_analysis = (assessment or {}).get("site_analysis", {}) or {}; planning_value = (assessment or {}).get("planning_value", {}) or {}; value = site_analysis.get("score", planning_value.get("score", 0))
     try: return float(value or 0)
     except (TypeError, ValueError): return 0.0
 
@@ -60,23 +51,36 @@ def _decision_delta(base_status: Any, scenario_status: Any, score_delta: float) 
     return "UNCHANGED"
 
 
+def _packet_for_assessment(assessment: dict[str, Any]) -> dict[str, Any]:
+    """Build the canonical evidence packet from one deterministic assessment."""
+    return build_canonical_evidence_packet(
+        assessment=assessment,
+        spatial=assessment.get("site_analysis"),
+        environment=assessment.get("live_environment_evidence") or assessment.get("evidence_intelligence"),
+        stations=assessment.get("live_station_evidence") or assessment.get("stations"),
+        development_impact=assessment.get("development_impact"),
+        policy_graph={"policy_coverage": assessment.get("policy_coverage")},
+    )
+
+
 def compare_assessments(baseline: dict[str, Any], scenarios: list[dict[str, Any]]) -> dict[str, Any]:
     base = baseline or {}; base_status = base.get("final_status", "REQUIRES REVIEW"); base_score = _score(base); base_indicators = _indicator_map(base); results = []
+    baseline_packet = _packet_for_assessment(base)
     for item in scenarios or []:
-        result = item.get("assessment", item.get("result", {})) or {}; sa = result.get("site_analysis", {}) or {}; pv = result.get("planning_value", {}) or {}; score = _score(result); status = result.get("final_status", "REQUIRES REVIEW"); scenario_indicators = _indicator_map(result)
+        result = item.get("assessment", item.get("result", {})) or {}; scenario_packet = item.get("canonical_evidence_packet") or _packet_for_assessment(result); sa = result.get("site_analysis", {}) or {}; pv = result.get("planning_value", {}) or {}; score = _score(result); status = result.get("final_status", "REQUIRES REVIEW"); scenario_indicators = _indicator_map(result)
         indicator_deltas = [{"name": name, "before": base_indicators.get(name), "after": after, "delta": round(after-base_indicators[name],2) if name in base_indicators else None} for name, after in scenario_indicators.items() if name in base_indicators]
         scenario_inputs = item.get("inputs", {}) or {}; baseline_inputs = item.get("baseline_inputs", {}) or {}; blockers = list(pv.get("blockers", [])); gaps = list(pv.get("evidence_gaps", [])); score_delta = round(score-base_score,2)
         recommendation = (sa.get("recommendation") or {}).get("headline") or pv.get("headline") or result.get("recommendation")
         reason = (sa.get("recommendation") or {}).get("reason") or pv.get("reason") or result.get("reason") or recommendation or "Scenario outcome returned from the same assessment engine."
-        results.append({"id":str(item.get("id") or item.get("name") or f"SCENARIO-{len(results)+1}"),"name":item.get("name"),"status":status,"status_changed":status!=base_status,"score":score,"score_delta":score_delta,"decision_delta":_decision_delta(base_status,status,score_delta),"band":sa.get("suitability_band") or sa.get("band") or pv.get("band"),"recommendation":recommendation,"reason":reason,"blockers":blockers,"evidence_gaps":gaps,"input_changes":_input_changes(baseline_inputs,scenario_inputs),"indicator_deltas":indicator_deltas})
+        results.append({"id":str(item.get("id") or item.get("name") or f"SCENARIO-{len(results)+1}"),"name":item.get("name"),"status":status,"status_changed":status!=base_status,"score":score,"score_delta":score_delta,"decision_delta":_decision_delta(base_status,status,score_delta),"band":sa.get("suitability_band") or sa.get("band") or pv.get("band"),"recommendation":recommendation,"reason":reason,"blockers":blockers,"evidence_gaps":gaps,"input_changes":_input_changes(baseline_inputs,scenario_inputs),"indicator_deltas":indicator_deltas,"canonical_evidence_packet": scenario_packet})
     ranked = sorted(results,key=lambda x:(_status_rank(x["status"]),not x["blockers"],x["score"]),reverse=True)
     for rank,item in enumerate(ranked,1): item["rank"] = rank
-    return {"title":"What-If Scenario Comparison","version":"PHASE-D","baseline_status":base_status,"baseline_score":base_score,"baseline_indicators":base_indicators,"scenarios":results,"ranked_scenarios":[item["id"] for item in ranked],"best_candidate":ranked[0]["id"] if ranked else None,"decision_pathway":["Baseline assessment established","Scenario variants assessed with the same decision engine","Scores, status and evidence gaps compared","Planner verifies the strongest pathway against authoritative evidence"],"disclaimer":"Scenario comparison is decision support only; it does not replace statutory assessment or authority review."}
+    return {"title":"What-If Scenario Comparison","version":"PHASE-D","baseline_status":base_status,"baseline_score":base_score,"baseline_indicators":base_indicators,"baseline_canonical_evidence_packet":baseline_packet,"scenarios":results,"ranked_scenarios":[item["id"] for item in ranked],"best_candidate":ranked[0]["id"] if ranked else None,"decision_pathway":["Baseline assessment established","Scenario variants assessed with the same decision engine","Scores, status and evidence gaps compared","Planner verifies the strongest pathway against authoritative evidence"],"disclaimer":"Scenario comparison is decision support only; it does not replace statutory assessment or authority review.","statutory_verification":"NOT_CLAIMED"}
 
 
 def execute_what_if(baseline_inputs: dict[str, Any], variants: list[dict[str, Any]], assess_fn: Callable[[dict[str, Any]], dict[str, Any]]) -> dict[str, Any]:
-    baseline_inputs = dict(baseline_inputs or {}); plan = build_scenario_plan(baseline_inputs, variants); baseline = assess_fn(dict(baseline_inputs)); executed = []
+    baseline_inputs = dict(baseline_inputs or {}); plan = build_scenario_plan(baseline_inputs, variants); baseline = assess_fn(dict(baseline_inputs)); baseline_packet = _packet_for_assessment(baseline); executed = []
     for item in plan:
-        scenario_inputs = dict(item["inputs"]); assessment = assess_fn(scenario_inputs)
-        executed.append({"id":item["id"],"name":item["name"],"inputs":scenario_inputs,"baseline_inputs":dict(baseline_inputs),"assessment":assessment})
-    comparison = compare_assessments(baseline, executed); comparison["baseline"] = baseline; return comparison
+        scenario_inputs = dict(item["inputs"]); assessment = assess_fn(scenario_inputs); packet = _packet_for_assessment(assessment)
+        executed.append({"id":item["id"],"name":item["name"],"inputs":scenario_inputs,"baseline_inputs":dict(baseline_inputs),"assessment":assessment,"canonical_evidence_packet":packet})
+    comparison = compare_assessments(baseline, executed); comparison["baseline"] = baseline; comparison["canonical_evidence_packet"] = baseline_packet; comparison["scenario_packets"] = {item["id"]: item["canonical_evidence_packet"] for item in executed}; return comparison
