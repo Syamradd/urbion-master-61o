@@ -1,12 +1,12 @@
 # URBION HORIZON — Master Release Checklist
 
-Status: `PRE-RENDER REPAIR / DEPLOYMENT LOCKED`
+Status: `REPAIR INTEGRATED / LIVE VALIDATION PENDING`
 
-This is the single release-control checklist for final championship convergence. Historical worklists remain reference material; this file is the release gate summary.
+This is the single release-control checklist for the current canonical release. The only active release branch is `feature/canonical-workspace-v2`. Historical, parallel, temporary, forensic and legacy branches are retained as reference only and must not be deployed over the canonical release.
 
 ## 1. Canonical architecture
 
-- [x] One active release branch: `feature/championship-convergence-v1`
+- [x] One active release branch: `feature/canonical-workspace-v2`
 - [x] One production architecture: V5 Planning Workspace
 - [x] One planning engine contract: `PHASE-E.8`
 - [x] One evidence contract: `PHASE1.2`
@@ -33,82 +33,78 @@ This is the single release-control checklist for final championship convergence.
 - [x] JPS station adapter preserved
 - [x] MyGEMS lithology adapter preserved
 - [x] MyEQMS/APIMS adapter preserved
-- [x] GIS 25-layer runtime regression
+- [x] GIS 25-layer runtime contract
 - [x] KM / OSC readiness path
 - [x] Output / decision-story path
 - [x] BM / EN and theme controls
 - [x] Existing Welcome page preserved
 - [x] Canonical About Us page preserved
 
-## 3. Browser / regression proof
+## 3. Current repair integrated on canonical head
 
-Audited candidate tree before the current Render-target reconciliation patch:
-`c4555f505c9ef1c41d677eee85cff35d1a7e5a5d`
+- [x] i-Plan WMS rendering uses the same-origin `/map/wms` proxy
+- [x] ArcGIS imagery continues through the same-origin `/map/arcgis` proxy
+- [x] About navigation is guarded to `/about`
+- [x] English workspace label normalization retained
+- [x] GIS layer catalogue remains restricted to the 24 core API IDs plus the explicit cadastral layer
+- [x] Existing Render service and launcher remain unchanged
 
-- [x] 17 regression lanes passed
-- [x] Runtime smoke passed
-- [x] Full regression passed
-- [x] Workspace Browser Gate passed
-- [x] Render Parity Gate passed
-- [x] UX Contract passed
-- [x] Final Command Centre Contract passed
-- [x] Browser evidence upload passed
-- [x] Main parity proven at audit time (`behind_by=0`)
-- [x] Preservation matrix reviewed
-- [ ] Fresh gates required again after current Render-target reconciliation patch
+## 4. Browser / regression proof
 
-## 4. Duplicate / overlap audit
+Prior candidate evidence remains historical reference only.
+
+- [x] Prior candidate regression matrix: 17 lanes passed
+- [x] Prior candidate runtime smoke passed
+- [x] Prior candidate full regression passed
+- [x] Prior candidate Workspace Browser Gate passed
+- [x] Prior candidate Render Parity Gate passed
+- [x] Prior candidate UX Contract passed
+- [x] Prior candidate Final Command Centre Contract passed
+- [x] Prior candidate browser evidence upload passed
+- [ ] Fresh tests on current canonical head
+- [ ] Fresh full regression on current canonical head
+- [ ] Fresh browser/GIS smoke on current canonical head
+- [ ] Controlled live smoke after deployment
+
+## 5. Duplicate / overlap control
 
 ### Code/runtime
 
 - [x] `landing_server.py` is the canonical public production wrapper.
-- [x] `championship_server.py` is the shared FastAPI application base imported by `landing_server.py`; it is not a second planning engine.
-- [x] `workspace_v2_server.py` remains historical/preview-only.
-- [x] `workspace_v4_server.py` is now a compatibility launcher only and contains no competing app/routes/engine.
-- [x] Historical frontends are isolated from the canonical `/workspace` runtime.
+- [x] `championship_server.py` is the shared FastAPI application base, not a second planning engine.
+- [x] `workspace_v2_server.py` is historical/preview-only.
+- [x] `workspace_v4_server.py` is a compatibility launcher only.
+- [x] Historical frontends are isolated from `/workspace`.
 
-### Render services — fixed target
+### Render
 
-The `URBION HORIZON` Render workspace contains four existing web services. The user-selected deployment target is the existing V4 service below:
+- [x] Selected canonical deployment target: `urbion-horizon-workspace-v4`
+- [x] Selected Render branch: `feature/canonical-workspace-v2`
+- [x] Auto deploy remains OFF so Git ref movement cannot silently replace LIVE
+- [x] Legacy Render surfaces are untouched
+- [x] No new Render service is required
 
-| Service | Role | Status |
-|---|---|---|
-| `urbion-horizon-workspace-v4` | **selected canonical deployment target** | **KEEP — RECONCILE BRANCH BEFORE DEPLOY** |
-| `urbion-master-61o` | historical production surface | **LEGACY / DO NOT DEPLOY FOR THIS RELEASE** |
-| `urbion-workspace-v2-preview` | legacy V2 preview | **LEGACY / DO NOT DEPLOY** |
-| `urbion-horizon-championship` | legacy championship surface | **LEGACY / DO NOT DEPLOY** |
-
-No new Render service is required. Legacy surfaces remain untouched until release is proven.
-
-## 5. Selected Render target contract
+## 6. Selected Render target contract
 
 Target service: `urbion-horizon-workspace-v4` (`srv-dahm749594qs73fk2tag`)
-
-### Existing configuration
 
 - runtime: `python`
 - region: `singapore`
 - plan: `free`
 - build: `pip install -r requirements.txt`
-- current branch: `feature/canonical-workspace-v2`
-- current start: `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`
+- branch: `feature/canonical-workspace-v2`
+- start: `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`
 - auto deploy: `off`
 
-### Required release behavior
+Current deployment before this repair remains `645fca153fea6ea2332229cf913b22a6d07db559`.
 
-- branch must be promoted/reconciled to the approved release branch: `feature/championship-convergence-v1`
-- keep the existing start command `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`
-- `workspace_v4_server:app` must resolve directly to the canonical `landing_server:app` application
-- `/` must serve the canonical Welcome page
-- `/about` must serve the canonical About Us page
-- `/workspace` must serve the canonical V5 Planning Workspace
-- canonical backend/API routes must remain available through the same app
+Next deployment candidate: `f5b321906d5b7e8c035c939e1c9b3f67e5993c6f`.
 
-This design deliberately preserves the user's existing Render service and its Welcome/About work while removing the V4 application as a competing runtime.
+Deployment is intentionally held until the fresh current-head checks below are completed.
 
-## 6. Known non-blocking product gaps
+## 7. Known non-blocking product gaps
 
-These are deliberate post-release enhancement items, not grounds for changing the planning engine during final freeze:
+These are deliberate future enhancements, not reasons to destabilize the deterministic planning engine during certification:
 
 - 3D massing / buildable envelope
 - persistent baseline vs alternatives comparison surface
@@ -118,28 +114,21 @@ These are deliberate post-release enhancement items, not grounds for changing th
 - advanced environmental simulation
 - enterprise GIS/BIM connectors
 
-They remain tracked in `DASHBOARD_WORLD_GAP_WORKLIST.md`.
+## 8. Final certification sequence
 
-## 7. Final release sequence
-
-- [x] Repair code contracts and stale tests
-- [x] Prove canonical browser/runtime behavior on the prior candidate tree
-- [x] Prove main parity at the prior candidate tree
-- [x] Audit Render workspace and identify the user's selected target service
-- [x] Replace the V4 server's competing application with a canonical compatibility shim
-- [x] Reconcile release documents to the selected target service
-- [ ] Fresh required CI on the final post-repair SHA
-- [ ] Confirm selected Render service branch is the approved release branch
-- [ ] Do not trigger deployment yet
-- [ ] Final release SHA lock after fresh gates
-- [ ] Deploy the existing `urbion-horizon-workspace-v4` service only
-- [ ] Controlled live smoke across Welcome / About / Workspace / decision / GIS / evidence routes
-- [ ] Verify live commit equals final release SHA
-- [ ] Record release identity/tag
-- [ ] Only then remove/decommission legacy Render surfaces if explicitly authorized
+- [x] Preserve pre-convergence canonical snapshot
+- [x] Keep `feature/canonical-workspace-v2` as the sole active release branch
+- [x] Keep `main` aligned to the same certified lineage when the release candidate is accepted
+- [x] Integrate WMS proxy and About navigation repair on top of `645fca1`
+- [ ] Fresh required CI on `f5b3219`
+- [ ] Fresh full functional workspace audit
+- [ ] Fresh 25-layer GIS audit
+- [ ] Controlled live smoke on the deployed `f5b3219` SHA
+- [ ] Final release SHA lock
+- [ ] Final release identity/tag
 
 ## Release gate
 
-`RENDER = LOCKED`
+`RENDER = LIVE ON 645FCA1 / NEW REPAIR CANDIDATE F5B3219 NOT YET DEPLOYED`
 
-The application is not declared production-ready until the selected existing Render service is running the canonical application from the approved release SHA and controlled live smoke passes.
+The application is not declared production-ready until the fresh current-head tests pass and controlled live smoke proves the repaired canonical build on the exact deployed SHA.
