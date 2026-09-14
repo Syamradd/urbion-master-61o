@@ -1,4 +1,4 @@
-"""Canonical GIS layer catalogue + browser drawer regression."""
+"""Canonical GIS layer catalogue + browser end-to-end render regression."""
 from __future__ import annotations
 import os
 import time
@@ -23,14 +23,25 @@ EXPECTED_API_CORE_IDS = {
 }
 
 def wait_until(predicate, timeout=15.0, interval=0.2):
-    d = time.monotonic() + timeout
+    deadline = time.monotonic() + timeout
     last = None
-    while time.monotonic() < d:
+    while time.monotonic() < deadline:
         last = predicate()
         if last:
-            return
+            return last
         time.sleep(interval)
     raise AssertionError(f"Timed out waiting for condition: {last!r}")
+
+def expand_layer_group(page, checkbox):
+    checkbox.scroll_into_view_if_needed()
+    group = checkbox.locator("xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]")
+    if group.count():
+        classes = group.get_attribute("class") or ""
+        if "closed" in classes:
+            head = group.locator(".urbion-layer-head, .layer-group-head").first
+            if head.count():
+                head.click()
+                page.wait_for_timeout(80)
 
 def main():
     assert len(EXPECTED_UI_LAYER_IDS) == 25
@@ -60,9 +71,33 @@ def main():
         assert page.locator("#layerList input[data-urbion-layer]").evaluate_all("els => new Set(els.map(e => e.dataset.urbionLayer)).size") == 25
         for lid in EXPECTED_UI_LAYER_IDS:
             assert page.locator(f"#layerList input[data-urbion-layer='{lid}']").count() == 1
-            assert page.locator(f"#layerList .layerstate[data-layer-state='{lid}']").count() == 1
+            assert page.locator(f"#layerList [data-layer-state='{lid}']").count() == 1
+
+        # End-to-end audit: a layer is PASS only when the runtime reaches the
+        # explicit tileload-backed state `ON · RENDERED`.
+        failures = []
+        rows = page.locator("#layerList input[data-urbion-layer]")
+        for i in range(rows.count()):
+            cb = rows.nth(i)
+            lid = cb.get_attribute("data-urbion-layer") or f"layer-{i}"
+            expand_layer_group(page, cb)
+            cb.check(force=True)
+            state = page.locator(f"#layerList [data-layer-state='{lid}']")
+            try:
+                wait_until(lambda: (state.inner_text().strip().upper() == "ON · RENDERED"), timeout=18.0)
+                print(f"GIS RENDER PASS: {lid}")
+            except AssertionError as exc:
+                text = state.inner_text().strip() if state.count() else "STATE MISSING"
+                failures.append(f"{lid}: state={text}; {exc}")
+                print(f"GIS RENDER FAIL: {lid}: {text}")
+            finally:
+                cb.uncheck(force=True)
+                page.wait_for_timeout(120)
+
+        if failures:
+            raise AssertionError("25-layer end-to-end GIS render failures:\n" + "\n".join(failures))
         browser.close()
-    print("GIS 25-layer regression: PASS")
+    print("GIS 25-layer end-to-end regression: PASS")
 
 if __name__ == "__main__":
     main()
