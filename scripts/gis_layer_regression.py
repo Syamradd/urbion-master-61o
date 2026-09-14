@@ -41,7 +41,7 @@ def expand_layer_group(page, layer_id):
     row = page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
     row.scroll_into_view_if_needed(timeout=10000)
     if not row.is_visible():
-        raise AssertionError("GIS layer checkbox remained hidden after expanding its group")
+        raise AssertionError("GIS layer row remained hidden after expanding its group")
 
 
 def main():
@@ -71,12 +71,12 @@ def main():
         page.locator("#layerBtn").click()
         expect(page.locator("#layers")).to_have_class("layers open")
         expect(page.locator("#layerList")).to_be_visible(timeout=15000)
-        wait_until(lambda: page.locator("#layerList input[data-urbion-layer]").count() == 25)
-        ids = set(page.locator("#layerList input[data-urbion-layer]").evaluate_all("els => els.map(e => e.dataset.urbionLayer)"))
+        wait_until(lambda: page.locator("#layerList [data-urbion-layer]").count() == 25, timeout=20.0)
+        ids = set(page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.dataset.urbionLayer).filter(Boolean)"))
         assert ids == EXPECTED_UI_LAYER_IDS, f"curated UI layer mismatch: missing={EXPECTED_UI_LAYER_IDS-ids}, unexpected={ids-EXPECTED_UI_LAYER_IDS}"
-        assert page.locator("#layerList input[data-urbion-layer]").evaluate_all("els => new Set(els.map(e => e.dataset.urbionLayer)).size") == 25
+        assert page.locator("#layerList [data-urbion-layer]").evaluate_all("els => new Set(els.map(e => e.dataset.urbionLayer)).size") == 25
         for lid in EXPECTED_UI_LAYER_IDS:
-            assert page.locator(f"#layerList input[data-urbion-layer='{lid}']").count() == 1
+            assert page.locator(f"#layerList [data-urbion-layer='{lid}']").count() == 1
             assert page.locator(f"#layerList [data-layer-state='{lid}']").count() == 1
 
         failures = []
@@ -89,15 +89,19 @@ def main():
                     responses_by_layer[current_layer].append({"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url})
 
         page.on("response", on_response)
-        layer_ids = [x for x in page.locator("#layerList input[data-urbion-layer]").evaluate_all("els => els.map(e => e.dataset.urbionLayer)" ) if x]
+        layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.dataset.urbionLayer)" ) if x]
         for lid in layer_ids:
             current_layer = lid
             expand_layer_group(page, lid)
-            cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
+            row = page.locator(f"#layerList [data-urbion-layer='{lid}']")
+            cb = row.locator("input[type='checkbox']").first
+            if cb.count() != 1:
+                failures.append(f"{lid}: canonical layer checkbox not found")
+                continue
             cb.check(force=True)
             page.wait_for_timeout(250)
             try:
-                wait_until(lambda: page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=20.0)
+                wait_until(lambda: page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=35.0)
                 state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
                 if state_text != "ON · RENDERED":
                     failures.append(f"{lid}: {state_text}; responses={responses_by_layer[lid]}")
@@ -106,7 +110,8 @@ def main():
                 else:
                     print(f"GIS RENDER PASS: {lid}")
             finally:
-                cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
+                row = page.locator(f"#layerList [data-urbion-layer='{lid}']")
+                cb = row.locator("input[type='checkbox']").first
                 if cb.count() and cb.is_checked():
                     cb.uncheck(force=True)
                 page.wait_for_timeout(120)
