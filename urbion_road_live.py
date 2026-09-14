@@ -1,0 +1,173 @@
+from __future__ import annotations
+
+"""Live OpenStreetMap/Overpass context for URBION road intelligence.
+
+This adapter is deliberately source-context only. It discovers nearby OSM roads
+and significant place nodes for planner orientation, but it does not claim an
+official Malaysian road classification, statutory accessibility threshold, or
+authority decision. Existing explicit source-backed inputs remain preferred.
+"""
+
+import json
+import math
+import os
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+from typing import Any
+
+OVERPASS_URL = os.getenv("URBION_OVERPASS_URL", "https://overpass-api.de/api/interpreter").strip()
+ROAD_RADIUS_M = 5000
+CENTRE_RADIUS_M = 50000
+ROAD_CLASSES = (
+    ("motorway", "Motorway / Lebuhraya", 0),
+    ("trunk", "Trunk / Laluan Utama", 1),
+    ("primary", "Primary / Jalan Utama", 2),
+    ("secondary", "Secondary / Jalan Sekunder", 3),
+    ("tertiary", "Tertiary / Jalan Pengumpul", 4),
+    ("unclassified", "Unclassified / Jalan Lain", 5),
+    ("residential", "Residential / Jalan Tempatan", 6),
+    ("service", "Service / Akses", 7),
+)
+ROAD_RANK = {key: rank for key, _, rank in ROAD_CLASSES}
+ROAD_LABEL = {key: label for key, label, _ in ROAD_CLASSES}
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r = 6371.0088
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+def _request(query: str, timeout: float = 10.0) -> dict[str, Any]:
+    if not OVERPASS_URL:
+        raise RuntimeError("URBION_OVERPASS_URL is not configured")
+    body = urllib.parse.urlencode({"data": query}).encode("utf-8")
+    request = urllib.request.Request(
+        OVERPASS_URL,
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "URBION-HORIZON/1.0"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8", errors="replace"))
+
+
+def _valid_point(lat: Any, lon: Any) -> bool:
+    try:
+        return math.isfinite(float(lat)) and math.isfinite(float(lon))
+    except (TypeError, ValueError):
+        return False
+
+
+def _road_query(lat: float, lon: float) -> str:
+    classes = "|".join(key for key, _, _ in ROAD_CLASSES)
+    return f'''[out:json][timeout:8];way(around:{ROAD_RADIUS_M},{lat},{lon})["highway"~"^{classes}$"];out tags center;'''
+
+
+def _centre_query(lat: float, lon: float) -> str:
+    return f'''[out:json][timeout:10];node(around:{CENTRE_RADIUS_M},{lat},{lon})["place"~"^(city|town|municipality)$"];out tags;'''
+
+
+def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, Any]:
+    """Discover source-backed OSM road hierarchy tags and nearby urban centres."""
+    if not (_valid_point(site_lat, site_lon)):
+        raise ValueError("Site coordinates must be finite numeric values")
+    queried_at = datetime.now(timezone.utc).isoformat()
+
+    road_data = _request(_road_query(site_lat, site_lon))
+    roads = []
+    for element in road_data.get("elements") or []:
+        tags = element.get("tags") or {}
+        highway = str(tags.get("highway") or "").strip().lower()
+        if highway not in ROAD_RANK:
+            continue
+        center = element.get("center") or {}
+        if not _valid_point(center.get("lat"), center.get("lon")):
+            continue
+        distance = haversine_km(site_lat, site_lon, float(center["lat"]), float(center["lon"])) * 1000.0
+        roads.append({
+            "name": tags.get("name") or tags.get("ref") or f"{ROAD_LABEL[highway]} (unnamed)",
+            "ref": tags.get("ref"),
+            "highway": highway,
+            "hierarchy": ROAD_LABEL[highway],
+            "distance_m": round(distance, 1),
+            "distance_km": round(distance / 1000.0, 3),
+            "source": "OpenStreetMap via Overpass API",
+            "evidence_status": "SOURCE_CONTEXT",
+        })
+
+    roads.sort(key=lambda x: (x["distance_m"], ROAD_RANK.get(x["highway"], 99)))
+    unique_roads: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for row in roads:
+        key = (str(row.get("name") or ""), str(row.get("highway") or ""))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_roads.append(row)
+        if len(unique_roads) >= 25:
+            break
+
+    centres: list[dict[str, Any]] = []
+    centre_data = _request(_centre_query(site_lat, site_lon))
+    seen_centres: set[tuple[str, str]] = set()
+    for element in centre_data.get("elements") or []:
+        tags = element.get("tags") or {}
+        name = tags.get("name") or tags.get("name:en") or tags.get("name:ms")
+        place = str(tags.get("place") or "").lower()
+        if not name or place not in {"city", "town", "municipality"}:
+            continue
+        lat, lon = element.get("lat"), element.get("lon")
+        if not _valid_point(lat, lon):
+            continue
+        key = (str(name).casefold(), place)
+        if key in seen_centres:
+            continue
+        seen_centres.add(key)
+        distance = haversine_km(site_lat, site_lon, float(lat), float(lon))
+        centres.append({
+            "name": name,
+            "type": place,
+            "distance_km": round(distance, 3),
+            "source": "OpenStreetMap via Overpass API",
+            "evidence_status": "SOURCE_CONTEXT",
+            "importance": "MAJOR" if place in {"city", "municipality"} else "URBAN_CENTRE",
+        })
+    centres.sort(key=lambda x: (x["distance_km"], 0 if x.get("importance") == "MAJOR" else 1))
+    centres = centres[:20]
+
+    nearest = unique_roads[0] if unique_roads else None
+    hierarchy_levels = []
+    for key, label, _ in ROAD_CLASSES:
+        candidates = [x for x in unique_roads if x.get("highway") == key]
+        if not candidates:
+            continue
+        nearest_for_class = min(candidates, key=lambda x: x["distance_m"])
+        hierarchy_levels.append({
+            "highway": key,
+            "hierarchy": label,
+            "nearest_name": nearest_for_class.get("name"),
+            "distance_m": nearest_for_class.get("distance_m"),
+            "distance_km": nearest_for_class.get("distance_km"),
+            "source": "OpenStreetMap via Overpass API",
+            "evidence_status": "SOURCE_CONTEXT",
+        })
+
+    return {
+        "status": "LIVE" if unique_roads or centres else "NO_FEATURE",
+        "source": "OpenStreetMap via Overpass API",
+        "queried_at_utc": queried_at,
+        "site": {"latitude": site_lat, "longitude": site_lon},
+        "road_radius_m": ROAD_RADIUS_M,
+        "centre_radius_m": CENTRE_RADIUS_M,
+        "nearest_road": nearest,
+        "roads": unique_roads,
+        "hierarchy_levels": hierarchy_levels,
+        "centre_proximity": centres,
+        "statutory_verification": "NOT_CLAIMED",
+        "evidence_boundary": "OSM road tags and place proximity are source context; Malaysian statutory road hierarchy and accessibility thresholds require authoritative verification.",
+    }
