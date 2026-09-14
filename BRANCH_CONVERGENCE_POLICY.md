@@ -6,11 +6,11 @@ Status: `ACTIVE — FINAL RELEASE CONVERGENCE`
 
 | Role | Branch | Rule |
 |---|---|---|
-| Release candidate | `feature/championship-convergence-v1` | Sole active P0/P1 engineering and release-hardening branch until explicit release/merge authorization. |
-| Production release | `main` | Must be aligned to the exact approved release SHA before production deployment. |
-| Historical baseline | `feature/canonical-workspace-v2` | Frozen historical/reference branch; not an active implementation path. |
+| Release candidate | `feature/canonical-workspace-v2` | Sole active P0/P1 engineering and release-hardening branch until explicit release/merge authorization. |
+| Production release | `main` | May be aligned to the exact approved release SHA when the release is accepted; it is not the current Render control branch. |
+| Historical references | all other feature / codex / repair branches | Frozen reference/rollback material unless explicitly promoted with a documented unique capability. |
 
-The old canonical-workspace branch is retained for rollback/reference only. New feature or bug-fix work must not fork from or target it during final convergence.
+`feature/canonical-workspace-v2` is the sole active implementation and release path. New feature or bug-fix work must not target historical branches during final convergence.
 
 ## Historical branch policy
 
@@ -29,14 +29,15 @@ The release candidate must converge to one SHA, one frontend architecture, one p
 
 ## Render topology rule
 
-Only the existing `urbion-master-61o` Render service is a production release target. Legacy Render services are reference/preview surfaces and must not become alternate production paths.
+Only the existing `urbion-horizon-workspace-v4` Render service (`srv-dahm749594qs73fk2tag`) is the current production release target. Legacy Render services are reference/preview surfaces and must not become alternate production paths.
 
 The production service must use:
-- branch: `feature/championship-convergence-v1` until release is promoted/aligned to `main`;
-- start command: `uvicorn landing_server:app --host 0.0.0.0 --port $PORT`;
-- health check: `/health`.
+- branch: `feature/canonical-workspace-v2`;
+- start command: `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`;
+- canonical application entrypoint behind the launcher: `landing_server:app`;
+- health endpoint: `/health`.
 
-No deployment is permitted while the service configuration disagrees with the release boundary.
+Auto-deploy remains OFF so branch movement cannot silently replace the live deployment. Manual deployment is allowed only after the exact candidate SHA passes the final gates.
 
 ## Deletion boundary
 
