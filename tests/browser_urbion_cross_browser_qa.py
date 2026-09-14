@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from playwright.sync_api import expect, sync_playwright
 
@@ -24,7 +25,8 @@ def main() -> None:
         expect(page).to_have_title(LANDING_TITLE)
         enter = page.locator('a[href="/workspace"]').first
         expect(enter).to_be_visible()
-        expect(page.locator(".hero h1")).to_contain_text("Spatial Evidence")
+        heading_text = page.locator(".hero h1").inner_text()
+        assert re.sub(r"\s+", " ", heading_text).strip().lower().startswith("from spatial evidence"), heading_text
         enter.click()
         page.wait_for_load_state("networkidle")
         expect(page).to_have_url(BASE_URL + "/workspace")
