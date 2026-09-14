@@ -11,7 +11,7 @@
   "render_service_id": "srv-dahm749594qs73fk2tag",
   "render_launcher": "workspace_v4_server:app",
   "render_launcher_contract": "workspace_v4_server:app -> landing_server:app",
-  "approved_release_branch": "feature/championship-convergence-v1",
+  "approved_release_branch": "feature/canonical-workspace-v2",
   "canonical_workspace_route": "/workspace",
   "health_endpoint": "/health",
   "assessment_endpoint": "/assess",
