@@ -6,8 +6,13 @@ _STATUS_ORDER = {"COMPLY": 3, "REQUIRES REVIEW": 2, "NOT APPLICABLE": 1, "NON-CO
 
 
 def rank_scenarios(comparison: dict[str, Any]) -> dict[str, Any]:
-    """Rank scenarios by decision outcome, blockers, score and evidence burden."""
-    items = list((comparison or {}).get("scenarios", []))
+    """Rank scenarios by decision outcome, blockers, score and evidence burden.
+
+    Preserve the canonical baseline evidence packet at the public API boundary
+    so downstream consumers do not need to know which ranking helper produced it.
+    """
+    comparison = dict(comparison or {})
+    items = list(comparison.get("scenarios", []))
     def key(item: dict[str, Any]):
         return (
             _STATUS_ORDER.get(str(item.get("status", "REQUIRES REVIEW")), -1),
@@ -31,4 +36,16 @@ def rank_scenarios(comparison: dict[str, Any]) -> dict[str, Any]:
             pathway.append("Reconsider the development position or scenario assumptions.")
         if best.get("evidence_gaps"):
             pathway.append("Close the listed evidence gaps before treating the scenario as decision-ready.")
-    return {**(comparison or {}), "scenarios": ranked, "ranked_scenarios": [x["id"] for x in ranked], "best_candidate": ranked[0]["id"] if ranked else None, "decision_pathway": pathway, "version": "PHASE-D.2"}
+    result = {
+        **comparison,
+        "scenarios": ranked,
+        "ranked_scenarios": [x["id"] for x in ranked],
+        "best_candidate": ranked[0]["id"] if ranked else None,
+        "decision_pathway": pathway,
+        "version": "PHASE-D.2",
+        "statutory_verification": "NOT_CLAIMED",
+    }
+    baseline_packet = comparison.get("baseline_canonical_evidence_packet") or comparison.get("canonical_evidence_packet")
+    if isinstance(baseline_packet, dict) and baseline_packet:
+        result["canonical_evidence_packet"] = baseline_packet
+    return result
