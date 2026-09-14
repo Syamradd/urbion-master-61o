@@ -1,12 +1,12 @@
 services:
   - type: web
-    name: urbion-master-61o
+    name: urbion-horizon-workspace-v4
     runtime: python
-    region: oregon
+    region: singapore
     plan: free
     autoDeployTrigger: off
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn landing_server:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
