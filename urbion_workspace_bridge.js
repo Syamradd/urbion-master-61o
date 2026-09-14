@@ -1,11 +1,12 @@
 /* URBION HORIZON — canonical core/runtime bridge.
-   Stable read-only bridge to the existing workspace function layer.
+   Stable writable bridge to the existing workspace function layer.
    No planning engine duplication; no replacement of canonical workspace. */
 (()=>{
   'use strict';
   if(window.__URBION_WORKSPACE_BRIDGE_V2__) return;
   window.__URBION_WORKSPACE_BRIDGE_V2__=true;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  let canonicalLast=null;
   async function waitForCore(){
     for(let i=0;i<160;i++){
       if(typeof taxonomy!=='undefined' && typeof runAnalysis==='function' && typeof whatIfModal==='function' && typeof decisionModal==='function' && typeof outputModal==='function' && typeof loadLayers==='function'){
@@ -16,9 +17,16 @@
           decision:decisionModal,
           output:outputModal,
           loadLayers:loadLayers,
-          refreshMap:()=>{try{if(typeof map!=='undefined'&&map)map.invalidateSize(true)}catch(_){}}
+          refreshMap:()=>{try{if(typeof map!=='undefined'&&map)map.invalidateSize(true)}catch(_){} }
         };
-        try{Object.defineProperty(window,'URBION_LAST',{configurable:true,get:()=>typeof lastResult!=='undefined'?lastResult:null});}catch(_){/* read-only fallback not critical */}
+        try{
+          Object.defineProperty(window,'URBION_LAST',{
+            configurable:true,
+            enumerable:true,
+            get:()=>canonicalLast ?? (typeof lastResult!=='undefined'?lastResult:null),
+            set:value=>{canonicalLast=value;}
+          });
+        }catch(_){ window.URBION_LAST=canonicalLast; }
         return;
       }
       await sleep(50);
