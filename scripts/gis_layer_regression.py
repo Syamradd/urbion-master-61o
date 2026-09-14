@@ -28,6 +28,14 @@ def wait_until(predicate, timeout=15.0, interval=0.2):
     raise AssertionError(f"Timed out waiting for condition: {last!r}")
 
 
+def hydrated_ui_ids(page):
+    return set(
+        x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all(
+            "els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)"
+        ) if x
+    )
+
+
 def expand_layer_group(page, layer_id):
     row = page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
     group = row.locator("xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]")
@@ -71,10 +79,10 @@ def main():
         page.locator("#layerBtn").click()
         expect(page.locator("#layers")).to_have_class("layers open")
         expect(page.locator("#layerList")).to_be_visible(timeout=15000)
-        wait_until(lambda: page.locator("#layerList [data-urbion-layer]").count() == 25, timeout=20.0)
-        ids = set(page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.dataset.urbionLayer).filter(Boolean)"))
+        wait_until(lambda: hydrated_ui_ids(page) == EXPECTED_UI_LAYER_IDS, timeout=25.0)
+        ids = hydrated_ui_ids(page)
         assert ids == EXPECTED_UI_LAYER_IDS, f"curated UI layer mismatch: missing={EXPECTED_UI_LAYER_IDS-ids}, unexpected={ids-EXPECTED_UI_LAYER_IDS}"
-        assert page.locator("#layerList [data-urbion-layer]").evaluate_all("els => new Set(els.map(e => e.dataset.urbionLayer)).size") == 25
+        assert page.locator("#layerList [data-urbion-layer]").evaluate_all("els => new Set(els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)).size") == 25
         for lid in EXPECTED_UI_LAYER_IDS:
             assert page.locator(f"#layerList [data-urbion-layer='{lid}']").count() == 1
             assert page.locator(f"#layerList [data-layer-state='{lid}']").count() == 1
@@ -89,7 +97,7 @@ def main():
                     responses_by_layer[current_layer].append({"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url})
 
         page.on("response", on_response)
-        layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.dataset.urbionLayer)" ) if x]
+        layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)" ) if x]
         for lid in layer_ids:
             current_layer = lid
             expand_layer_group(page, lid)
