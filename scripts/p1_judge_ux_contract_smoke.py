@@ -22,6 +22,8 @@ PACKET={
         "site":{"source":"USER_PROVIDED","evidence_state":"USER_PROVIDED"},
         "planning_rule":{"source":"RT MBMB 2035","evidence_state":"SOURCE_CONTEXT"},
     },
+    "statutory_verification":"NOT_CLAIMED",
+    "decision_authority":"NONE",
 }
 
 
@@ -34,6 +36,21 @@ def wait_for_text(page, expected: str, timeout: int = 5000) -> str:
     return page.locator("#urbionJudgeCard").inner_text().upper()
 
 
+def inject_packet(page, packet: dict) -> None:
+    state = page.evaluate(
+        """packet=>{
+          window.URBION_LAST={canonical_evidence_packet:packet};
+          return {
+            version: window.URBION_LAST?.canonical_evidence_packet?.version || null,
+            site: window.URBION_LAST?.canonical_evidence_packet?.site?.name || null,
+            writable: !!window.URBION_LAST,
+          };
+        }""",
+        packet,
+    )
+    assert state["version"] == packet["version"], f"canonical packet write failed: {state}"
+
+
 def main() -> None:
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
@@ -41,13 +58,18 @@ def main() -> None:
         page.goto(BASE+"/workspace",wait_until="domcontentloaded",timeout=30000)
         page.wait_for_function("window.__URBION_JUDGE_OWNER_V1__===true",timeout=15000)
         page.wait_for_selector("#urbionJudgeCard",timeout=10000)
-        page.evaluate("packet=>{window.URBION_LAST={canonical_evidence_packet:packet};window.dispatchEvent(new CustomEvent('urbion:analysis-ready'));}",PACKET)
+
+        inject_packet(page, PACKET)
+        page.wait_for_timeout(250)
+        page.evaluate("window.dispatchEvent(new CustomEvent('urbion:analysis-ready'))")
         text=wait_for_text(page,"PACKET READY")
         for expected in ("JUDGE SNAPSHOT","BASELINE ACTIVE","WHAT-IF AVAILABLE","REVIEW REQUIRED","STATUTORY VERIFICATION IS NOT_CLAIMED","VERIFIED 1","SOURCE CONTEXT 1"):
             assert expected in text, f"missing judge state: {expected}"
 
         clean={**PACKET,"review_gaps":[]}
-        page.evaluate("packet=>{window.URBION_LAST={canonical_evidence_packet:packet};window.dispatchEvent(new CustomEvent('urbion:analysis-ready'));}",clean)
+        inject_packet(page, clean)
+        page.wait_for_timeout(250)
+        page.evaluate("window.dispatchEvent(new CustomEvent('urbion:analysis-ready'))")
         text=wait_for_text(page,"READY FOR PLANNER REVIEW")
         assert "REVIEW REQUIRED" not in text
         assert "STATUTORY VERIFICATION IS NOT_CLAIMED" in text
