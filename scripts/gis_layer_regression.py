@@ -29,16 +29,18 @@ def wait_until(predicate, timeout=15.0, interval=0.2):
 
 
 def hydrated_ui_ids(page):
-    return set(
+    return {
         x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all(
             "els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)"
         ) if x
-    )
+    }
 
 
 def expand_layer_group(page, layer_id):
-    row = page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
-    group = row.locator("xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]")
+    checkbox = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
+    group = checkbox.locator(
+        "xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]"
+    )
     if group.count():
         classes = group.get_attribute("class") or ""
         if "closed" in classes:
@@ -46,10 +48,10 @@ def expand_layer_group(page, layer_id):
             if head.count():
                 head.click(force=True)
                 page.wait_for_timeout(120)
-    row = page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
-    row.scroll_into_view_if_needed(timeout=10000)
-    if not row.is_visible():
-        raise AssertionError("GIS layer row remained hidden after expanding its group")
+    checkbox = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
+    checkbox.scroll_into_view_if_needed(timeout=10000)
+    if not checkbox.is_visible():
+        raise AssertionError("GIS layer checkbox remained hidden after expanding its group")
 
 
 def main():
@@ -82,9 +84,9 @@ def main():
         wait_until(lambda: hydrated_ui_ids(page) == EXPECTED_UI_LAYER_IDS, timeout=25.0)
         ids = hydrated_ui_ids(page)
         assert ids == EXPECTED_UI_LAYER_IDS, f"curated UI layer mismatch: missing={EXPECTED_UI_LAYER_IDS-ids}, unexpected={ids-EXPECTED_UI_LAYER_IDS}"
-        assert page.locator("#layerList [data-urbion-layer]").evaluate_all("els => new Set(els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)).size") == 25
+        assert page.locator("#layerList [data-urbion-layer]").count() == 25
         for lid in EXPECTED_UI_LAYER_IDS:
-            assert page.locator(f"#layerList [data-urbion-layer='{lid}']").count() == 1
+            assert page.locator(f"#layerList input[data-urbion-layer='{lid}']").count() == 1
             assert page.locator(f"#layerList [data-layer-state='{lid}']").count() == 1
 
         failures = []
@@ -97,12 +99,11 @@ def main():
                     responses_by_layer[current_layer].append({"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url})
 
         page.on("response", on_response)
-        layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)" ) if x]
+        layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)") if x]
         for lid in layer_ids:
             current_layer = lid
             expand_layer_group(page, lid)
-            row = page.locator(f"#layerList [data-urbion-layer='{lid}']")
-            cb = row.locator("input[type='checkbox']").first
+            cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             if cb.count() != 1:
                 failures.append(f"{lid}: canonical layer checkbox not found")
                 continue
@@ -118,8 +119,7 @@ def main():
                 else:
                     print(f"GIS RENDER PASS: {lid}")
             finally:
-                row = page.locator(f"#layerList [data-urbion-layer='{lid}']")
-                cb = row.locator("input[type='checkbox']").first
+                cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
                 if cb.count() and cb.is_checked():
                     cb.uncheck(force=True)
                 page.wait_for_timeout(120)
