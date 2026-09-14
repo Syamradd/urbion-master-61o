@@ -57,17 +57,21 @@ def assert_statutory_boundary(text: str) -> None:
     assert "NOT_CLAIMED" in text, "statutory verification state missing"
 
 
+def dispatch_ready(page) -> None:
+    page.evaluate("window.dispatchEvent(new CustomEvent('urbion:analysis-ready'))")
+
+
 def main() -> None:
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
-        page=p.chromium.new_page(viewport={"width":1440,"height":900})
+        page=browser.new_page(viewport={"width":1440,"height":900})
         page.goto(BASE+"/workspace",wait_until="domcontentloaded",timeout=30000)
         page.wait_for_function("window.__URBION_JUDGE_OWNER_V1__===true",timeout=15000)
         page.wait_for_selector("#urbionJudgeCard",timeout=10000)
 
         inject_packet(page, PACKET)
         page.wait_for_timeout(250)
-        page.dispatch_event("body","urbion:analysis-ready")
+        dispatch_ready(page)
         text=wait_for_text(page,"PACKET READY")
         for expected in ("JUDGE SNAPSHOT","BASELINE ACTIVE","WHAT-IF AVAILABLE","REVIEW REQUIRED","VERIFIED 1","SOURCE CONTEXT 1"):
             assert expected in text, f"missing judge state: {expected}"
@@ -76,7 +80,7 @@ def main() -> None:
         clean={**PACKET,"review_gaps":[]}
         inject_packet(page, clean)
         page.wait_for_timeout(250)
-        page.dispatch_event("body","urbion:analysis-ready")
+        dispatch_ready(page)
         text=wait_for_text(page,"READY FOR PLANNER REVIEW")
         assert "REVIEW REQUIRED" not in text
         assert_statutory_boundary(text)
