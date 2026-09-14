@@ -28,7 +28,7 @@ PACKET={
 def wait_for_text(page, expected: str, timeout: int = 5000) -> str:
     page.wait_for_function(
         """expected=>document.querySelector('#urbionJudgeCard')?.innerText.toUpperCase().includes(expected)""",
-        expected.upper(),
+        arg=expected.upper(),
         timeout=timeout,
     )
     return page.locator("#urbionJudgeCard").inner_text().upper()
