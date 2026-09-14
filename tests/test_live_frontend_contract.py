@@ -10,7 +10,7 @@ def test_root_serves_public_welcome_contract():
     response = client.get('/')
     assert response.status_code == 200
     assert 'URBION HORIZON' in response.text
-    assert 'Spatial Decision Intelligence' in response.text
+    assert 'AI-Assisted Urban Planning Intelligence' in response.text
     assert 'ENTER PLANNING COMMAND CENTRE' in response.text
     assert 'CANONICAL PLANNING WORKFLOW' in response.text
     assert 'SMART CITY' in response.text
