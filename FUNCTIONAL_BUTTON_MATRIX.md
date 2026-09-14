@@ -1,6 +1,6 @@
 # URBION HORIZON — Functional Button Matrix
 
-Branch: `feature/canonical-workspace-v2`
+Branch: `feature/championship-convergence-v1`
 
 Rule: a control is only considered PASS when its click produces a visible state change, modal/result, map update, endpoint response, navigation, or browser utility action.
 
