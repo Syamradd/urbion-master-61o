@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 LEGACY_ARCHIVE_ASSETS = (
@@ -46,8 +46,8 @@ def test_public_landing_does_not_boot_the_workstation():
     client = TestClient(app)
     landing = client.get('/')
     assert landing.status_code == 200
-    assert '<title>URBION HORIZON — Spatial Decision Intelligence</title>' in landing.text
-    assert 'href="/championship.html"' in landing.text
+    assert '<title>URBION HORIZON — AI-Assisted Urban Planning Intelligence</title>' in landing.text
+    assert 'href="/workspace"' in landing.text
     assert 'id="urbion-championship-shell"' not in landing.text
 
 

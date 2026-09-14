@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 client = TestClient(app)
@@ -10,12 +10,11 @@ def test_root_serves_public_welcome_contract():
     response = client.get('/')
     assert response.status_code == 200
     assert 'URBION HORIZON' in response.text
-    assert 'Spatial Decision Intelligence' in response.text
-    assert 'ENTER PLANNING COMMAND CENTRE' in response.text
-    assert 'CANONICAL PLANNING WORKFLOW' in response.text
-    assert 'SMART CITY' in response.text
-    assert 'ABOUT URBION HORIZON' in response.text
-    assert '/championship.html' in response.text
+    assert 'AI-Assisted Urban Planning Intelligence' in response.text
+    assert 'START PLANNING' in response.text
+    assert 'Spatial Intelligence' in response.text
+    assert 'href="/about"' in response.text
+    assert 'href="/workspace"' in response.text
 
 
 def test_health_exposes_frontend_identity():
@@ -37,25 +36,3 @@ def test_map_layer_controls_are_declared():
     assert payload['layers']
     assert 'toggle' in payload['layer_controls']
     assert 'opacity' in payload['layer_controls']
-
-
-def test_workstation_contract_is_served_from_canonical_entrypoint():
-    response = client.get('/championship.html')
-    assert response.status_code == 200
-    assert 'URBION HORIZON — Championship Workstation' in response.text
-    assert 'CHAMPIONSHIP PLANNING WORKSTATION' in response.text
-    assert 'PHASE-E.8 ENGINE ONLINE' in response.text
-    assert 'id="urbion-championship"' in response.text
-    assert 'urbion_championship_ui.js' in response.text
-    assert 'urbion_championship_upgrade.js' in response.text
-    assert 'window.__URBION_FRONTEND_BOOT__' in response.text
-
-
-def test_shared_ui_controller_is_present_and_non_destructive():
-    response = client.get('/championship.html')
-    assert response.status_code == 200
-    assert 'URBION HORIZON — Championship Workstation' in response.text
-    assert 'id="urbion-championship"' in response.text
-    assert 'urbion_ui.js' in response.text
-    assert 'urbion_championship_ui.js' in response.text
-    assert 'Site + Development Inputs' not in response.text

@@ -7,12 +7,19 @@
   "framework": "FastAPI",
   "server": "Uvicorn",
   "production_entrypoint": "landing_server:app",
+  "render_service": "urbion-horizon-workspace-v4",
+  "render_service_id": "srv-dahm749594qs73fk2tag",
+  "render_launcher": "workspace_v4_server:app",
+  "render_launcher_contract": "workspace_v4_server:app -> landing_server:app",
+  "approved_release_branch": "feature/championship-convergence-v1",
   "canonical_workspace_route": "/workspace",
   "health_endpoint": "/health",
   "assessment_endpoint": "/assess",
   "what_if_endpoint": "/what-if",
   "decision_endpoint": "/decision-center",
   "copilot_endpoint": "/copilot/run",
+  "public_root": "/",
+  "about_route": "/about",
   "frontend": "CANONICAL V5 PLANNING WORKSPACE",
   "gis": "OFFICIAL i-PLAN SOURCE CONTEXT + WMS/LAYER RUNTIME",
   "retrieval": "CONNECTED",
@@ -24,5 +31,5 @@
   "decision_authority": "NONE",
   "statutory_verification": "NOT_CLAIMED",
   "deployment_ready": false,
-  "release_gate": "HOLD_UNTIL_P0_CONVERGENCE_AND_LIVE_QA"
+  "release_gate": "HOLD_UNTIL_FINAL_CI_AND_LIVE_QA"
 }

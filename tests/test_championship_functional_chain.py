@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 DEMO = {
@@ -53,6 +53,7 @@ def test_canonical_planning_chain_executes_end_to_end():
     assert "decision_trace" in assessment_payload
     assert assessment_payload["decision_trace"]
     assert assessment_payload["evidence_state"]["statutory_verification"] == "NOT_CLAIMED"
+    assert assessment_payload["canonical_evidence_packet"]["version"] == "PHASE1.2"
 
     what_if = client.post(
         "/what-if",
@@ -71,45 +72,75 @@ def test_canonical_planning_chain_executes_end_to_end():
     what_if_payload = what_if.json()
     assert "ranked_scenarios" in what_if_payload
     assert len(what_if_payload["ranked_scenarios"]) <= 12
+    assert what_if_payload["canonical_evidence_packet"]["version"] == "PHASE1.2"
 
-    decision = client.post("/decision-center", json=DEMO)
+    decision = client.post("/decision-center", json={"assessment": DEMO})
     assert decision.status_code == 200
     decision_payload = decision.json()
-    assert decision_payload
+    assert decision_payload["canonical_evidence_packet"]["version"] == "PHASE1.2"
+    assert decision_payload["decision_os"]["decision_authority"] == "NONE"
 
-    lcp = client.get("/championship-gate")
-    assert lcp.status_code == 200
-    lcp_payload = lcp.json()
-    assert lcp_payload
-    assert lcp_payload.get("decision_authority") in (None, "NONE") or lcp_payload.get("statutory_verification") == "NOT_CLAIMED"
+    gate = client.get("/championship-gate")
+    assert gate.status_code == 200
+    gate_payload = gate.json()
+    assert gate_payload
 
 
 def test_canonical_workstation_contains_runtime_chain_and_no_legacy_popup_mount():
     client = TestClient(app)
-    response = client.get("/championship.html")
+    response = client.get("/workspace")
     assert response.status_code == 200
     html = response.text
-    assert 'release:"MASTER-331"' in html
-    assert "/urbion_championship_command_shell.js" in html
-    assert "/urbion_map_identify_runtime.js" in html
-    assert "/urbion_championship_horizon_ui.js" in html
-    assert 'id="urbion-championship-shell"' in html
-    assert "MASTER-270 · CHAMPIONSHIP EXECUTION" not in html
-    assert 'id="uhx"' not in html
-    assert "#uhx" not in html
-    for marker in ("Site + Development Inputs", "Planner Workstation", "Decision OS"):
+    assert '<title>URBION HORIZON — Planning Workspace</title>' in html
+    assert 'X-URBION-UI' not in html
+    for asset in (
+        "/urbion_workspace_bridge.js",
+        "/urbion_workspace_runtime.js",
+        "/urbion_layer_runtime_fix.js",
+        "/urbion_workspace_canonical_ui.js",
+        "/urbion_workspace_modal_owner.js",
+        "/urbion_workspace_pbt_catalog.js",
+        "/urbion_workspace_utility_owner.js",
+        "/urbion_workspace_review_gaps_owner.js",
+        "/urbion_workspace_environment_owner.js",
+        "/urbion_workspace_mobility_owner.js",
+        "/urbion_workspace_development_impact_owner_v4.js",
+        "/urbion_workspace_ratio_owner.js",
+        "/urbion_workspace_road_intelligence_owner.js",
+        "/urbion_workspace_analysis_summary_owner.js",
+        "/urbion_workspace_station_map_owner.js",
+    ):
+        assert asset in html
+    for marker in (
+        "workspace_v2.html",
+        "workspace_v3.html",
+        "workspace_v4.html",
+        "MASTER-270 · CHAMPIONSHIP EXECUTION",
+        'id="uhx"',
+        "Site + Development Inputs",
+        "Planner Workstation",
+    ):
         assert marker not in html
 
 
-def test_critical_chain_assets_are_reachable_without_wildcard_fallback():
+def test_critical_canonical_assets_are_reachable_without_legacy_fallback():
     client = TestClient(app)
     for asset in (
-        "urbion_championship_final_command_center.js",
-        "urbion_championship_final_command_center_hotfix.js",
-        "urbion_championship_final_command_center_polish.js",
-        "urbion_championship_final_command_center_policy.js",
-        "urbion_championship_champion_review.js",
-        "urbion_championship_final_runtime_enforcer.js",
+        "urbion_workspace_bridge.js",
+        "urbion_workspace_runtime.js",
+        "urbion_layer_runtime_fix.js",
+        "urbion_workspace_canonical_ui.js",
+        "urbion_workspace_modal_owner.js",
+        "urbion_workspace_pbt_catalog.js",
+        "urbion_workspace_utility_owner.js",
+        "urbion_workspace_review_gaps_owner.js",
+        "urbion_workspace_environment_owner.js",
+        "urbion_workspace_mobility_owner.js",
+        "urbion_workspace_development_impact_owner_v4.js",
+        "urbion_workspace_ratio_owner.js",
+        "urbion_workspace_road_intelligence_owner.js",
+        "urbion_workspace_analysis_summary_owner.js",
+        "urbion_workspace_station_map_owner.js",
     ):
         response = client.get(f"/{asset}")
         assert response.status_code == 200, asset

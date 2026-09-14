@@ -54,6 +54,7 @@ def build_decision_center(*, assessment: dict[str, Any], evidence: list[dict[str
         "project": "URBION HORIZON",
         "version": "PHASE-E.8",
         "decision": {"status": status, "recommendation": assessment.get("recommendation", {}), "confidence": confidence, "suitability": analysis.get("suitability_score", analysis.get("score")), "score_breakdown": _score_breakdown(analysis), "justification": (assessment.get("recommendation", {}) or {}).get("reason", "Decision is derived from the declared planning evidence and rule coverage.")},
+        "decision_os": {"decision_authority": "NONE", "statutory_verification": "NOT_CLAIMED", "boundary": "PLANNER_DECISION_SUPPORT_ONLY"},
         "site": site,
         "planning_value": assessment.get("planning_value", {}),
         "evidence": evidence_summary,

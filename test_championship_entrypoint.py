@@ -2,15 +2,15 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 def test_public_root_is_landing_and_championship_is_workstation():
     client = TestClient(app)
     root = client.get("/")
     assert root.status_code == 200
-    assert '<title>URBION HORIZON — Spatial Decision Intelligence</title>' in root.text
-    assert 'href="/championship.html"' in root.text
+    assert '<title>URBION HORIZON — AI-Assisted Urban Planning Intelligence</title>' in root.text
+    assert 'href="/workspace"' in root.text
 
     response = client.get("/championship.html")
     assert response.status_code == 200

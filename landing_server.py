@@ -172,13 +172,11 @@ def _canonical_downstream_error(request: Request, exc: Exception) -> JSONRespons
             message = str(detail or "Request failed.")
             details = None
         return JSONResponse(
-            canonical_error(code=code, message=message, route=path, stage="HTTP_ERROR",
-                            source="URBION_REQUEST_GATE", details=details, retryable=status >= 500),
+            canonical_error(code=code, message=message, route=path, stage="HTTP_ERROR", source="URBION_REQUEST_GATE", details=details, retryable=status >= 500),
             status_code=status,
         )
     return JSONResponse(
-        canonical_error(code="INTERNAL_ERROR", message="Unexpected server error.", route=path,
-                        stage="SERVER", source="URBION_PRESENTATION_GATE", retryable=True,
+        canonical_error(code="INTERNAL_ERROR", message="Unexpected server error.", route=path, stage="SERVER", source="URBION_PRESENTATION_GATE", retryable=True,
                         details={"exception_type": type(exc).__name__}),
         status_code=500,
     )
@@ -207,7 +205,6 @@ def _canonical_response_error(request: Request, response: Response, body: bytes,
                             retryable=response.status_code >= 500, details=payload),
             status_code=response.status_code,
         )
-    # Preserve non-JSON error assets/pages; the canonical contract applies to API-style JSON responses.
     return Response(content=body, status_code=response.status_code,
                     headers=dict(response.headers), media_type=response.media_type)
 
@@ -229,8 +226,10 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         raw = await request.body()
         try:
             incoming = json.loads(raw.decode("utf-8")) if raw else None
-            source = incoming.get("assessment") if isinstance(incoming, dict) else None
-            if not isinstance(source, dict):
+            if not isinstance(incoming, dict):
+                return JSONResponse(canonical_error(code="ASSESSMENT_INPUT_REQUIRED", message="A canonical assessment object is required.", route=path, stage="DECISION_CENTER", review_required=True), status_code=422)
+            source = incoming.get("assessment") if isinstance(incoming.get("assessment"), dict) else incoming
+            if not source or not isinstance(source, dict) or not source.get("site_lat") or not source.get("site_lon"):
                 return JSONResponse(canonical_error(code="ASSESSMENT_INPUT_REQUIRED", message="A canonical assessment object is required.", route=path, stage="DECISION_CENTER", review_required=True), status_code=422)
             assessed = assess_core(AssessmentRequest.model_validate(source))
             packet = _canonical_packet(assessed)

@@ -19,11 +19,15 @@ def test_packet_preserves_core_assessment_and_states():
         spatial={"review_gaps": ["terrain"]},
         environment={"review_gaps": ["environment:water_quality"]},
     )
-    assert packet["version"] == PACKET_VERSION == "PHASE1.1"
+    assert packet["version"] == PACKET_VERSION == "PHASE1.2"
     assert packet["assessment"]["final_status"] == "COMPLY"
     assert packet["identity"]["lot_no"] == "11213"
     assert packet["evidence_states"]["tod_distance"] == "CALCULATED"
-    assert packet["review_gaps"] == ["terrain", "environment:water_quality"]
+    assert packet["review_gaps"] == [
+        "terrain",
+        "environment:water_quality",
+        "RT-MBMB-2035-TOD-01: exact page/clause/table locator and current applicability require review (planning source).",
+    ]
     assert packet["statutory_verification"] == "NOT_CLAIMED"
 
 

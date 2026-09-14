@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 def _inputs():
@@ -44,4 +44,7 @@ def test_planner_handoff_requires_site():
     client = TestClient(app)
     response = client.post('/planner/handoff', json={"assessment_inputs": {"plot_ratio": 2.0}})
     assert response.status_code == 422
-    assert response.json()['detail']['code'] == 'SITE_INPUT_REQUIRED'
+    body = response.json()
+    assert body['error'] is True
+    assert body['version'] == 'URBION_ERROR_V1'
+    assert body['code'] == 'SITE_INPUT_REQUIRED'

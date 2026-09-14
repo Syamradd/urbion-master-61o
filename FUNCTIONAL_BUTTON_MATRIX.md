@@ -25,7 +25,7 @@ Rule: a control is only considered PASS when its click produces a visible state 
 | Generate Output | output renderer | output modal | core function layer |
 | Print / PDF | `window.print()` | browser print dialog | workspace handler |
 | CLOSE | close modal | modal disappears | runtime takeover |
-| ABOUT | `/about` | dedicated About Us page | runtime utility |
+| ABOUT | `/about` | dedicated canonical About Us page | runtime utility |
 | HELP | help modal | usage guidance appears | runtime utility |
 | SOURCES | sources modal | source/basemap provenance | runtime utility |
 | STATUS | health/metadata/layer checks | online/error states | runtime utility |
@@ -36,9 +36,9 @@ Rule: a control is only considered PASS when its click produces a visible state 
 
 ## Land-use control contract
 
-`Guna Tanah 1` → `Guna Tanah 2` → `Guna Tanah 3 / Activity` must be cascading.
+`Land Use Level 1` → `Land Use Level 2` → `Land Use Level 3 / Activity` must be cascading.
 
-The visible selectors are rebound to the canonical `URBION_FINAL.GT` taxonomy after the core layer loads. Legacy `Perdagangan` is excluded from the visible runtime options; the commercial GT1 term is `Komersial`.
+The visible selectors are rebound to the canonical `URBION_FINAL.GT` taxonomy after the core layer loads. The visible commercial GT1 term is `Commercial`; legacy Malay labels are not part of the final user-facing contract.
 
 ## Map control contract
 
@@ -50,4 +50,4 @@ The runtime takeover clones the existing visible buttons and relevant controls a
 
 ## Release gate
 
-Source implementation is considered complete only for controls that have a deterministic handler. Browser proof is still required for final judge acceptance. Render remains intentionally locked until that browser gate passes.
+Source implementation is considered complete only for controls that have a deterministic handler. Browser proof is required for final judge acceptance. Render remains intentionally locked until the final gate passes.

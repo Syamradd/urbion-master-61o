@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 INPUTS = {
@@ -48,4 +48,7 @@ def test_final_e2e_rejects_missing_site_consistently():
     for path in ('/judge/demo', '/planner/handoff', '/copilot/run'):
         response = client.post(path, json={'assessment_inputs': {'plot_ratio': 2.0}})
         assert response.status_code == 422
-        assert response.json()['detail']['code'] == 'SITE_INPUT_REQUIRED'
+        body = response.json()
+        assert body['error'] is True
+        assert body['version'] == 'URBION_ERROR_V1'
+        assert body['code'] == 'SITE_INPUT_REQUIRED'

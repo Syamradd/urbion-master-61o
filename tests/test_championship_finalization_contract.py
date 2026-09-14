@@ -4,17 +4,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_final_workspace_and_source_contracts_exist():
-    server = (ROOT / "championship_server.py").read_text(encoding="utf-8")
-    v7 = (ROOT / "urbion_championship_premium_v7.js").read_text(encoding="utf-8")
-    about = (ROOT / "about.html").read_text(encoding="utf-8")
+    server = (ROOT / "landing_server.py").read_text(encoding="utf-8")
+    workspace = (ROOT / "workspace_v5.html").read_text(encoding="utf-8")
+    about = (ROOT / "urbion_horizon_about.html").read_text(encoding="utf-8")
 
-    assert '"/about.html"' in server
-    assert 'CANONICAL_ASSET = "urbion_championship_command_shell.js"' in server
-    assert 'payload += "\\n" + companion.read_text' in server
-    assert "https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/" in v7
-    for token in ("GTsemasa", "GTzoning", "KONTUR5M", "LOT", "STATE_CODES", "SOURCE UNAVAILABLE"):
-        assert token in v7
-    assert "Turning spatial evidence into" in about
+    assert "WORKSPACE_FILE = BASE_DIR / \"workspace_v5.html\"" in server
+    assert 'if path == "/workspace": return _workspace()' in server
+    assert "<script src=\"/urbion_workspace_bridge.js\"></script>" in server
+    assert "<script src=\"/urbion_workspace_canonical_ui.js\"></script>" in server
+    assert 'id="map"' in workspace
+    assert 'id="run"' in workspace
+    assert 'id="evidenceBtn"' in workspace
+    assert 'id="whatifBtn"' in workspace
+    assert 'id="decisionBtn"' in workspace
+    assert 'id="outputBtn"' in workspace
+    assert "Turning planning principles into clear action." in about
 
 
 def test_finalization_does_not_expose_temporary_probe_files():
