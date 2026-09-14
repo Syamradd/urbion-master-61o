@@ -9,7 +9,7 @@ BASE=os.getenv('URBION_BASE_URL','http://127.0.0.1:8000')
 def choose_select(page, selector: str, preferred: str | None = None, timeout: int = 10000) -> None:
     loc = page.locator(selector)
     assert loc.count() == 1, f'{selector} missing'
-    page.wait_for_function("sel=>document.querySelectorAll(sel+' option').length > 1", selector, timeout=timeout)
+    page.wait_for_function("sel=>document.querySelectorAll(sel+' option').length > 1", arg=selector, timeout=timeout)
     if preferred:
         try:
             loc.select_option(label=preferred)
