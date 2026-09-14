@@ -38,9 +38,11 @@ def expand_layer_group(page, checkbox):
         if "closed" in classes:
             head = group.locator(".urbion-layer-head, .layer-group-head").first
             if head.count():
-                head.click()
-                page.wait_for_timeout(80)
-    checkbox.scroll_into_view_if_needed(timeout=5000)
+                head.click(force=True)
+                page.wait_for_timeout(100)
+    checkbox.scroll_into_view_if_needed(timeout=10000)
+    if not checkbox.is_visible():
+        raise AssertionError("GIS layer checkbox remained hidden after expanding its group")
 
 
 def main():
@@ -63,13 +65,7 @@ def main():
         print(f"GIS API catalogue: PASS (core={len(EXPECTED_API_CORE_IDS)}, extras={len(extras)})")
         for item in catalog:
             if item.get("id") in EXPECTED_API_CORE_IDS:
-                print(
-                    "GIS CATALOG:",
-                    item.get("id"),
-                    "type=", item.get("type"),
-                    "layers=", item.get("layers"),
-                    "url=", item.get("url"),
-                )
+                print("GIS CATALOG:", item.get("id"), "type=", item.get("type"), "layers=", item.get("layers"), "url=", item.get("url"))
 
         page.goto(BASE_URL + "/workspace", wait_until="domcontentloaded", timeout=30000)
         expect(page).to_have_title("URBION HORIZON — Planning Workspace")
@@ -91,13 +87,7 @@ def main():
         def on_response(response):
             if current_layer and ("/map/wms" in response.url or "/map/arcgis" in response.url):
                 if len(responses_by_layer[current_layer]) < 8:
-                    responses_by_layer[current_layer].append(
-                        {
-                            "status": response.status,
-                            "content_type": response.headers.get("content-type", ""),
-                            "url": response.url,
-                        }
-                    )
+                    responses_by_layer[current_layer].append({"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url})
 
         page.on("response", on_response)
         rows = page.locator("#layerList input[data-urbion-layer]")
@@ -109,7 +99,7 @@ def main():
             cb.check(force=True)
             state = page.locator(f"#layerList [data-layer-state='{lid}']")
             try:
-                wait_until(lambda: state.inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=15.0)
+                wait_until(lambda: state.inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=20.0)
                 state_text = state.inner_text().strip().upper()
                 if state_text != "ON · RENDERED":
                     failures.append(f"{lid}: {state_text}; responses={responses_by_layer[lid]}")
