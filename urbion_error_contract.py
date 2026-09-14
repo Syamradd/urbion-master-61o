@@ -6,7 +6,11 @@ ERROR_VERSION = "URBION_ERROR_V1"
 
 
 def canonical_error(*, code: str, message: str, route: str, stage: str = "UNKNOWN", source: str | None = None, evidence_state: str = "UNVERIFIED", review_required: bool = True, retryable: bool = False, canonical_packet_available: bool = False, details: Any = None) -> dict[str, Any]:
-    """Return one stable error shape without changing planning outcomes."""
+    """Return one stable error envelope with a non-authoritative legacy detail alias.
+
+    The canonical fields remain top-level source-of-truth. ``detail`` mirrors only
+    code/message for older clients and tests; it is not a second error contract.
+    """
     out = {
         "error": True,
         "version": ERROR_VERSION,
@@ -21,6 +25,7 @@ def canonical_error(*, code: str, message: str, route: str, stage: str = "UNKNOW
         "canonical_packet_available": bool(canonical_packet_available),
         "statutory_verification": "NOT_CLAIMED",
         "decision_authority": "NONE",
+        "detail": {"code": str(code), "message": str(message)},
     }
     if details is not None:
         out["details"] = details
