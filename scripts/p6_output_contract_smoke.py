@@ -30,6 +30,14 @@ def main()->None:
         page.wait_for_function('!!window.URBION_FINAL?.output',timeout=15000)
         page.evaluate('packet=>{window.URBION_LAST={canonical_evidence_packet:packet};}',PACKET)
         page.wait_for_timeout(300)
+
+        # OUTPUT controls are mode-scoped in canonical V5. Activate the canonical
+        # OUTPUT navigation before interacting with the mode-specific action.
+        nav_output=page.locator('nav.nav button[data-mode="output"]')
+        assert nav_output.count()==1,'canonical OUTPUT navigation control missing'
+        nav_output.click()
+        page.wait_for_timeout(250)
+
         buttons=page.locator('button')
         generate=buttons.filter(has_text='GENERATE OUTPUT').first
         if generate.count()==0:
