@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 def test_public_root_is_landing_and_championship_is_workstation():
