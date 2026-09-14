@@ -40,7 +40,7 @@ const surface=(context='REVIEW')=>{
     el.dataset.testid='canonical-review-gaps';
     el.innerHTML=`<div class="rg-head"><span class="rg-title">${esc(context)} · REVIEW GAPS</span><span class="rg-count">${list.length} OPEN</span></div>
       <p class="rg-note">Canonical evidence packet · statutory verification: ${esc(p?.statutory_verification||'NOT_CLAIMED')}. These are traceability/review boundaries, not approval decisions.</p>
-      ${list.length?list.map((g,i)=>`<div class="rg-item"><b>${i+1}. REVIEW</b> ${esc(g)}</div>`).join(''):'<div class="rg-empty">No unresolved evidence gaps in the canonical packet.</div>'}`;
+      ${list.length?list.map((g,i)=>`<div class="rg-item"><b>${i+1}. REVIEW</b> ${esc(g)}</div>`).join(''):'<div class="rg-empty">No unresolved evidence gaps in the canonical packet.</div>`;
     if(box)box.appendChild(el);else target.prepend(el);
   } finally {rendering=false}
 };
@@ -66,7 +66,10 @@ const schedule=()=>{
 };
 const observer=new MutationObserver(()=>{if(rendering||Date.now()<suppressObserverUntil)return;if(document.getElementById('modal')?.classList.contains('show'))schedule();});
 const boot=async()=>{
-  observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+  // Observe only the modal's class state. Watching document.body subtree/attributes
+  // caused unrelated map/layer/readiness mutations to wake this owner repeatedly.
+  const modal=document.getElementById('modal');
+  if(modal)observer.observe(modal,{attributes:true,attributeFilter:['class']});
   document.addEventListener('click',event=>{
     const btn=event.target instanceof Element?event.target.closest('button'):null;
     if(!btn)return;
