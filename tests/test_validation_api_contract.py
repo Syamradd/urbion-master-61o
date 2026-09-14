@@ -35,4 +35,10 @@ def test_validation_unknown_case_is_404():
     client = TestClient(app)
     response = client.post('/validation/run/TC-99')
     assert response.status_code == 404
-    assert response.json()['detail']['code'] == 'VALIDATION_CASE_NOT_FOUND'
+    body = response.json()
+    # The canonical global error middleware exposes the error code at the
+    # top level rather than reverting to FastAPI's legacy ``detail`` shape.
+    assert body['code'] == 'VALIDATION_CASE_NOT_FOUND'
+    assert body['error'] is True
+    assert body['version'] == 'URBION_ERROR_V1'
+    assert body['route'] == '/validation/run/TC-99'
