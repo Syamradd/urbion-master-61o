@@ -2,7 +2,8 @@
 """Preflight authoritative i-Plan GWC WMS directly and through the canonical proxy.
 
 The GWC WMS surface is tile-oriented. Probe with a real WebMercator tile-aligned
-bbox so CI validates the same request shape used by Leaflet/OpenLayers clients.
+bbox and the grid origin used by the EPSG:900913 cache so CI validates the same
+request shape used by tiled WMS clients.
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ LAYERS = [
     "iplan:hakisan_pantai", "iplan:rmm01",
 ]
 WORLD = 20037508.342789244
+GRID_ORIGIN = f"{-WORLD},{-WORLD}"
 
 
 def tile_bbox(lon: float, lat: float, zoom: int) -> tuple[str, int, int]:
@@ -42,9 +44,15 @@ def probe(client: httpx.Client, url: str, params: dict[str, str]) -> tuple[int, 
         r = client.get(url, params=params)
         elapsed = time.perf_counter() - started
         ct = r.headers.get("content-type", "")
-        detail = r.url.path
-        if r.status_code >= 400 and ct.startswith("text/"):
-            detail += " :: " + r.text[:240].replace("\n", " ")
+        headers = ""
+        for key in ("geowebcache-cache-result", "geowebcache-miss-reason", "geowebcache-gridset", "geowebcache-crs"):
+            value = r.headers.get(key)
+            if value:
+                headers += f" {key}={value}"
+        detail = f"{r.url.path}{headers}"
+        if r.status_code >= 400:
+            body = r.text[:700].replace("\n", " ").replace("\r", " ")
+            detail += f" :: {body}"
         return r.status_code, ct, len(r.content), elapsed, detail
     except Exception as exc:
         return 0, "", 0, time.perf_counter() - started, f"ERROR: {type(exc).__name__}: {exc}"
@@ -56,15 +64,16 @@ def main() -> None:
         "service": "WMS", "request": "GetMap", "styles": "", "format": "image/png",
         "transparent": "true", "version": "1.1.1", "tiled": "true",
         "width": "256", "height": "256", "srs": "EPSG:900913", "bbox": bbox,
+        "tilesorigin": GRID_ORIGIN,
     }
     failures: list[str] = []
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=10.0), follow_redirects=True, headers={
-        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.1",
+        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.2",
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
         "Accept": "image/png,image/*,*/*;q=0.8",
         "Accept-Encoding": "identity",
     }) as client:
-        print(f"GIS UPSTREAM PREFLIGHT · {len(LAYERS)} representative i-Plan layers · tile z13/{tile_x}/{tile_y} · EPSG:900913")
+        print(f"GIS UPSTREAM PREFLIGHT · {len(LAYERS)} representative i-Plan layers · tile z13/{tile_x}/{tile_y} · EPSG:900913 · TILESORIGIN={GRID_ORIGIN}")
         for layer in LAYERS:
             status, ct, size, elapsed, detail = probe(client, UPSTREAM, dict(base, layers=layer))
             ok = status == 200 and ct.lower().startswith("image/") and size > 100
