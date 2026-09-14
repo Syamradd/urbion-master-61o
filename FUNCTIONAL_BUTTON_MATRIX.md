@@ -1,6 +1,6 @@
 # URBION HORIZON — Functional Button Matrix
 
-Branch: `feature/championship-convergence-v1`
+Branch: `feature/canonical-workspace-v2`
 
 Rule: a control is only considered PASS when its click produces a visible state change, modal/result, map update, endpoint response, navigation, or browser utility action.
 
@@ -43,6 +43,10 @@ The visible selectors are rebound to the canonical `URBION_FINAL.GT` taxonomy af
 ## Map control contract
 
 Basemap switching is deliberately handled by the final runtime takeover instead of the core `setBase()` helper, because the workspace already owns the Leaflet base-layer objects. This prevents Satellite/Hybrid from stacking on top of the existing OSM base.
+
+## GIS layer rendering contract
+
+Authoritative GIS overlays are rendered only through same-origin proxies: i-Plan WMS via `/map/wms`, ArcGIS/MyGEMS via `/map/arcgis`. A layer is reported `ON · RENDERED` only after a real Leaflet `tileload` event. Missing imagery remains `ERROR · TILE`, `ERROR · ARCGIS`, or `ERROR · TIMEOUT`; the runtime must never promote a layer to success merely because it was added to the map.
 
 ## Duplicate-handler containment
 
