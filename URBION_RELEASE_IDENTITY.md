@@ -6,12 +6,13 @@ Status: `CANONICAL REPAIR CANDIDATE / RENDER VALIDATION PENDING`
 
 - Product: `URBION HORIZON`
 - Active release branch: `feature/canonical-workspace-v2`
-- Canonical HEAD candidate: `f5b321906d5b7e8c035c939e1c9b3f67e5993c6f`
-- Parent baseline: `645fca153fea6ea2332229cf913b22a6d07db559`
+- Canonical HEAD candidate: `bd73b2e2835e11eb8e17a1eb1366088d15fc24c9`
+- Immediate parent repair: `28db78147149fce698c273445d3b6e87c5b5d9f4`
+- Previous baseline: `645fca153fea6ea2332229cf913b22a6d07db559`
 - Render target: `urbion-horizon-workspace-v4`
 - Render service ID: `srv-dahm749594qs73fk2tag`
 - Render branch: `feature/canonical-workspace-v2`
-- Render currently serving: `645fca153fea6ea2332229cf913b22a6d07db559`
+- Render currently serving: `ae91eabc6dcc4df9d5312294526ff65f9b7616c6` deployment candidate is still in validation; subsequent commits are not auto-deployed because Render auto deploy is OFF.
 - Auto deploy: `off`
 
 ## Engineering identity
@@ -31,10 +32,12 @@ Status: `CANONICAL REPAIR CANDIDATE / RENDER VALIDATION PENDING`
 - Statutory verification: `NOT_CLAIMED`
 - Decision authority: `NONE`
 
-## Integrated repair in candidate `f5b3219`
+## Integrated repair on current candidate lineage
 
 - i-Plan WMS tile requests are routed through the same-origin `/map/wms` proxy instead of direct browser requests to the upstream WMS host.
+- WMS proxy query parameters are normalized case-insensitively before validation/forwarding.
 - ArcGIS imagery remains routed through the same-origin `/map/arcgis` proxy.
+- GIS layers are only reported `ON · RENDERED` after an actual Leaflet `tileload` event; timeout/error states are no longer promoted to success.
 - About controls are guarded to navigate to `/about`.
 - English workspace label normalization is retained.
 - The 24 core GIS API layers plus explicit i-Plan cadastral layer remain the canonical layer contract.
@@ -51,8 +54,9 @@ Only `feature/canonical-workspace-v2` is the active release branch. `main` may m
 - [x] WMS proxy exists and is allow-listed
 - [x] GIS layer runtime repair integrated
 - [x] About navigation repair integrated
-- [ ] Fresh current-head regression
-- [ ] Fresh browser/GIS smoke
-- [ ] Controlled live smoke
+- [x] Full regression passed on prior canonical candidate `ae91eabc`
+- [ ] Fresh current-head regression after GIS hardening
+- [ ] Fresh browser/GIS smoke after GIS hardening
+- [ ] Controlled live smoke on exact final deployed SHA
 - [ ] Final release SHA lock
 - [ ] Release tag
