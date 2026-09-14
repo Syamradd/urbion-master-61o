@@ -18,7 +18,8 @@ def main():
   browser=p.chromium.launch(); context=browser.new_context(viewport={"width":1440,"height":900},device_scale_factor=1); page=context.new_page()
   r=page.request.get(BASE_URL+"/map/layers?state=Melaka",timeout=15000); assert r.status==200
   raw={x.get("id") for x in r.json().get("layers",[]) if isinstance(x,dict)}; assert "osm" in raw
-  incoming=raw-{"osm"}; assert len(incoming)==24; assert "iplan-cadastral" not in incoming
+  incoming=raw-{"osm"}
+  assert incoming==EXPECTED_LAYER_IDS, f"canonical /map/layers mismatch: missing={EXPECTED_LAYER_IDS-incoming}, unexpected={incoming-EXPECTED_LAYER_IDS}"
   page.goto(BASE_URL+"/workspace",wait_until="domcontentloaded",timeout=30000); expect(page).to_have_title("URBION HORIZON — Planning Workspace")
   page.locator("#layerBtn").click(); expect(page.locator("#layers")).to_have_class("layers open"); expect(page.locator("#layerList")).to_be_visible(timeout=15000)
   wait_until(lambda: page.locator("#layerList input[data-urbion-layer]").count()==25)
