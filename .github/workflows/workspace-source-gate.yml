@@ -25,3 +25,5 @@ jobs:
         run: python -m py_compile scripts/urbion_data_readiness_gate.py
       - name: Verify AI, data and planning readiness
         run: python scripts/urbion_data_readiness_gate.py
+      - name: Verify capability preservation
+        run: python scripts/capability_preservation_guard.py
