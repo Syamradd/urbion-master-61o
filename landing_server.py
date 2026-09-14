@@ -229,6 +229,8 @@ async def _urbion_canonical_presentation(request: Request, call_next):
             if not isinstance(incoming, dict):
                 return JSONResponse(canonical_error(code="ASSESSMENT_INPUT_REQUIRED", message="A canonical assessment object is required.", route=path, stage="DECISION_CENTER", review_required=True), status_code=422)
             source = incoming.get("assessment") if isinstance(incoming.get("assessment"), dict) else incoming
+            if not source or not isinstance(source, dict) or not source.get("site_lat") or not source.get("site_lon"):
+                return JSONResponse(canonical_error(code="ASSESSMENT_INPUT_REQUIRED", message="A canonical assessment object is required.", route=path, stage="DECISION_CENTER", review_required=True), status_code=422)
             assessed = assess_core(AssessmentRequest.model_validate(source))
             packet = _canonical_packet(assessed)
             result = build_decision_center(assessment=assessed)
@@ -279,18 +281,5 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         return _canonical_downstream_error(request, exc)
     except Exception as exc:
         return _canonical_downstream_error(request, exc)
-
-    if response.status_code >= 400:
-        body, payload = await _response_json(response)
-        return _canonical_response_error(request, response, body, payload)
-
-    if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
-        body, payload = await _response_json(response)
-        if not isinstance(payload, dict):
-            return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
-        payload = _attach_packet(payload, path)
-        headers = dict(response.headers)
-        headers.pop("content-length", None)
-        headers.pop("content-type", None)
-        return JSONResponse(payload, status_code=response.status_code, headers=headers)
-    return response
+    body, payload = await _response_json(response)
+    return _canonical_response_error(request, response, body, payload)
