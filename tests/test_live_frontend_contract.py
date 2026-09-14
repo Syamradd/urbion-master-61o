@@ -12,7 +12,7 @@ def test_root_serves_public_welcome_contract():
     assert 'URBION HORIZON' in response.text
     assert 'AI-Assisted Urban Planning Intelligence' in response.text
     assert 'START PLANNING' in response.text
-    assert 'SMART CITY' in response.text
+    assert 'Spatial Intelligence' in response.text
     assert 'ABOUT URBION HORIZON' in response.text
     assert 'href="/workspace"' in response.text
 
