@@ -18,6 +18,12 @@ def choose_select(page, selector: str, preferred: str | None = None, timeout: in
             pass
     loc.select_option(index=1)
 
+def reveal_control(page, selector: str) -> None:
+    """Reveal a canonical control only when its owning section is collapsed."""
+    loc = page.locator(selector)
+    assert loc.count() == 1, f'{selector} missing'
+    loc.evaluate("el=>{const s=el.closest('section.sec'); if(s) s.classList.remove('collapsed')}")
+
 def main()->None:
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
@@ -26,12 +32,14 @@ def main()->None:
         page.wait_for_function('!!window.URBION_FINAL?.analyse',timeout=15000)
 
         # Follow the actual canonical structural-select lifecycle.
+        reveal_control(page,'#project')
         page.locator('#project').fill('Output Planning Case')
         page.locator('#state').select_option(label='Melaka')
         page.wait_for_timeout(250)
         choose_select(page,'#district','Melaka Tengah')
         choose_select(page,'#pbt','Majlis Bandaraya Melaka Bersejarah')
         choose_select(page,'#mukim','Banda Hilir')
+        reveal_control(page,'#project_ref')
         page.locator('#project_ref').fill('KM / LCP / OSC')
         page.locator('#site_lat').fill('2.285000')
         page.locator('#site_lon').fill('102.196000')
