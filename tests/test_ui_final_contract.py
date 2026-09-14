@@ -47,7 +47,7 @@ def test_public_landing_does_not_boot_the_workstation():
     landing = client.get('/')
     assert landing.status_code == 200
     assert '<title>URBION HORIZON — AI-Assisted Urban Planning Intelligence</title>' in landing.text
-    assert 'href="/championship.html"' in landing.text
+    assert 'href="/workspace"' in landing.text
     assert 'id="urbion-championship-shell"' not in landing.text
 
 
