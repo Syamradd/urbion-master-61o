@@ -45,6 +45,7 @@ def main()->None:
         page.locator('#site_lon').fill('102.196000')
         page.wait_for_function("sel=>document.querySelectorAll(sel+' option').length > 1", arg='#landuse1', timeout=10000)
         for selector in ('#landuse1','#landuse2','#landuse3'):
+            reveal_control(page, selector)
             choose_select(page, selector, timeout=10000)
         page.wait_for_timeout(300)
 
