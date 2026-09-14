@@ -31,9 +31,9 @@ def main()->None:
         page.evaluate('packet=>{window.URBION_LAST={canonical_evidence_packet:packet};window.dispatchEvent(new CustomEvent("urbion:analysis-ready"));}',PACKET)
         page.wait_for_function("document.querySelector('#urbionLiveEvidenceCard')?.innerText.toUpperCase().includes('JPS RAINFALL')",timeout=5000)
         text=page.locator('#urbionLiveEvidenceCard').inner_text().upper()
-        for expected in ('LIVE EVIDENCE STORY','SOURCE-BACKED','JPS RAINFALL','MYEQMS WATER','AIR QUALITY','MYGEMS LITHOLOGY','SOURCE_CONTEXT','VERIFIED','BOUNDARY'):
-            assert expected in text,f'missing live evidence state: {expected}'
-        assert 'STATUTORY' not in text or 'STATUTORY APPROVAL' not in text
+        for expected in ('LIVE EVIDENCE STORY','SOURCE-BACKED','JPS RAINFALL','MYEQMS WATER','AIR QUALITY','MYGEMS LITHOLOGY','SOURCE_CONTEXT','VERIFIED','BOUNDARY','STATUTORY APPROVAL'):
+            assert expected in text,f'missing live evidence state/boundary: {expected}'
+        assert 'NOT' in text and 'STATUTORY VERIFICATION' in text, 'statutory boundary not explicit'
         browser.close()
     print('P4 LIVE EVIDENCE STORY CONTRACT PASS')
 
