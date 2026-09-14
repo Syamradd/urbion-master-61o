@@ -29,6 +29,23 @@ source = source.replace(
     "page.wait_for_function(\"!!window.URBION_LAST\", timeout=60000)",
 )
 
+# Harden the administrative hierarchy assertions against the async canonical
+# geography hydration. The product behavior is unchanged; CI now waits for
+# the actual option population signal rather than relying on a fixed 350 ms
+# sleep that can race a cold external-source fetch.
+source = source.replace(
+    "            state.select_option(label=\"Selangor\")\n            page.wait_for_timeout(350)\n            sel_districts = usable_options(district)\n            sel_pbts = usable_options(pbt)\n",
+    "            state.select_option(label=\"Selangor\")\n            page.wait_for_function(\"document.querySelectorAll('[data-pbt-catalog-owner=\\\"urbion_workspace_pbt_catalog.js\\\"]').length >= 1 && document.querySelectorAll('.sec .row').length > 0\", timeout=10000)\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 5\", arg=district, timeout=10000)\n            sel_districts = usable_options(district)\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 10\", arg=pbt, timeout=10000)\n            sel_pbts = usable_options(pbt)\n",
+)
+source = source.replace(
+    "            district.select_option(label=sel_districts[0])\n            page.wait_for_timeout(350)\n            sel_mukims = usable_options(mukim)\n",
+    "            district.select_option(label=sel_districts[0])\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 1\", arg=mukim, timeout=10000)\n            sel_mukims = usable_options(mukim)\n",
+)
+source = source.replace(
+    "            state.select_option(label=\"Melaka\")\n            page.wait_for_timeout(350)\n            check(len(usable_options(district)) >= 3, \"State reset refreshes District options\")\n            check(len(usable_options(pbt)) == 4, \"State reset refreshes Melaka PBT catalogue\")\n",
+    "            state.select_option(label=\"Melaka\")\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 3\", arg=district, timeout=10000)\n            check(len(usable_options(district)) >= 3, \"State reset refreshes District options\")\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length === 4\", arg=pbt, timeout=10000)\n            check(len(usable_options(pbt)) == 4, \"State reset refreshes Melaka PBT catalogue\")\n",
+)
+
 # Strip the source's __main__ execution block. We will call main() only after
 # installing the CI fixture override below.
 source = re.sub(
