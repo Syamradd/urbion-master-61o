@@ -25,9 +25,14 @@ def post(path: str, payload: dict) -> dict:
         raise AssertionError(f"{path}: HTTP {exc.code} body={body}") from exc
 
 
+def canonical_packet_from(result: dict) -> dict:
+    """Return the explicit canonical packet without confusing the copilot envelope with it."""
+    return result.get("canonical_evidence_packet") or {}
+
+
 def main() -> None:
     decision = post("/intelligence/decision-os", {"assessment": PAYLOAD})
-    packet = decision.get("deterministic_packet") or {}
+    packet = canonical_packet_from(decision)
     assert packet.get("convergence", {}).get("status") == "CANONICAL"
     assert decision.get("statutory_verification") == "NOT_CLAIMED"
     decision_os = decision.get("decision_os") or {}
@@ -42,7 +47,7 @@ def main() -> None:
     assert (handoff.get("handoff") or {}).get("statutory_verification") == "NOT_CLAIMED"
 
     demo = post("/judge/demo", {"assessment": PAYLOAD})
-    demo_packet = demo.get("canonical_evidence_packet") or demo.get("deterministic_packet") or {}
+    demo_packet = demo.get("canonical_evidence_packet") or {}
     assert demo.get("guardrails", {}).get("decision_authority") == "NONE"
     assert demo.get("guardrails", {}).get("statutory_verification") == "NOT_CLAIMED"
     assert demo_packet.get("convergence", {}).get("status") == "CANONICAL"
