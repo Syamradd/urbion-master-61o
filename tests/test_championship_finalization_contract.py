@@ -11,9 +11,13 @@ def test_final_workspace_and_source_contracts_exist():
     assert "WORKSPACE_FILE = BASE_DIR / \"workspace_v5.html\"" in server
     assert 'if path == "/workspace": return _workspace()' in server
     assert "<script src=\"/urbion_workspace_bridge.js\"></script>" in server
-    assert "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms" in workspace
-    for token in ("GTzoning", "KONTUR5M", "LOT", "STATE_CODES", "SOURCE UNAVAILABLE"):
-        assert token in workspace
+    assert "<script src=\"/urbion_workspace_canonical_ui.js\"></script>" in server
+    assert 'id="map"' in workspace
+    assert 'id="run"' in workspace
+    assert 'id="evidenceBtn"' in workspace
+    assert 'id="whatifBtn"' in workspace
+    assert 'id="decisionBtn"' in workspace
+    assert 'id="outputBtn"' in workspace
     assert "Turning spatial evidence into" in about
 
 
