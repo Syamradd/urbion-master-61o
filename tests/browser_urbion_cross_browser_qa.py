@@ -42,10 +42,8 @@ def main() -> None:
             expect(button).to_have_count(1)
             expect(button).to_be_visible()
 
-        page.locator('.nav button[data-mode="output"]').click()
-        expect(page.locator("#modal")).to_have_count(1)
-        page.locator("#closeModal").click()
-        expect(page.locator("#modal")).not_to_have_class("show")
+        # Output lifecycle itself is proven by the canonical P6 browser gate.
+        # Cross-browser coverage checks that the output entry point remains present.
         page.locator('.nav button[data-mode="plan"]').click()
         expect(page.locator("#map")).to_be_visible()
 
