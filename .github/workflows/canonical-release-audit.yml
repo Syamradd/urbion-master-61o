@@ -56,6 +56,13 @@ jobs:
           cat /tmp/urbion.log
           exit 1
 
+      - name: Canonical GIS upstream/proxy preflight
+        if: always()
+        env:
+          PYTHONPATH: .
+          URBION_BASE_URL: http://127.0.0.1:8765
+        run: python scripts/gis_upstream_preflight.py
+
       - name: Canonical runtime topology smoke
         env:
           PYTHONPATH: .
