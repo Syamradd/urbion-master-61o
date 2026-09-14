@@ -1,6 +1,6 @@
 # URBION HORIZON — Master Release Checklist
 
-Status: `REPAIR INTEGRATED / LIVE VALIDATION PENDING`
+Status: `REPAIR INTEGRATED / FRESH VALIDATION RUNNING`
 
 This is the single release-control checklist for the current canonical release. The only active release branch is `feature/canonical-workspace-v2`. Historical, parallel, temporary, forensic and legacy branches are retained as reference only and must not be deployed over the canonical release.
 
@@ -43,11 +43,14 @@ This is the single release-control checklist for the current canonical release. 
 ## 3. Current repair integrated on canonical head
 
 - [x] i-Plan WMS rendering uses the same-origin `/map/wms` proxy
-- [x] ArcGIS imagery continues through the same-origin `/map/arcgis` proxy
+- [x] WMS query parameters are normalized case-insensitively before validation/forwarding
+- [x] ArcGIS imagery uses the same-origin `/map/arcgis` proxy
 - [x] About navigation is guarded to `/about`
 - [x] English workspace label normalization retained
 - [x] GIS layer catalogue remains restricted to the 24 core API IDs plus the explicit cadastral layer
+- [x] GIS UI only reports `ON · RENDERED` after actual tile-load success; timeout/error remains a failure state
 - [x] Existing Render service and launcher remain unchanged
+- [x] Canonical release CI now includes browser + GIS end-to-end gates
 
 ## 4. Browser / regression proof
 
@@ -61,10 +64,11 @@ Prior candidate evidence remains historical reference only.
 - [x] Prior candidate UX Contract passed
 - [x] Prior candidate Final Command Centre Contract passed
 - [x] Prior candidate browser evidence upload passed
-- [ ] Fresh tests on current canonical head
-- [ ] Fresh full regression on current canonical head
-- [ ] Fresh browser/GIS smoke on current canonical head
-- [ ] Controlled live smoke after deployment
+- [x] Fresh current-head full regression passed on `ae91eabc` before subsequent hardening
+- [ ] Fresh current-head regression after latest GIS/browser/docs hardening
+- [ ] Fresh browser functional smoke after latest hardening
+- [ ] Fresh 25-layer end-to-end GIS render audit after latest hardening
+- [ ] Controlled live smoke on exact final deployed SHA
 
 ## 5. Duplicate / overlap control
 
@@ -96,15 +100,13 @@ Target service: `urbion-horizon-workspace-v4` (`srv-dahm749594qs73fk2tag`)
 - start: `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`
 - auto deploy: `off`
 
-Current deployment before this repair remains `645fca153fea6ea2332229cf913b22a6d07db559`.
-
-Next deployment candidate: `f5b321906d5b7e8c035c939e1c9b3f67e5993c6f`.
-
-Deployment is intentionally held until the fresh current-head checks below are completed.
+Current live deployment: `ae91eabc6dcc4df9d5312294526ff65f9b7616c6` (intermediate validation build).
+Current branch candidate: `59dba5abeccedf48af4417c215af3f8b27bdf72f`.
+The branch candidate is not yet live because auto-deploy remains OFF.
 
 ## 7. Known non-blocking product gaps
 
-These are deliberate future enhancements, not reasons to destabilize the deterministic planning engine during certification:
+These remain deliberately outside certification scope:
 
 - 3D massing / buildable envelope
 - persistent baseline vs alternatives comparison surface
@@ -118,17 +120,18 @@ These are deliberate future enhancements, not reasons to destabilize the determi
 
 - [x] Preserve pre-convergence canonical snapshot
 - [x] Keep `feature/canonical-workspace-v2` as the sole active release branch
-- [x] Keep `main` aligned to the same certified lineage when the release candidate is accepted
-- [x] Integrate WMS proxy and About navigation repair on top of `645fca1`
-- [ ] Fresh required CI on `f5b3219`
+- [x] Reconcile release documentation to canonical branch
+- [x] Integrate WMS proxy + GIS render truth repair
+- [x] Integrate browser/GIS audit into canonical release workflow
+- [ ] Fresh required CI on final candidate
 - [ ] Fresh full functional workspace audit
-- [ ] Fresh 25-layer GIS audit
-- [ ] Controlled live smoke on the deployed `f5b3219` SHA
+- [ ] Fresh 25-layer GIS end-to-end audit
+- [ ] Controlled live smoke on the exact final deployed SHA
 - [ ] Final release SHA lock
 - [ ] Final release identity/tag
 
 ## Release gate
 
-`RENDER = LIVE ON 645FCA1 / NEW REPAIR CANDIDATE F5B3219 NOT YET DEPLOYED`
+`RENDER = LIVE ON AE91EABC / BRANCH CANDIDATE 59DBA5A NOT YET DEPLOYED`
 
-The application is not declared production-ready until the fresh current-head tests pass and controlled live smoke proves the repaired canonical build on the exact deployed SHA.
+The application is not declared production-ready until the fresh current-head gates pass and controlled live smoke proves the repaired canonical build on the exact deployed SHA.
