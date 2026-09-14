@@ -33,6 +33,10 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:8000/workspace >/dev/null
+      - name: Run canonical runtime topology smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/canonical_runtime_topology_smoke.py
       - name: Run canonical error envelope smoke
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
