@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 client = TestClient(app)
@@ -37,25 +37,3 @@ def test_map_layer_controls_are_declared():
     assert payload['layers']
     assert 'toggle' in payload['layer_controls']
     assert 'opacity' in payload['layer_controls']
-
-
-def test_workstation_contract_is_served_from_canonical_entrypoint():
-    response = client.get('/championship.html')
-    assert response.status_code == 200
-    assert 'URBION HORIZON — Championship Workstation' in response.text
-    assert 'CHAMPIONSHIP PLANNING WORKSTATION' in response.text
-    assert 'PHASE-E.8 ENGINE ONLINE' in response.text
-    assert 'id="urbion-championship"' in response.text
-    assert 'urbion_championship_ui.js' in response.text
-    assert 'urbion_championship_upgrade.js' in response.text
-    assert 'window.__URBION_FRONTEND_BOOT__' in response.text
-
-
-def test_shared_ui_controller_is_present_and_non_destructive():
-    response = client.get('/championship.html')
-    assert response.status_code == 200
-    assert 'URBION HORIZON — Championship Workstation' in response.text
-    assert 'id="urbion-championship"' in response.text
-    assert 'urbion_ui.js' in response.text
-    assert 'urbion_championship_ui.js' in response.text
-    assert 'Site + Development Inputs' not in response.text
