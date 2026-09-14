@@ -85,6 +85,10 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
         run: python scripts/p4_live_evidence_story_contract_smoke.py
+      - name: Run P5 KM OSC readiness smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/p5_km_osc_readiness_contract_smoke.py
       - name: Run Phase 1 canonical evidence smoke
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
