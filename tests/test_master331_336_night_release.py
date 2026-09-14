@@ -73,8 +73,9 @@ def test_night_release_ui_workstation_and_judge_assets():
     landing = client.get('/')
     assert landing.status_code == 200
     landing_html = landing.text
-    for token in ('URBION HORIZON', 'AI-Assisted Urban Planning Intelligence', 'START PLANNING', 'Spatial Intelligence', 'ABOUT URBION HORIZON'):
+    for token in ('URBION HORIZON', 'AI-Assisted Urban Planning Intelligence', 'START PLANNING', 'Spatial Intelligence', 'About'):
         assert token in landing_html
+    assert 'href="/about"' in landing_html
     assert 'href="/workspace"' in landing_html
 
     workstation = client.get('/championship.html')
