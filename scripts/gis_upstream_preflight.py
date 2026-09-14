@@ -2,8 +2,8 @@
 """Preflight authoritative i-Plan GWC WMS directly and through the canonical proxy.
 
 The GWC WMS surface is tile-oriented. Probe with a real WebMercator tile-aligned
-bbox and the grid origin used by the EPSG:900913 cache so CI validates the same
-request shape used by tiled WMS clients.
+bbox and the top-left grid origin used by the EPSG:900913 cache so CI validates
+the same request shape used by tiled WMS clients.
 """
 from __future__ import annotations
 
@@ -22,7 +22,8 @@ LAYERS = [
     "iplan:hakisan_pantai", "iplan:rmm01",
 ]
 WORLD = 20037508.342789244
-GRID_ORIGIN = f"{-WORLD},{-WORLD}"
+# EPSG:900913 gridset is anchored at the top-left corner of WebMercator.
+GRID_ORIGIN = f"{-WORLD},{WORLD}"
 
 
 def tile_bbox(lon: float, lat: float, zoom: int) -> tuple[str, int, int]:
@@ -68,7 +69,7 @@ def main() -> None:
     }
     failures: list[str] = []
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=10.0), follow_redirects=True, headers={
-        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.2",
+        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.3",
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
         "Accept": "image/png,image/*,*/*;q=0.8",
         "Accept-Encoding": "identity",
