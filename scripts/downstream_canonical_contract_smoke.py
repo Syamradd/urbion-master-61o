@@ -36,7 +36,7 @@ def _canonical_packet(payload: dict) -> dict:
         if isinstance(nested, dict) and nested:
             return nested
     deterministic = payload.get("deterministic_packet")
-    if isinstance(deterministic, dict) and deterministic:
+    if isinstance(deterministic, dict):
         nested = deterministic.get("canonical_evidence_packet")
         if isinstance(nested, dict) and nested:
             return nested
@@ -58,8 +58,7 @@ def _canonical_status(payload: dict) -> str | None:
 
 def main() -> None:
     decision = post("/intelligence/decision-os", {"assessment": PAYLOAD})
-    packet = decision.get("deterministic_packet") or {}
-    assert packet.get("convergence", {}).get("status") == "CANONICAL"
+    assert _canonical_status(decision) == "CANONICAL"
     assert decision.get("statutory_verification") == "NOT_CLAIMED"
     decision_os = decision.get("decision_os") or {}
     assert decision_os.get("decision_authority") == "NONE"
