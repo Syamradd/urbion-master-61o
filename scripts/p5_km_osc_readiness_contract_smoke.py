@@ -25,8 +25,11 @@ def main()->None:
         page.goto(BASE+'/workspace',wait_until='domcontentloaded',timeout=30000)
         page.wait_for_function('window.__URBION_KM_OSC_OWNER_V1__===true',timeout=15000)
         page.wait_for_selector('#urbionKmOscCard',timeout=10000)
-        page.evaluate('r=>{if(!window.URBION_LAST)window.URBION_LAST={};window.URBION_LAST.km_readiness=r;window.dispatchEvent(new CustomEvent("urbion:analysis-ready"));}',READINESS)
-        page.wait_for_timeout(500)
+        page.evaluate('r=>{window.URBION_LAST=window.URBION_LAST||{};window.URBION_LAST.km_readiness=r;}',READINESS)
+        page.evaluate('window.dispatchEvent(new CustomEvent("urbion:assessment-ready"))')
+        page.wait_for_timeout(1000)
+        # The canonical owner polls the shared packet as well as responding to
+        # readiness events; wait for its rendered state rather than a fixed tick.
         page.wait_for_function("document.querySelector('#urbionKmOscCard')?.innerText.toUpperCase().includes('KM / OSC READINESS')",timeout=5000)
         text=page.locator('#urbionKmOscCard').inner_text().upper()
         for expected in ('KM / OSC READINESS','REVIEW REQUIRED','SEDERHANA','1','CORE SUBMISSION EVIDENCE MISSING','TECHNICAL REVIEW REQUIRES RESOLUTION','NOT APPROVAL','STATUTORY APPROVAL'):
