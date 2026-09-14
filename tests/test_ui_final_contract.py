@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from championship_server import app
+from landing_server import app
 
 
 LEGACY_ARCHIVE_ASSETS = (
