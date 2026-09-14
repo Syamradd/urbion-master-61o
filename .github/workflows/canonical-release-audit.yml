@@ -1,0 +1,60 @@
+name: URBION Canonical Release Audit
+
+on:
+  push:
+    branches: [feature/canonical-workspace-v2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout canonical release branch
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Release gate audit
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_release_gate_audit.py
+
+      - name: Full regression
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q
+
+      - name: Canonical runtime topology smoke
+        env:
+          PYTHONPATH: .
+          PORT: 8765
+          URBION_BASE_URL: http://127.0.0.1:8765
+        run: |
+          set -euo pipefail
+          python -m uvicorn landing_server:app --host 0.0.0.0 --port "$PORT" >/tmp/urbion.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(30):
+              try:
+                  with urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=2) as r:
+                      assert r.status == 200
+                  break
+              except Exception:
+                  time.sleep(1)
+          else:
+              print(open('/tmp/urbion.log', encoding='utf-8').read())
+              raise SystemExit('canonical runtime did not start')
+          PY
+          python scripts/canonical_runtime_topology_smoke.py
