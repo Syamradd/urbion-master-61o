@@ -73,6 +73,10 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
         run: python scripts/p2_presentation_mode_smoke.py
+      - name: Run P3 decision story smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/p3_decision_story_contract_smoke.py
       - name: Run Phase 1 canonical evidence smoke
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
