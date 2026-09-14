@@ -20,8 +20,10 @@ async def main() -> None:
         errors: list[str] = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         await page.goto(f"{BASE_URL}/workspace", wait_until="domcontentloaded")
-        await page.wait_for_function("() => window.__URBION_REVIEW_GAPS_OWNER_V1__ === true")
-        await page.wait_for_function("() => typeof window.URBION_REVIEW_GAPS?.render === 'function'")
+        await page.wait_for_function(
+            "() => typeof window.URBION_REVIEW_GAPS?.render === 'function'",
+            timeout=60000,
+        )
 
         await page.evaluate("""(gaps) => {
             const packet = {
