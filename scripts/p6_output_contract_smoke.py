@@ -31,19 +31,11 @@ def main()->None:
         page.evaluate('packet=>{window.URBION_LAST={canonical_evidence_packet:packet};}',PACKET)
         page.wait_for_timeout(300)
 
-        # OUTPUT controls are mode-scoped in canonical V5. Activate the canonical
-        # OUTPUT navigation before interacting with the mode-specific action.
-        nav_output=page.locator('nav.nav button[data-mode="output"]')
-        assert nav_output.count()==1,'canonical OUTPUT navigation control missing'
-        nav_output.click()
-        page.wait_for_timeout(250)
-
-        buttons=page.locator('button')
-        generate=buttons.filter(has_text='GENERATE OUTPUT').first
-        if generate.count()==0:
-            generate=buttons.filter(has_text='OUTPUT').last
-        assert generate.count()>0, 'output control not discoverable'
-        generate.click()
+        # OUTPUT is a canonical mode; use the always-visible Quick Action so the
+        # smoke exercises the supported judge path rather than a collapsed form control.
+        output_action=page.locator('#outputBtn')
+        assert output_action.count()==1,'canonical output quick action missing'
+        output_action.click()
         page.wait_for_function("document.querySelector('#modal')?.classList.contains('show')",timeout=5000)
         text=page.locator('#modal').inner_text().upper()
         for expected in ('OUTPUT','PLANNER','STATUTORY','REVIEW'):
