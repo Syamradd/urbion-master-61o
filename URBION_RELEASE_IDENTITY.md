@@ -6,25 +6,29 @@ Status: `RELEASE CANDIDATE — P0 ENGINEERING CONVERGED / RENDER HOLD`
 
 - Product: `URBION HORIZON`
 - Active release branch: `feature/championship-convergence-v1`
-- Audited candidate HEAD: `c4555f505c9ef1c41d677eee85cff35d1a7e5a5d`
-- Main parity: `PROVEN` (`behind_by=0` at audit time)
-- PR #131: `OPEN / MERGEABLE` — do not merge without explicit release authorization
-- Release SHA: lock only after the final documentation commit and its fresh gates
+- Render target: `urbion-horizon-workspace-v4`
+- Render service ID: `srv-dahm749594qs73fk2tag`
+- Previous audited candidate HEAD: `c4555f505c9ef1c41d677eee85cff35d1a7e5a5d`
+- Release SHA: lock only after this Render-target repair patch and its fresh gates
 
 ## Engineering identity
 
 - Engine contract: `PHASE-E.8`
 - Evidence packet: `PHASE1.2`
 - Canonical UI: `V5 Planning Workspace`
-- Canonical production entrypoint: `landing_server:app`
+- Canonical application entrypoint: `landing_server:app`
+- Existing Render launcher: `workspace_v4_server:app`
+- Launcher invariant: `workspace_v4_server:app -> landing_server:app`
 - Canonical route: `/workspace`
+- Public root: `/` → canonical Welcome
+- About route: `/about` → canonical About Us
 - Canonical runtime topology: `bridge → compatibility bootstrap → layer manager → canonical UI → specialist owners`
 - Error contract: `URBION_ERROR_V1`
 - Evidence states: `USER_PROVIDED`, `CALCULATED`, `SOURCE_CONTEXT`, `VERIFIED`, `UNVERIFIED`
 - Statutory verification: `NOT_CLAIMED`
 - Decision authority: `NONE`
 
-## Verified P0 gates at audited candidate tree
+## Verified P0 gates at previous audited tree
 
 - Regression matrix: `PASS` — 17 regression lanes
 - Runtime smoke: `PASS`
@@ -34,50 +38,53 @@ Status: `RELEASE CANDIDATE — P0 ENGINEERING CONVERGED / RENDER HOLD`
 - UX Contract: `PASS`
 - Final Command Centre Contract: `PASS`
 - Rule-provenance, Road Intelligence, browser evidence upload, GIS 25-layer, MyEQMS station and downstream P0 checks: `PASS`
-- Workspace Source Gate: `PASS` on the identical tested tree before the parity-only merge; source tree unchanged by the parity merge
+- Main parity: `PROVEN` (`behind_by=0` at audited tree)
 
-## Render operational reconciliation — PRE-DEPLOY BLOCKERS
+## Selected Render target — pre-deploy reconciliation
 
-Target Render workspace: `URBION HORIZON`
+Target workspace: `URBION HORIZON`
+Target service: `urbion-horizon-workspace-v4`
+Service ID: `srv-dahm749594qs73fk2tag`
 
-Target service:
-- Name: `urbion-master-61o`
-- Service ID: `srv-daclsgh5efls73et5mg0`
-- Expected region: `oregon`
-- Expected runtime: `python`
-- Expected build: `pip install -r requirements.txt`
-- Expected start: `uvicorn landing_server:app --host 0.0.0.0 --port $PORT`
-- Expected health: `/health`
-
-Observed target service configuration at audit time:
-- Branch: `main` — `MISMATCH`
-- Start command: `uvicorn championship_server:app --host 0.0.0.0 --port $PORT` — `MISMATCH`
-- Latest live deploy commit: `795284b849188c1499a9f86530dee8564f60669f` — `NOT APPROVED RELEASE SHA`
+Observed existing configuration:
+- Branch: `feature/canonical-workspace-v2`
+- Start: `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`
+- Build: `pip install -r requirements.txt`
+- Region: `singapore`
+- Plan: `free`
 - Auto deploy: `off`
 
-Operational rule: **DO NOT DEPLOY** until the existing target service is manually reconciled to the approved release branch/entrypoint and the resulting live deployment matches the final release SHA.
+Required release configuration:
+- Branch: `feature/championship-convergence-v1`
+- Keep existing start command; its module is now a compatibility shim to the canonical `landing_server:app`
+- Build remains `pip install -r requirements.txt`
+- Health endpoint: `/health`
 
-## Existing Render overlap / legacy surfaces
+The branch reconciliation must be done in Render before deployment. No deploy is triggered by this repository repair because auto deploy is off.
 
-The `URBION HORIZON` Render workspace currently contains three legacy web services in addition to the canonical target:
+## Existing Render overlap
 
-- `urbion-horizon-workspace-v4` — `srv-dahm749594qs73fk2tag` — `feature/canonical-workspace-v2` — `workspace_v4_server:app`
-- `urbion-workspace-v2-preview` — `srv-dahlenbm8hqs73ca6u2g` — `feature/canonical-workspace-v2` — `workspace_v2_server:app`
-- `urbion-horizon-championship` — `srv-daes2f6q1p3s73algrmg` — `feature/champion-command-center-consolidation` — `championship_server:app`
+The same Render workspace also contains:
+- `urbion-master-61o` — historical surface
+- `urbion-workspace-v2-preview` — historical preview
+- `urbion-horizon-championship` — historical championship surface
 
-These are **historical/legacy surfaces, not release targets**. Do not route the championship release through them and do not delete/suspend them during P0 without explicit authorization. Cleanup is a post-release operation.
+These services remain untouched. The selected V4 service is the only intended deployment target for this release.
 
 ## Architecture overlap clarification
 
-`landing_server.py` intentionally imports the shared FastAPI application from `championship_server.py` and adds the canonical public presentation routes/middleware. `championship_server.py` is therefore a shared application base, not a second planning engine. The production deployment boundary remains `landing_server:app`.
+`workspace_v4_server.py` no longer owns a FastAPI app, frontend routes, or planning logic. It only imports/re-exports the canonical application from `landing_server.py`. This preserves the existing Render service launcher while removing a competing runtime implementation.
+
+`landing_server.py` imports the shared application base from `championship_server.py` and adds the canonical public presentation routes, middleware, and workspace composition. `championship_server.py` is a shared application base, not a second planning engine.
 
 ## Deployment gates
 
 - Production Render: `HOLD`
-- Production branch parity: `BLOCKED BY SERVICE CONFIG DRIFT`
+- Branch reconciliation: `REQUIRED`
+- Fresh final-head CI: `REQUIRED`
 - Live production smoke: `NOT RUN`
 - Deployment readiness: `FALSE`
 
 ## Final release condition
 
-The release is ready for Render only after one final release SHA is locked, that SHA has fresh required CI, the target `urbion-master-61o` service is reconciled to the canonical branch and `landing_server:app`, and controlled live smoke proves `/health`, `/`, `/workspace`, `/assess`, `/what-if`, `/decision-center`, `/copilot/run`, GIS/layer runtime and evidence behavior.
+The release is eligible for deployment only after the selected existing `urbion-horizon-workspace-v4` service is reconciled to `feature/championship-convergence-v1`, fresh required gates pass on the final release SHA, and controlled live smoke proves Welcome, About, Workspace, health, assessment, What-If, Decision Center, Copilot, GIS/layer and evidence behavior on that exact SHA.
