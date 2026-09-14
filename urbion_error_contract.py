@@ -6,7 +6,7 @@ ERROR_VERSION = "URBION_ERROR_V1"
 
 
 def canonical_error(*, code: str, message: str, route: str, stage: str = "UNKNOWN", source: str | None = None, evidence_state: str = "UNVERIFIED", review_required: bool = True, retryable: bool = False, canonical_packet_available: bool = False, details: Any = None) -> dict[str, Any]:
-    """Return one stable error envelope with a non-authoritative legacy detail alias."""
+    """Return one stable error envelope with top-level canonical fields and a compatibility detail alias."""
     canonical_code = "INCOMPLETE_TOD_INPUT" if str(code) == "OPTIONAL_TOD_INPUT_ERROR" else str(code)
     out = {
         "error": True,
