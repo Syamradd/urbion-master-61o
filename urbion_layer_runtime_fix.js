@@ -21,35 +21,15 @@ function addCss(){if($('urbion-layer-manager-css'))return;const s=document.creat
 `;document.head.appendChild(s)}
 function normalizeEnglishLabels(){
  const replacements=new Map([
-  ['GUNA TANAH & ZONING','LAND USE & ZONING'],
-  ['GUNA TANAH 1','LAND USE LEVEL 1'],
-  ['GUNA TANAH 2','LAND USE LEVEL 2'],
-  ['GUNA TANAH 3','LAND USE LEVEL 3'],
-  ['AKTIVITI','ACTIVITY'],
-  ['PEMBANGUNAN & CADANGAN','DEVELOPMENT PROPOSAL'],
-  ['PEMBANGUNAN INTENSITI','DEVELOPMENT INTENSITY'],
-  ['KEMUDAHAN & UTILITI','INFRASTRUCTURE & UTILITIES'],
-  ['ALAM SEKITAR & RISIKO','ENVIRONMENT & RISK'],
-  ['SOKONGAN EVIDENCE','SUPPORTING EVIDENCE'],
-  ['PILIHAN ANALISIS AI','AI ANALYSIS OPTIONS'],
-  ['JANA / EKSPORT','GENERATE / EXPORT'],
-  ['KETERANGAN','DESCRIPTION'],
-  ['KELAS PEMBANGUNAN','DEVELOPMENT CLASS'],
-  ['JENIS PEMBANGUNAN','DEVELOPMENT TYPE'],
-  ['GUNA TANAH','LAND USE'],
-  ['DAERAH','DISTRICT'],
-  ['PIHAK BERKUASA TEMPATAN','LOCAL AUTHORITY'],
-  ['KELUASAN TAPAK','SITE AREA'],
-  ['GARIS PANDUAN','GUIDELINES'],
+  ['GUNA TANAH & ZONING','LAND USE & ZONING'],['GUNA TANAH 1','LAND USE LEVEL 1'],['GUNA TANAH 2','LAND USE LEVEL 2'],['GUNA TANAH 3','LAND USE LEVEL 3'],['AKTIVITI','ACTIVITY'],['PEMBANGUNAN & CADANGAN','DEVELOPMENT PROPOSAL'],['PEMBANGUNAN INTENSITI','DEVELOPMENT INTENSITY'],['KEMUDAHAN & UTILITI','INFRASTRUCTURE & UTILITIES'],['ALAM SEKITAR & RISIKO','ENVIRONMENT & RISK'],['SOKONGAN EVIDENCE','SUPPORTING EVIDENCE'],['PILIHAN ANALISIS AI','AI ANALYSIS OPTIONS'],['JANA / EKSPORT','GENERATE / EXPORT'],['KETERANGAN','DESCRIPTION'],['KELAS PEMBANGUNAN','DEVELOPMENT CLASS'],['JENIS PEMBANGUNAN','DEVELOPMENT TYPE'],['GUNA TANAH','LAND USE'],['DAERAH','DISTRICT'],['PIHAK BERKUASA TEMPATAN','LOCAL AUTHORITY'],['KELUASAN TAPAK','SITE AREA'],['GARIS PANDUAN','GUIDELINES']
  ]);
- const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
- const nodes=[];let n;while(n=walker.nextNode())nodes.push(n);
- nodes.forEach(node=>{const raw=node.nodeValue||'';const trimmed=raw.trim();if(!trimmed)return;const replacement=replacements.get(trimmed.toUpperCase());if(replacement){node.nodeValue=raw.replace(trimmed,replacement)}});
+ const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];let n;while(n=walker.nextNode())nodes.push(n);
+ nodes.forEach(node=>{const raw=node.nodeValue||'',trimmed=raw.trim();if(!trimmed)return;const replacement=replacements.get(trimmed.toUpperCase());if(replacement)node.nodeValue=raw.replace(trimmed,replacement)});
  document.documentElement.lang='en';
 }
 function setupAccordions(){[...document.querySelectorAll('.leftscroll>.sec')].forEach((sec,i)=>{if(sec.dataset.layerAccordion)return;sec.dataset.layerAccordion='1';if(i>0)sec.classList.add('collapsed');const b=sec.querySelector('.sechead button');if(b)b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();sec.classList.toggle('collapsed')})})}
 function mercatorBounds(x,y,z){const n=2**z,s=40075016.68557849/n,minx=x*s-20037508.342789244,maxx=(x+1)*s-20037508.342789244,maxy=20037508.342789244-y*s,miny=20037508.342789244-(y+1)*s;return[minx,miny,maxx,maxy]}
-function arcgisLayer(info){const Base=L.GridLayer.extend({createTile(c,done){const t=document.createElement('img');t.width=256;t.height=256;t.alt='';t.crossOrigin='anonymous';const b=mercatorBounds(c.x,c.y,c.z),service=String(info.url).replace(/\/$/,''),lid=info.layerId,q=lid==null?'':`&layers=show:${encodeURIComponent(lid)}`;t.src=location.origin+'/map/arcgis?service='+encodeURIComponent(service)+`&bbox=${b.join(',')}&bboxsr=3857&imagesr=3857&size=256,256&imagedisplay=256,256,96&dpi=96&format=png32&transparent=true&f=image${q}`;t.onload=()=>done(null,t);t.onerror=e=>done(e,t);return t}});return new Base({tileSize:256,opacity:Number(info.opacity??.82),updateWhenIdle:false,keepBuffer:2})}
+function arcgisLayer(info){const Base=L.GridLayer.extend({createTile(c,done){const t=document.createElement('img');t.width=256;t.height=256;t.alt='';const b=mercatorBounds(c.x,c.y,c.z),service=String(info.url).replace(/\/$/,''),lid=info.layerId,q=lid==null?'':`&layers=show:${encodeURIComponent(lid)}`;t.src=service+`?bbox=${b.join(',')}&bboxSR=3857&imageSR=3857&size=256,256&imageDisplay=256,256,96&dpi=96&format=png32&transparent=true&f=image${q}`;t.onload=()=>done(null,t);t.onerror=e=>done(e,t);return t}});return new Base({tileSize:256,opacity:Number(info.opacity??.82),updateWhenIdle:false,keepBuffer:2})}
 function bindTileEvents(layer,info){layer.on('tileloadstart',()=>setState(info.id,'LOADING · SOURCE','loading'));layer.on('tileload',()=>setState(info.id,'ON · RENDERED','ok'));layer.on('tileerror',()=>setState(info.id,'ERROR · TILE','error'))}
 function makeLayer(info){const type=String(info.type||'').toUpperCase();if(type==='GEOSERVER_WMS'){if(!info.url||!info.layers)throw Error('WMS endpoint/layer missing');const wmsUrl=String(info.url).trim();const l=L.tileLayer.wms(wmsUrl,{layers:info.layers,styles:'',format:'image/png',transparent:true,version:'1.1.1',crs:L.CRS.EPSG3857,opacity:Number(info.opacity??.78),tiled:true});bindTileEvents(l,info);return l}if(type==='ARCGIS_MAP'||type==='INFO_SCREENING'){if(!info.url)throw Error('ArcGIS service URL missing');const l=arcgisLayer(info);l.on('loading',()=>setState(info.id,'LOADING · ARCGIS','loading'));l.on('tileload',()=>setState(info.id,'ON · RENDERED','ok'));l.on('tileerror',()=>setState(info.id,'ERROR · ARCGIS','error'));return l}if(type==='TILE'){const l=L.tileLayer(info.url,{maxZoom:19,opacity:Number(info.opacity??.78),attribution:info.name||info.source||'Source'});bindTileEvents(l,info);return l}return null}
 function cadastral(){const code=CODES[state()]||'04';return{id:'iplan-cadastral',name:'i-Plan · Cadastral Lots',group:'CADASTRAL',type:'ARCGIS_MAP',url:`https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/LOT_${code}/MapServer`,layerId:0,source:'iplan',evidence:'SOURCE_CONTEXT',access_note:'Live i-Plan parcel geometry anchor; JUPEM MyLot remains the cadastral verification reference.'}}
