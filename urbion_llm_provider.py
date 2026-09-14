@@ -84,6 +84,33 @@ def _validate_generated_text(text: str) -> tuple[bool, str | None]:
     return True, None
 
 
+def _bound_generated_text(text: str) -> str:
+    """Keep Gemini prose bounded without cutting away required labelled sections."""
+    clean = text.strip()
+    if len(clean) <= MAX_OUTPUT_CHARS:
+        return clean
+
+    matches = list(re.finditer(r"\b(FINDING|EVIDENCE|ACTION)\s*[—:-]\s*", clean, re.IGNORECASE))
+    if len(matches) >= 3:
+        sections: dict[str, str] = {}
+        for index, match in enumerate(matches[:3]):
+            label = match.group(1).upper()
+            start = match.start()
+            end = matches[index + 1].start() if index + 1 < 3 else len(clean)
+            sections[label] = clean[start:end].strip()
+        budget = MAX_OUTPUT_CHARS - 12
+        per_section = max(120, budget // 3)
+        bounded = []
+        for label in _REQUIRED_LABELS:
+            section = sections.get(label, f"{label} —")
+            if len(section) > per_section:
+                section = section[:per_section].rstrip(" ,;:") + "…"
+            bounded.append(section)
+        return " ".join(bounded)[:MAX_OUTPUT_CHARS].rstrip()
+
+    return clean[:MAX_OUTPUT_CHARS - 1].rstrip() + "…"
+
+
 def generate_planner_explanation(packet: dict, timeout: float = 12.0) -> dict:
     """Generate traceable prose without allowing the LLM to alter deterministic results."""
     key = os.getenv("GEMINI_API_KEY")
@@ -97,9 +124,7 @@ def generate_planner_explanation(packet: dict, timeout: float = 12.0) -> dict:
         with urlopen(request, timeout=timeout) as response: body = json.loads(response.read().decode("utf-8"))
         text = (((body.get("candidates") or [{}])[0].get("content") or {}).get("parts") or [{}])[0].get("text")
         if not isinstance(text, str) or not text.strip(): raise ValueError("Gemini returned no text")
-        text = text.strip()
-        if len(text) > MAX_OUTPUT_CHARS:
-            text = text[:MAX_OUTPUT_CHARS].rstrip() + "…"
+        text = _bound_generated_text(text)
         ok, reason = _validate_generated_text(text)
         if not ok:
             return {"provider":"GEMINI","model":model,"status":"FALLBACK_VALIDATION","text":_fallback(packet),"deterministic_source":True,"validation":"REJECTED_" + str(reason).upper()}
