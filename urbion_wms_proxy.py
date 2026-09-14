@@ -15,7 +15,11 @@ from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
 router = APIRouter()
-WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
+# i-Plan's live GeoWebCache service is the authoritative cached WMS surface.
+# The direct workspace WMS endpoint currently returns ServiceException XML for
+# the browser-sized GetMap requests used by this workspace, while GeoWebCache
+# exposes the generated WMS-C/WMTS-compatible tile surface.
+WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/iPLAN/"),
     ("mygems.jmg.gov.my", "/server/rest/services/"),
@@ -37,9 +41,6 @@ HEADERS = {
     "Referer": "https://www.planmalaysia.gov.my/",
 }
 _LIMITS = httpx.Limits(max_connections=8, max_keepalive_connections=4)
-# Public government GIS services can take materially longer than ordinary API
-# calls. Keep the proxy bounded, but do not convert a slow authoritative tile
-# into an avoidable browser error before the upstream has a chance to respond.
 _TIMEOUT = httpx.Timeout(connect=10.0, read=25.0, write=10.0, pool=10.0)
 _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEADERS, limits=_LIMITS)
 _UPSTREAM_SEMAPHORE = asyncio.Semaphore(6)
@@ -83,6 +84,7 @@ async def map_wms_proxy(request: Request) -> Response:
     params.setdefault("request", "GetMap")
     params.setdefault("format", "image/png")
     params.setdefault("transparent", "true")
+    params.setdefault("version", "1.1.1")
     try:
         upstream = await _client_get(WMS_UPSTREAM, params)
     except (httpx.HTTPError, asyncio.TimeoutError) as exc:
