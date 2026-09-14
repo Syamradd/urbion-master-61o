@@ -38,7 +38,10 @@ def test_assess_rejects_half_defined_tod():
     payload = _base_case() | {"tod_lat": 2.286}
     response = client.post("/assess", json=payload)
     assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "INCOMPLETE_TOD_INPUT"
+    body = response.json()
+    assert body["error"] is True
+    assert body["version"] == "URBION_ERROR_V1"
+    assert body["code"] == "INCOMPLETE_TOD_INPUT"
 
 
 def test_assess_preserves_existing_tod_path():
