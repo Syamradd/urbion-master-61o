@@ -37,7 +37,10 @@ HEADERS = {
     "Referer": "https://www.planmalaysia.gov.my/",
 }
 _LIMITS = httpx.Limits(max_connections=8, max_keepalive_connections=4)
-_TIMEOUT = httpx.Timeout(connect=5.0, read=8.0, write=5.0, pool=5.0)
+# Public government GIS services can take materially longer than ordinary API
+# calls. Keep the proxy bounded, but do not convert a slow authoritative tile
+# into an avoidable browser error before the upstream has a chance to respond.
+_TIMEOUT = httpx.Timeout(connect=10.0, read=25.0, write=10.0, pool=10.0)
 _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEADERS, limits=_LIMITS)
 _UPSTREAM_SEMAPHORE = asyncio.Semaphore(6)
 
@@ -57,8 +60,6 @@ def _proxy_failure(prefix: str, detail: str) -> Response:
 
 @router.get("/map/wms", include_in_schema=False)
 async def map_wms_proxy(request: Request) -> Response:
-    # Normalize all incoming query keys so browser casing cannot create
-    # duplicate request/service parameters or bypass the validation branch.
     params: dict[str, str] = {}
     for key, value in request.query_params.multi_items():
         canonical = key.lower()
