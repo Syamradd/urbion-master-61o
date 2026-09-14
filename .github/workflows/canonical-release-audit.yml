@@ -67,7 +67,13 @@ jobs:
           PYTHONPATH: .
           URBION_BASE_URL: http://127.0.0.1:8765
           URBION_ARTIFACT_DIR: artifacts/canonical-release-browser
-        run: python scripts/workspace_browser_smoke_ci.py
+        run: |
+          set -o pipefail
+          python scripts/workspace_browser_smoke_ci.py 2>&1 | tee /tmp/urbion-browser.log
+          if grep -q '^CHECK FAILURES:' /tmp/urbion-browser.log; then
+            echo 'Deep browser smoke emitted check failures; failing gate.'
+            exit 1
+          fi
 
       - name: 25-layer end-to-end GIS render audit
         env:
