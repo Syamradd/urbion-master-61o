@@ -17,7 +17,11 @@ def test_gemini_response_is_bounded(monkeypatch):
         def __exit__(self, *args):
             return False
         def read(self):
-            return json.dumps({"candidates": [{"content": {"parts": [{"text": "X" * 10000}]}}]}).encode()
+            return json.dumps({
+                "candidates": [{
+                    "content": {"parts": [{"text": "FINDING — " + "X" * 10000 + " EVIDENCE — supplied packet. ACTION — review the packet."}]}
+                }]
+            }).encode()
 
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr(llm, "urlopen", lambda *args, **kwargs: Response())
