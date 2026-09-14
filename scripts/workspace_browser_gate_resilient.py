@@ -14,24 +14,23 @@ TARGET = Path(__file__).with_name("workspace_browser_smoke_ci.py")
 source = TARGET.read_text(encoding="utf-8")
 
 pattern = re.compile(
-    r'page\\.wait_for_function\\(\s*"document\\.body\\.innerText\\.includes\\(\'ANALYSIS COMPLETE\'\\)"\s*,\s*timeout\s*=\s*20000\s*\\)'
+    r"page\.wait_for_function\(\s*\"document\.body\.innerText\.includes\(\\'ANALYSIS COMPLETE\\'\)\"\s*,\s*timeout\s*=\s*20000\s*\)"
 )
 patched, count = pattern.subn(
     'page.wait_for_function("!!window.URBION_LAST", timeout=60000)',
     source,
 )
 
-# Also handle the equivalent double-quoted Python source form defensively.
 if count == 0:
     pattern2 = re.compile(
-        r'page\\.wait_for_function\\(\s*\\"document\\.body\\.innerText\\.includes\\(\\\'ANALYSIS COMPLETE\\\'\\)\\"\s*,\s*timeout\s*=\s*20000\s*\\)'
+        r"page\.wait_for_function\(\s*\"document\.body\.innerText\.includes\(\'ANALYSIS COMPLETE\'\)\"\s*,\s*timeout\s*=\s*20000\s*\)"
     )
     patched, count = pattern2.subn(
         'page.wait_for_function("!!window.URBION_LAST", timeout=60000)',
         source,
     )
 
-if count == 0 and "page.wait_for_function(\"!!window.URBION_LAST\", timeout=60000)" not in source:
+if count == 0 and 'page.wait_for_function("!!window.URBION_LAST", timeout=60000)' not in source:
     raise SystemExit("CI browser wait patch did not match canonical analysis assertion")
 
 code = compile(patched, str(TARGET), "exec")
