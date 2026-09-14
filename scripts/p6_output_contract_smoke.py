@@ -43,9 +43,9 @@ def main()->None:
         page.locator('#project_ref').fill('KM / LCP / OSC')
         page.locator('#site_lat').fill('2.285000')
         page.locator('#site_lon').fill('102.196000')
-        page.wait_for_function("document.querySelectorAll('#landuse1 option').length > 1 && document.querySelectorAll('#landuse2 option').length > 1 && document.querySelectorAll('#landuse3 option').length > 1",timeout=10000)
+        page.wait_for_function("sel=>document.querySelectorAll(sel+' option').length > 1", arg='#landuse1', timeout=10000)
         for selector in ('#landuse1','#landuse2','#landuse3'):
-            page.locator(selector).select_option(index=1)
+            choose_select(page, selector, timeout=10000)
         page.wait_for_timeout(300)
 
         run=page.locator('#run')
