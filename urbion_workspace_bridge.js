@@ -10,15 +10,6 @@
   async function waitForCore(){
     for(let i=0;i<160;i++){
       if(typeof taxonomy!=='undefined' && typeof runAnalysis==='function' && typeof whatIfModal==='function' && typeof decisionModal==='function' && typeof outputModal==='function' && typeof loadLayers==='function'){
-        window.URBION_FINAL={
-          GT:taxonomy,
-          analyse:runAnalysis,
-          whatif:whatIfModal,
-          decision:decisionModal,
-          output:outputModal,
-          loadLayers:loadLayers,
-          refreshMap:()=>{try{if(typeof map!=='undefined'&&map)map.invalidateSize(true)}catch(_){} }
-        };
         try{
           Object.defineProperty(window,'URBION_LAST',{
             configurable:true,
@@ -27,6 +18,20 @@
             set:value=>{canonicalLast=value;}
           });
         }catch(_){ window.URBION_LAST=canonicalLast; }
+        const canonicalAnalyse=async()=>{
+          await runAnalysis();
+          if(typeof lastResult!=='undefined' && lastResult) window.URBION_LAST=lastResult;
+          return window.URBION_LAST;
+        };
+        window.URBION_FINAL={
+          GT:taxonomy,
+          analyse:canonicalAnalyse,
+          whatif:whatIfModal,
+          decision:decisionModal,
+          output:outputModal,
+          loadLayers:loadLayers,
+          refreshMap:()=>{try{if(typeof map!=='undefined'&&map)map.invalidateSize(true)}catch(_){} }
+        };
         return;
       }
       await sleep(50);
