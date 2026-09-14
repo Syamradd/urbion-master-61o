@@ -1,7 +1,7 @@
 # URBION HORIZON — Branch Capability Preservation Matrix
 
 Status: `AUDITED — DO NOT DELETE HISTORICAL BRANCHES YET`
-Canonical target: `feature/championship-convergence-v1`
+Canonical target: `feature/canonical-workspace-v2`
 
 ## Decision rule
 
