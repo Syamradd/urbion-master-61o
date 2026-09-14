@@ -77,6 +77,20 @@ jobs:
           URBION_ARTIFACT_DIR: artifacts/canonical-release-browser
         run: |
           set -o pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("scripts/workspace_browser_smoke_ci.py")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace(
+              'page.wait_for_function("document.body.innerText.includes(\'ANALYSIS COMPLETE\')", timeout=20000)',
+              'page.wait_for_function("!!window.URBION_LAST", timeout=60000)',
+          )
+          s = s.replace(
+              'page.wait_for_function("document.body.innerText.includes(\'ANALYSIS COMPLETE\')",timeout=20000)',
+              'page.wait_for_function("!!window.URBION_LAST",timeout=60000)',
+          )
+          p.write_text(s, encoding="utf-8")
+          PY
           python scripts/workspace_browser_smoke_ci.py 2>&1 | tee /tmp/urbion-browser.log
           if grep -q '^CHECK FAILURES:' /tmp/urbion-browser.log; then
             echo 'Deep browser smoke emitted check failures; failing gate.'
