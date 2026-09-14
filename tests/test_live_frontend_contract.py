@@ -11,11 +11,10 @@ def test_root_serves_public_welcome_contract():
     assert response.status_code == 200
     assert 'URBION HORIZON' in response.text
     assert 'AI-Assisted Urban Planning Intelligence' in response.text
-    assert 'ENTER PLANNING COMMAND CENTRE' in response.text
-    assert 'CANONICAL PLANNING WORKFLOW' in response.text
+    assert 'START PLANNING' in response.text
     assert 'SMART CITY' in response.text
     assert 'ABOUT URBION HORIZON' in response.text
-    assert '/championship.html' in response.text
+    assert 'href="/workspace"' in response.text
 
 
 def test_health_exposes_frontend_identity():
