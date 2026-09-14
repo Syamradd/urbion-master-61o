@@ -25,6 +25,15 @@ PACKET={
 }
 
 
+def wait_for_text(page, expected: str, timeout: int = 5000) -> str:
+    page.wait_for_function(
+        """expected=>document.querySelector('#urbionJudgeCard')?.innerText.toUpperCase().includes(expected)""",
+        expected.upper(),
+        timeout=timeout,
+    )
+    return page.locator("#urbionJudgeCard").inner_text().upper()
+
+
 def main() -> None:
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
@@ -33,22 +42,13 @@ def main() -> None:
         page.wait_for_function("window.__URBION_JUDGE_OWNER_V1__===true",timeout=15000)
         page.wait_for_selector("#urbionJudgeCard",timeout=10000)
         page.evaluate("packet=>{window.URBION_LAST={canonical_evidence_packet:packet};window.dispatchEvent(new CustomEvent('urbion:analysis-ready'));}",PACKET)
-        page.wait_for_timeout(250)
-        text=page.locator("#urbionJudgeCard").inner_text().upper()
-        assert "JUDGE SNAPSHOT" in text
-        assert "PACKET READY" in text
-        assert "BASELINE ACTIVE" in text
-        assert "WHAT-IF AVAILABLE" in text
-        assert "REVIEW REQUIRED" in text
-        assert "STATUTORY VERIFICATION IS NOT_CLAIMED" in text
-        assert "VERIFIED 1" in text
-        assert "SOURCE CONTEXT 1" in text
+        text=wait_for_text(page,"PACKET READY")
+        for expected in ("JUDGE SNAPSHOT","BASELINE ACTIVE","WHAT-IF AVAILABLE","REVIEW REQUIRED","STATUTORY VERIFICATION IS NOT_CLAIMED","VERIFIED 1","SOURCE CONTEXT 1"):
+            assert expected in text, f"missing judge state: {expected}"
 
         clean={**PACKET,"review_gaps":[]}
         page.evaluate("packet=>{window.URBION_LAST={canonical_evidence_packet:packet};window.dispatchEvent(new CustomEvent('urbion:analysis-ready'));}",clean)
-        page.wait_for_timeout(250)
-        text=page.locator("#urbionJudgeCard").inner_text().upper()
-        assert "READY FOR PLANNER REVIEW" in text
+        text=wait_for_text(page,"READY FOR PLANNER REVIEW")
         assert "REVIEW REQUIRED" not in text
         assert "STATUTORY VERIFICATION IS NOT_CLAIMED" in text
         browser.close()
