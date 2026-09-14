@@ -10,7 +10,7 @@ READINESS={
     'development_type':'Mixed Development',
     'km_category':'SEDERHANA',
     'km_category_state':'EXPLICIT',
-    'core_document_check':{'missing':['site plan'] ,'state':'INCOMPLETE'},
+    'core_document_check':{'missing':['site plan'],'state':'INCOMPLETE'},
     'technical_review':{'JPS':'REQUIRES REVISION','JAS':'NOT_CHECKED'},
     'blockers':['Core submission evidence missing','Technical review requires resolution'],
     'readiness':'REQUIRES_REVIEW',
@@ -24,11 +24,13 @@ def main()->None:
         page=browser.new_page(viewport={'width':1440,'height':900})
         page.goto(BASE+'/workspace',wait_until='domcontentloaded',timeout=30000)
         page.wait_for_function('window.__URBION_KM_OSC_OWNER_V1__===true',timeout=15000)
-        page.evaluate('r=>{window.URBION_LAST={km_readiness:r};window.dispatchEvent(new CustomEvent("urbion:analysis-ready"));}',READINESS)
+        page.wait_for_selector('#urbionKmOscCard',timeout=10000)
+        page.evaluate('r=>{if(!window.URBION_LAST)window.URBION_LAST={};window.URBION_LAST.km_readiness=r;window.dispatchEvent(new CustomEvent("urbion:analysis-ready"));}',READINESS)
+        page.wait_for_timeout(500)
         page.wait_for_function("document.querySelector('#urbionKmOscCard')?.innerText.toUpperCase().includes('KM / OSC READINESS')",timeout=5000)
         text=page.locator('#urbionKmOscCard').inner_text().upper()
         for expected in ('KM / OSC READINESS','REVIEW REQUIRED','SEDERHANA','1','CORE SUBMISSION EVIDENCE MISSING','TECHNICAL REVIEW REQUIRES RESOLUTION','NOT APPROVAL','STATUTORY APPROVAL'):
-            assert expected in text,f'missing KM/OSC state: {expected}'
+            assert expected in text,f'missing KM/OSC state: {expected} | actual={text}'
         browser.close()
     print('P5 KM OSC READINESS CONTRACT PASS')
 
