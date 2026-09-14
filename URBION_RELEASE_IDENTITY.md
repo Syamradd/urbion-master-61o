@@ -1,65 +1,83 @@
 # URBION HORIZON — Release Identity
 
-Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
+Status: `RELEASE CANDIDATE — P0 ENGINEERING CONVERGED / RENDER HOLD`
 
-## Current canonical baseline
+## Current release candidate
 
 - Product: `URBION HORIZON`
-- Canonical workspace: `feature/canonical-workspace-v2`
-- Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
-- Active hardening branch: `feature/championship-convergence-v1`
-- Last audited hardening HEAD: `5104942930352487400d8ce9fdd4981b7d69caac`
-- Release SHA: `LOCK AFTER FRESH CI + MAIN PARITY`
+- Active release branch: `feature/championship-convergence-v1`
+- Audited candidate HEAD: `c4555f505c9ef1c41d677eee85cff35d1a7e5a5d`
+- Main parity: `PROVEN` (`behind_by=0` at audit time)
+- PR #131: `OPEN / MERGEABLE` — do not merge without explicit release authorization
+- Release SHA: lock only after the final documentation commit and its fresh gates
 
 ## Engineering identity
 
 - Engine contract: `PHASE-E.8`
 - Evidence packet: `PHASE1.2`
 - Canonical UI: `V5 Planning Workspace`
+- Canonical production entrypoint: `landing_server:app`
+- Canonical route: `/workspace`
 - Canonical runtime topology: `bridge → compatibility bootstrap → layer manager → canonical UI → specialist owners`
+- Error contract: `URBION_ERROR_V1`
 - Evidence states: `USER_PROVIDED`, `CALCULATED`, `SOURCE_CONTEXT`, `VERIFIED`, `UNVERIFIED`
 - Statutory verification: `NOT_CLAIMED`
 - Decision authority: `NONE`
 
-## P0 convergence scope
+## Verified P0 gates at audited candidate tree
 
-- `URBION_ERROR_V1` canonical API/browser error envelope
-- Decision Center failure visibility without silent fallback
-- KPI evidence-state presentation
-- Public What-If canonical evidence packets
-- Bounded Copilot downstream convergence
-- Agent/Copilot API convergence
-- Planner Handoff consumes the canonical packet
-- Decision OS/Judge Demo contract checks
-- Frontend owner/lifecycle hardening
-- Canonical mobility/station evidence reuse
-- Road Intelligence attached to canonical evidence when a packet exists
-- Rule-provenance amendment-state check
-- P3 JPS station geometry adapter preserved
-- P3 MyGEMS lithology adapter preserved
-- MyEQMS/APIMS adapter preserved
-- Branch capability preservation matrix
-- Production manifest and release-document consistency
+- Regression matrix: `PASS` — 17 regression lanes
+- Runtime smoke: `PASS`
+- Full regression: `PASS`
+- Workspace Browser Gate: `PASS`
+- Render Parity Gate: `PASS`
+- UX Contract: `PASS`
+- Final Command Centre Contract: `PASS`
+- Rule-provenance, Road Intelligence, browser evidence upload, GIS 25-layer, MyEQMS station and downstream P0 checks: `PASS`
+- Workspace Source Gate: `PASS` on the identical tested tree before the parity-only merge; source tree unchanged by the parity merge
 
-## Candidate gates
+## Render operational reconciliation — PRE-DEPLOY BLOCKERS
 
-- Workspace Source: `REQUIRES FRESH CI ON FINAL HEAD`
-- Rule Provenance: `REQUIRES FRESH CI ON FINAL HEAD`
-- Road Intelligence: `REQUIRES FRESH CI ON FINAL HEAD`
-- Workspace Browser: `REQUIRES FRESH CI ON FINAL HEAD`
-- Preservation guard: `ADDED`
-- P0 downstream/error/owner checks: `REQUIRES FRESH CI ON FINAL HEAD`
-- Full regression: `REQUIRES FRESH CI ON FINAL HEAD`
+Target Render workspace: `URBION HORIZON`
+
+Target service:
+- Name: `urbion-master-61o`
+- Service ID: `srv-daclsgh5efls73et5mg0`
+- Expected region: `oregon`
+- Expected runtime: `python`
+- Expected build: `pip install -r requirements.txt`
+- Expected start: `uvicorn landing_server:app --host 0.0.0.0 --port $PORT`
+- Expected health: `/health`
+
+Observed target service configuration at audit time:
+- Branch: `main` — `MISMATCH`
+- Start command: `uvicorn championship_server:app --host 0.0.0.0 --port $PORT` — `MISMATCH`
+- Latest live deploy commit: `795284b849188c1499a9f86530dee8564f60669f` — `NOT APPROVED RELEASE SHA`
+- Auto deploy: `off`
+
+Operational rule: **DO NOT DEPLOY** until the existing target service is manually reconciled to the approved release branch/entrypoint and the resulting live deployment matches the final release SHA.
+
+## Existing Render overlap / legacy surfaces
+
+The `URBION HORIZON` Render workspace currently contains three legacy web services in addition to the canonical target:
+
+- `urbion-horizon-workspace-v4` — `srv-dahm749594qs73fk2tag` — `feature/canonical-workspace-v2` — `workspace_v4_server:app`
+- `urbion-workspace-v2-preview` — `srv-dahlenbm8hqs73ca6u2g` — `feature/canonical-workspace-v2` — `workspace_v2_server:app`
+- `urbion-horizon-championship` — `srv-daes2f6q1p3s73algrmg` — `feature/champion-command-center-consolidation` — `championship_server:app`
+
+These are **historical/legacy surfaces, not release targets**. Do not route the championship release through them and do not delete/suspend them during P0 without explicit authorization. Cleanup is a post-release operation.
+
+## Architecture overlap clarification
+
+`landing_server.py` intentionally imports the shared FastAPI application from `championship_server.py` and adds the canonical public presentation routes/middleware. `championship_server.py` is therefore a shared application base, not a second planning engine. The production deployment boundary remains `landing_server:app`.
 
 ## Deployment gates
 
 - Production Render: `HOLD`
-- Production branch parity: `NOT YET PROVEN`
+- Production branch parity: `BLOCKED BY SERVICE CONFIG DRIFT`
 - Live production smoke: `NOT RUN`
-- Deployment readiness: `FALSE` until final CI + parity + live smoke
+- Deployment readiness: `FALSE`
 
-## Render boundary
+## Final release condition
 
-Do not treat any existing Render deployment as the current championship release until its deployed commit matches the approved release SHA and passes live smoke.
-
-Existing production service configuration is tracked separately from this release identity and must be reconciled before deployment.
+The release is ready for Render only after one final release SHA is locked, that SHA has fresh required CI, the target `urbion-master-61o` service is reconciled to the canonical branch and `landing_server:app`, and controlled live smoke proves `/health`, `/`, `/workspace`, `/assess`, `/what-if`, `/decision-center`, `/copilot/run`, GIS/layer runtime and evidence behavior.
