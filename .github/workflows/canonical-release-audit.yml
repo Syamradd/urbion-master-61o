@@ -11,7 +11,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - name: Checkout canonical release branch
         uses: actions/checkout@v4
@@ -63,6 +63,7 @@ jobs:
         run: python scripts/canonical_runtime_topology_smoke.py
 
       - name: Deep browser functional smoke
+        if: always()
         env:
           PYTHONPATH: .
           URBION_BASE_URL: http://127.0.0.1:8765
@@ -76,6 +77,7 @@ jobs:
           fi
 
       - name: 25-layer end-to-end GIS render audit
+        if: always()
         env:
           PYTHONPATH: .
           URBION_BASE_URL: http://127.0.0.1:8765
