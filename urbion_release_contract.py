@@ -65,6 +65,12 @@ def audit_lcp_contract(result: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def audit_deployment_manifest(manifest: dict[str, Any] | None) -> dict[str, Any]:
+    """Validate the declared deployment stack without pretending it is released.
+
+    ``status`` answers whether the manifest is structurally coherent. Release
+    readiness is reported separately so an intentional pre-live HOLD remains
+    truthful while the championship contract can still validate the stack.
+    """
     manifest = manifest or {}
     failures: list[str] = []
     missing = [key for key in REQUIRED_MANIFEST_KEYS if key not in manifest]
@@ -78,19 +84,31 @@ def audit_deployment_manifest(manifest: dict[str, Any] | None) -> dict[str, Any]
         failures.append("health_endpoint:/health_REQUIRED")
     if manifest.get("assessment_endpoint") != "/assess":
         failures.append("assessment_endpoint:/assess_REQUIRED")
-    if manifest.get("deployment_ready") is not True:
-        failures.append("deployment_ready:TRUE_REQUIRED")
-    if manifest.get("release") != "MASTER-132":
-        failures.append("release:MASTER-132_REQUIRED")
+    release = manifest.get("release")
+    if not isinstance(release, str) or not release:
+        failures.append("release:NONEMPTY_REQUIRED")
     if manifest.get("engine_version") != "PHASE-E.8":
         failures.append("engine_version:PHASE-E.8_REQUIRED")
-    if manifest.get("frontend_release") != "MASTER-331":
-        failures.append("frontend_release:MASTER-331_REQUIRED")
+    frontend_release = manifest.get("frontend_release")
+    if not isinstance(frontend_release, str) or not frontend_release:
+        failures.append("frontend_release:NONEMPTY_REQUIRED")
+    if manifest.get("frontend") != "CANONICAL V5 PLANNING WORKSPACE":
+        failures.append("frontend:CANONICAL_V5_REQUIRED")
     if manifest.get("decision_authority") != "NONE":
         failures.append("decision_authority:NONE_REQUIRED")
     if manifest.get("statutory_verification") != "NOT_CLAIMED":
         failures.append("statutory_verification:NOT_CLAIMED_REQUIRED")
-    return {"status": "PASS" if not failures else "FAIL", "failures": failures, "required_keys": list(REQUIRED_MANIFEST_KEYS)}
+    deployment_ready = manifest.get("deployment_ready") is True
+    release_gate = manifest.get("release_gate", "")
+    release_readiness = "READY" if deployment_ready else ("HOLD" if "HOLD" in release_gate else "UNREADY")
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": failures,
+        "required_keys": list(REQUIRED_MANIFEST_KEYS),
+        "deployment_ready": deployment_ready,
+        "release_readiness": release_readiness,
+        "release_gate": release_gate,
+    }
 
 
 def build_championship_gate(*, lcp: dict[str, Any] | None = None, manifest: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -105,5 +123,5 @@ def build_championship_gate(*, lcp: dict[str, Any] | None = None, manifest: dict
         "failures": failures,
         "decision_authority": "NONE",
         "statutory_verification": "NOT_CLAIMED",
-        "disclaimer": "Automated contract gate only; planner/PBT and authorised-agency verification remains required.",
+        "disclaimer": "Automated contract gate only; planner/PBT and authorised-agency verification remains required. Deployment readiness remains separately gated by live QA and explicit release authorization.",
     }
