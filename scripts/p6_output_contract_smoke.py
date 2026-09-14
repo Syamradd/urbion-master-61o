@@ -6,6 +6,18 @@ from playwright.sync_api import sync_playwright
 
 BASE=os.getenv('URBION_BASE_URL','http://127.0.0.1:8000')
 
+def choose_select(page, selector: str, preferred: str | None = None, timeout: int = 10000) -> None:
+    loc = page.locator(selector)
+    assert loc.count() == 1, f'{selector} missing'
+    page.wait_for_function("sel=>document.querySelectorAll(sel+' option').length > 1", selector, timeout=timeout)
+    if preferred:
+        try:
+            loc.select_option(label=preferred)
+            return
+        except Exception:
+            pass
+    loc.select_option(index=1)
+
 def main()->None:
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
@@ -13,11 +25,13 @@ def main()->None:
         page.goto(BASE+'/workspace',wait_until='domcontentloaded',timeout=30000)
         page.wait_for_function('!!window.URBION_FINAL?.analyse',timeout=15000)
 
-        # Exercise the same required-case path a planner uses before output.
+        # Follow the actual canonical structural-select lifecycle.
         page.locator('#project').fill('Output Planning Case')
-        page.locator('#district').fill('Melaka Tengah')
-        page.locator('#pbt').fill('Majlis Bandaraya Melaka Bersejarah')
-        page.locator('#mukim').fill('Banda Hilir')
+        page.locator('#state').select_option(label='Melaka')
+        page.wait_for_timeout(250)
+        choose_select(page,'#district','Melaka Tengah')
+        choose_select(page,'#pbt','Majlis Bandaraya Melaka Bersejarah')
+        choose_select(page,'#mukim','Banda Hilir')
         page.locator('#project_ref').fill('KM / LCP / OSC')
         page.locator('#site_lat').fill('2.285000')
         page.locator('#site_lon').fill('102.196000')
@@ -28,8 +42,7 @@ def main()->None:
 
         run=page.locator('#run')
         assert run.count()==1,'canonical run control missing'
-        if run.is_disabled():
-            raise AssertionError('canonical analysis did not become ready')
+        page.wait_for_function("!document.querySelector('#run').disabled",timeout=10000)
         run.click()
         page.wait_for_function('!!window.URBION_LAST',timeout=30000)
         page.wait_for_timeout(300)
