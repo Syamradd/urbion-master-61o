@@ -24,5 +24,5 @@
   "decision_authority": "NONE",
   "statutory_verification": "NOT_CLAIMED",
   "deployment_ready": false,
-  "release_gate": "HOLD_UNTIL_P0_CONVERGENCE_AND_LIVE_QA"
+  "release_gate": "HOLD_UNTIL_FINAL_MAIN_CI_AND_LIVE_QA"
 }
