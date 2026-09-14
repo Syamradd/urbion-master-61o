@@ -7,8 +7,9 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Product: `URBION HORIZON`
 - Canonical workspace: `feature/canonical-workspace-v2`
 - Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
-- Current hardening branch: `feature/championship-convergence-v1`
-- Current hardening HEAD: `cf1989728086426105bf35054deaa9d00d95d05f`
+- Active hardening branch: `feature/championship-convergence-v1`
+- Last audited hardening HEAD: `5104942930352487400d8ce9fdd4981b7d69caac`
+- Release SHA: `LOCK AFTER FRESH CI + MAIN PARITY`
 
 ## Engineering identity
 
@@ -40,24 +41,25 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Branch capability preservation matrix
 - Production manifest and release-document consistency
 
-## Current hardening gates
+## Candidate gates
 
-- Workspace Source: `REQUIRES FRESH CI ON cf198972...`
-- Rule Provenance: `REQUIRES FRESH CI ON cf198972...`
-- Road Intelligence: `REQUIRES FRESH CI ON cf198972...`
-- Workspace Browser: `REQUIRES FRESH CI ON cf198972...`
+- Workspace Source: `REQUIRES FRESH CI ON FINAL HEAD`
+- Rule Provenance: `REQUIRES FRESH CI ON FINAL HEAD`
+- Road Intelligence: `REQUIRES FRESH CI ON FINAL HEAD`
+- Workspace Browser: `REQUIRES FRESH CI ON FINAL HEAD`
 - Preservation guard: `ADDED`
-- P0 downstream/error/owner checks: `REQUIRES FRESH CI ON cf198972...`
+- P0 downstream/error/owner checks: `REQUIRES FRESH CI ON FINAL HEAD`
+- Full regression: `REQUIRES FRESH CI ON FINAL HEAD`
 
 ## Deployment gates
 
 - Production Render: `HOLD`
 - Production branch parity: `NOT YET PROVEN`
 - Live production smoke: `NOT RUN`
-- Deployment readiness: `FALSE` until final convergence + parity + live smoke
+- Deployment readiness: `FALSE` until final CI + parity + live smoke
 
 ## Render boundary
 
-Do not treat any existing Render deployment as the current championship release until its deployed commit matches this approved canonical release identity and passes live smoke.
+Do not treat any existing Render deployment as the current championship release until its deployed commit matches the approved release SHA and passes live smoke.
 
 Existing production service configuration is tracked separately from this release identity and must be reconciled before deployment.
