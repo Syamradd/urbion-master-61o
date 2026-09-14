@@ -11,3 +11,5 @@ from __future__ import annotations
 from urbion_station_intelligence import build_station_intelligence
 
 __all__ = ["build_station_intelligence"]
+
+# Canonical release verification marker: route ownership is intentionally single-source.
