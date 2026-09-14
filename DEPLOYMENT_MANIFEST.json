@@ -31,5 +31,7 @@
   "decision_authority": "NONE",
   "statutory_verification": "NOT_CLAIMED",
   "deployment_ready": false,
-  "release_gate": "HOLD_UNTIL_FINAL_CI_AND_LIVE_QA"
+  "release_gate": "HOLD_UNTIL_FINAL_CI_AND_LIVE_QA",
+  "render_policy": "FROZEN_UNTIL_FINAL_GITHUB_GATES_GREEN",
+  "current_release_validation": "GITHUB_ONLY"
 }
