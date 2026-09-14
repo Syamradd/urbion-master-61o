@@ -33,8 +33,12 @@ def main() -> None:
 
         page.locator("[data-modal='syamir']").click()
         page.wait_for_selector("#modal.open", timeout=5000)
-        body = page.locator("#modalBody").inner_text()
-        check("Muhammad Syamir Aidid" in body, "Syamir team profile is restored and readable")
+        profile_title = page.locator("#modalTitle").inner_text().strip()
+        profile_body = page.locator("#modalBody").inner_text()
+        check(
+            profile_title == "Muhammad Syamir Aidid" and "Town & Regional Planning" in profile_body,
+            "Syamir team profile is restored and readable",
+        )
         page.keyboard.press("Escape")
         check(not page.locator("#modal").evaluate("e => e.classList.contains('open')"), "About modal closes with Escape")
 
