@@ -1,7 +1,7 @@
 # URBION HORIZON — Final Dashboard Freeze
 
 ## Scope
-The canonical dashboard remains protected from speculative feature work while engineering convergence and release hardening are completed.
+The canonical dashboard is frozen against speculative feature work while final release hardening and operational reconciliation are completed.
 
 ## Canonical product journey
 WELCOME → WORKSPACE → CASE BUILDER → LOCATION → GIS → SITE ANALYSIS → EVIDENCE → WHAT-IF → DECISION → PLANNER REVIEW → KM / OSC → OUTPUT
@@ -24,17 +24,18 @@ WELCOME → WORKSPACE → CASE BUILDER → LOCATION → GIS → SITE ANALYSIS �
 - No speculative feature development.
 - No planning-engine/scoring rewrite.
 - Material defects and convergence failures may be repaired.
-- Premium visual work starts only after functional convergence is proven.
+- Premium visual work is deferred until functional convergence is preserved.
 - No Render deployment during engineering convergence.
 - Final deployment requires explicit authorization: `DEPLOY RENDER NOW`.
 
 ## Current release posture
 CORE ENGINE: PROTECTED
 CANONICAL V5: ACTIVE
-P0 CONVERGENCE: IN PROGRESS
-RELEASE IDENTITY: BEING RECONCILED
-PRODUCTION PARITY: NOT YET PROVEN
-RENDER: LOCKED
+P0 ENGINEERING: CONVERGED ON AUDITED TREE
+RELEASE IDENTITY: RECONCILED / FINAL DOC GATES PENDING
+MAIN PARITY: PROVEN AT AUDITED TREE
+RENDER CONFIG: DRIFT DETECTED — HOLD
+LIVE PRODUCTION QA: NOT RUN
 
 ## Final gate
-The dashboard is not considered final-release-ready until one canonical application path, one packet contract, one frontend runtime topology, one release SHA, and live production smoke are all proven together.
+The dashboard is not considered production-release-ready until one canonical application path, one packet contract, one frontend runtime topology, one final release SHA, reconciled Render configuration, and live production smoke are proven together.

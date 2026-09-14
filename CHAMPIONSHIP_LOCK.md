@@ -1,7 +1,7 @@
 # URBION HORIZON — CHAMPIONSHIP RELEASE LOCK
 
-**Current posture:** `ENGINEERING P0 CONVERGENCE — RELEASE CANDIDATE`
-**Canonical workspace:** `feature/championship-convergence-v1`
+**Current posture:** `ENGINEERING P0 CONVERGED — RELEASE CANDIDATE / RENDER HOLD`
+**Canonical release branch:** `feature/championship-convergence-v1`
 **Production Render:** `HOLD`
 
 ## What is locked
@@ -22,9 +22,9 @@
 | P4 Live Evidence Story | GREEN | PRESERVE |
 | P5 KM/OSC Readiness | GREEN | PRESERVE |
 | P6 Output lifecycle | GREEN | PRESERVE |
-| Core CI convergence | GREEN | CONTINUE FINAL RELEASE AUDIT |
-| Main content parity | ACHIEVED | VERIFY FINAL MAIN CI |
-| Release identity | IN PROGRESS | LOCK AFTER FINAL MAIN GREEN |
+| Core CI convergence | GREEN ON AUDITED TREE | RE-RUN AFTER FINAL DOC RECONCILIATION |
+| Main content parity | ACHIEVED AT AUDITED TREE | PRESERVE |
+| Release identity | RECONCILED | LOCK AFTER FINAL GATES |
 | Live Render QA | NOT RUN | BLOCK RELEASE |
 | Render deployment | HOLD | DO NOT DEPLOY |
 | Cinematic demo/video | NOT STARTED | AFTER RELEASE GATE |
@@ -35,7 +35,7 @@ Live source context does not automatically constitute statutory verification. Th
 
 ## Release rule
 
-No Render deployment is considered the championship release until one canonical release SHA, one production entrypoint, one frontend architecture, and one evidence/decision contract are proven together by CI and live smoke.
+No Render deployment is considered the championship release until one canonical release SHA, one production entrypoint, one frontend architecture, and one evidence/decision contract are proven together by fresh CI and live smoke.
 
 ## Explicit deployment boundary
 
