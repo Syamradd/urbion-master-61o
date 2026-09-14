@@ -69,6 +69,13 @@ jobs:
           URBION_BASE_URL: http://127.0.0.1:8765
         run: python scripts/canonical_runtime_topology_smoke.py
 
+      - name: Canonical About functional smoke
+        if: always()
+        env:
+          PYTHONPATH: .
+          URBION_BASE_URL: http://127.0.0.1:8765
+        run: python scripts/about_functional_smoke.py
+
       - name: Deep browser functional smoke
         if: always()
         env:
