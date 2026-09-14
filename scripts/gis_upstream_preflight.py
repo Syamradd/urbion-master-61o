@@ -14,7 +14,7 @@ from urllib.parse import urlencode
 import httpx
 
 BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8765").rstrip("/")
-UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
+UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
 LAYERS = [
     "iplan:gunatanah_semasa_04",
     "iplan:gunatanah_zoning_04",
