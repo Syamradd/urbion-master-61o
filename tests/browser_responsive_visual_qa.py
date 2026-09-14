@@ -9,7 +9,7 @@ BASE = os.getenv("BASE_URL", "http://127.0.0.1:8765")
 ARTIFACT_DIR = Path(os.getenv("URBION_BROWSER_ARTIFACT_DIR", "/tmp/urbion-browser-qa"))
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
-LANDING_TITLE = "URBION HORIZON — Spatial Decision Intelligence"
+LANDING_TITLE = "URBION HORIZON — AI-Assisted Urban Planning Intelligence"
 WORKSPACE_TITLE = "URBION HORIZON — Planning Command Centre"
 LANDING_VIEWPORTS = (375, 390, 430, 768, 820, 1280, 1440, 1600, 1920)
 WORKSPACE_VIEWPORTS = (375, 768, 1280, 1600)
