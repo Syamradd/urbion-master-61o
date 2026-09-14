@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from championship_server import app
+from landing_server import app
 
 
 def test_judge_demo_returns_evidence_snapshot():
@@ -24,4 +24,7 @@ def test_judge_demo_rejects_missing_site():
     client = TestClient(app)
     r = client.post('/judge/demo', json={'assessment_inputs': {'plot_ratio': 2.0}})
     assert r.status_code == 422
-    assert r.json()['detail']['code'] == 'SITE_INPUT_REQUIRED'
+    body = r.json()
+    assert body['error'] is True
+    assert body['version'] == 'URBION_ERROR_V1'
+    assert body['code'] == 'SITE_INPUT_REQUIRED'
