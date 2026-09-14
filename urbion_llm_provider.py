@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -15,6 +16,14 @@ DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models"
 MAX_PROMPT_CHARS = 24000
 MAX_OUTPUT_CHARS = 4000
+
+_FORBIDDEN_CLAIMS = re.compile(
+    r"\b(?:approved|approval granted|statutory approval|planning permission granted|"
+    r"development permission granted|compliant with all statutory requirements|"
+    r"fully compliant|legally compliant|certified|certification issued)\b",
+    re.IGNORECASE,
+)
+_REQUIRED_LABELS = ("FINDING", "EVIDENCE", "ACTION")
 
 
 def _fallback(packet: dict) -> str:
@@ -59,11 +68,27 @@ def _prompt(packet: dict) -> str:
             + payload)
 
 
+def _validate_generated_text(text: str) -> tuple[bool, str | None]:
+    """Reject narrative that escapes the deterministic decision boundary."""
+    if not isinstance(text, str) or not text.strip():
+        return False, "empty_output"
+    clean = text.strip()
+    upper = clean.upper()
+    missing = [label for label in _REQUIRED_LABELS if label not in upper]
+    if missing:
+        return False, "missing_sections"
+    if _FORBIDDEN_CLAIMS.search(clean):
+        return False, "forbidden_statutory_claim"
+    if "NOT_CLAIMED" in upper and "STATUTORY VERIFICATION" not in upper:
+        return False, "uncontextualized_not_claimed"
+    return True, None
+
+
 def generate_planner_explanation(packet: dict, timeout: float = 12.0) -> dict:
     """Generate traceable prose without allowing the LLM to alter deterministic results."""
     key = os.getenv("GEMINI_API_KEY")
     if not key:
-        return {"provider":"NONE","model":None,"status":"DISABLED_NO_API_KEY","text":_fallback(packet),"deterministic_source":True}
+        return {"provider":"NONE","model":None,"status":"DISABLED_NO_API_KEY","text":_fallback(packet),"deterministic_source":True,"validation":"FALLBACK_SAFE"}
     model = os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
     url = f"{API_ROOT}/{model}:generateContent?key={key}"
     payload = {"contents":[{"parts":[{"text":_prompt(packet)}]}],"generationConfig":{"temperature":0.1,"maxOutputTokens":500}}
@@ -75,6 +100,9 @@ def generate_planner_explanation(packet: dict, timeout: float = 12.0) -> dict:
         text = text.strip()
         if len(text) > MAX_OUTPUT_CHARS:
             text = text[:MAX_OUTPUT_CHARS].rstrip() + "…"
-        return {"provider":"GEMINI","model":model,"status":"GENERATED","text":text,"deterministic_source":False}
+        ok, reason = _validate_generated_text(text)
+        if not ok:
+            return {"provider":"GEMINI","model":model,"status":"FALLBACK_VALIDATION","text":_fallback(packet),"deterministic_source":True,"validation":"REJECTED_" + str(reason).upper()}
+        return {"provider":"GEMINI","model":model,"status":"GENERATED","text":text,"deterministic_source":False,"validation":"PASS"}
     except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError) as exc:
-        return {"provider":"GEMINI","model":model,"status":"FALLBACK","text":_fallback(packet),"deterministic_source":True,"error_type":type(exc).__name__}
+        return {"provider":"GEMINI","model":model,"status":"FALLBACK","text":_fallback(packet),"deterministic_source":True,"error_type":type(exc).__name__,"validation":"FALLBACK_SAFE"}
