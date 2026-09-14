@@ -10,20 +10,24 @@ values remain SOURCE_CONTEXT until a stable machine-query contract is proven.
 """
 from __future__ import annotations
 
+from html import unescape
 from io import StringIO
 import re
 from typing import Any, Callable, Iterable
+from urllib.parse import parse_qsl, urljoin, urlparse
 
 import pandas as pd
 
 JPS_RAINFALL_URL = "https://publicinfobanjir.water.gov.my/hujan/data-hujan/"
 JPS_STATION_INFO_URL = "https://publicinfobanjir.water.gov.my/cari-station/"
+JPS_HOST = "publicinfobanjir.water.gov.my"
 
 
 def _clean(value: Any) -> str | None:
     if value is None:
         return None
-    text = str(value).strip()
+    text = unescape(re.sub(r"<[^>]+>", " ", str(value)))
+    text = re.sub(r"\s+", " ", text).strip()
     return text or None
 
 
@@ -34,23 +38,30 @@ def _number(value: Any) -> float | None:
         return None
 
 
-def discover_station_info_urls(html: str) -> list[str]:
-    """Discover official station-detail links from a JPS state page.
-
-    The function is deliberately schema-light: only official ``cari-station``
-    links carrying a station_id query parameter are accepted.
-    """
-    pattern = re.compile(
-        r'https?://publicinfobanjir\.water\.gov\.my/cari-station/[^"\'<>]*station_id=[^"\'&#<>]+'
-        r'|/cari-station/[^"\'<>]*station_id=[^"\'&#<>]+'
+def _is_official_station_url(url: str) -> bool:
+    parsed = urlparse(url)
+    return (
+        parsed.scheme in {"http", "https"}
+        and parsed.netloc.casefold() == JPS_HOST
+        and parsed.path.rstrip("/").casefold() == "/cari-station"
+        and any(key.casefold() == "station_id" and value for key, value in parse_qsl(parsed.query))
     )
-    found = []
-    for match in pattern.findall(html or ""):
-        url = match.replace("&amp;", "&")
-        if url.startswith("/"):
-            url = "https://publicinfobanjir.water.gov.my" + url
-        if url not in found:
-            found.append(url)
+
+
+def discover_station_info_urls(html: str) -> list[str]:
+    """Discover only official JPS station-detail links carrying ``station_id``."""
+    found: list[str] = []
+    hrefs = re.findall(r"href\s*=\s*[\"']([^\"']+)[\"']", html or "", flags=re.I)
+    for href in hrefs:
+        href = unescape(href.strip())
+        if href.startswith("/"):
+            candidate = urljoin(JPS_STATION_INFO_URL, href)
+        elif href.startswith(("http://", "https://")):
+            candidate = href
+        else:
+            continue
+        if _is_official_station_url(candidate) and candidate not in found:
+            found.append(candidate)
     return found
 
 
@@ -67,6 +78,22 @@ def _table_value(tables: list[pd.DataFrame], label: str) -> str | None:
     return None
 
 
+def _regex_table_values(html: str) -> dict[str, str]:
+    """Fallback parser so deterministic CI does not depend on optional HTML engines."""
+    values: dict[str, str] = {}
+    row_pattern = re.compile(r"<tr[^>]*>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*</tr>", re.I | re.S)
+    for label, value in row_pattern.findall(html or ""):
+        key = _clean(label)
+        val = _clean(value)
+        if key and val:
+            values[key.casefold()] = val
+    return values
+
+
+def _detail_value(tables: list[pd.DataFrame], label: str, pairs: dict[str, str]) -> str | None:
+    return _table_value(tables, label) or pairs.get(label.casefold())
+
+
 def parse_station_detail(html: str, source_url: str | None = None) -> dict[str, Any] | None:
     """Normalize one official JPS station-detail page."""
     try:
@@ -74,14 +101,15 @@ def parse_station_detail(html: str, source_url: str | None = None) -> dict[str, 
     except (ValueError, ImportError):
         tables = []
 
-    name = _table_value(tables, "Station Name")
-    code = _table_value(tables, "Station Code")
-    district = _table_value(tables, "District")
-    state = _table_value(tables, "State")
-    status = _table_value(tables, "Status")
-    lat = _number(_table_value(tables, "Latitude"))
-    lon = _number(_table_value(tables, "Longitude"))
-    last_rain = _table_value(tables, "Last Updated (Rainfall)")
+    pairs = _regex_table_values(html)
+    name = _detail_value(tables, "Station Name", pairs)
+    code = _detail_value(tables, "Station Code", pairs)
+    district = _detail_value(tables, "District", pairs)
+    state = _detail_value(tables, "State", pairs)
+    status = _detail_value(tables, "Status", pairs)
+    lat = _number(_detail_value(tables, "Latitude", pairs))
+    lon = _number(_detail_value(tables, "Longitude", pairs))
+    last_rain = _detail_value(tables, "Last Updated (Rainfall)", pairs)
 
     if not name or lat is None or lon is None:
         return None
