@@ -16,9 +16,13 @@ source = source.replace(
     "querySelector('input:visible,select:visible,textarea:visible')",
     "querySelector('input,select,textarea')",
 )
-source = source.replace(
-    "page.wait_for_function(\"document.body.innerText.includes('ANALYSIS COMPLETE')\", timeout=20000)",
-    "page.wait_for_function(\"!!window.URBION_LAST\", timeout=60000)",
+# The smoke source has appeared with both spaced and compact argument formatting
+# across prior revisions. Match the semantic wait robustly rather than relying
+# on one exact whitespace spelling.
+source = re.sub(
+    r"page\.wait_for_function\(\s*\"document\.body\.innerText\.includes\('\s*ANALYSIS COMPLETE\s*'\)\"\s*,\s*timeout\s*=\s*20000\s*\)",
+    'page.wait_for_function("!!window.URBION_LAST", timeout=60000)',
+    source,
 )
 
 # Avoid passing a Playwright Locator through wait_for_function(). Poll the
@@ -136,5 +140,5 @@ def prepare_ready_case(page):
     check(not page.locator("#run").is_disabled(), "Run Site Analysis unlocked by canonical readiness")
 
 globals_dict["prepare_ready_case"] = prepare_ready_case
-print("[CI-FIXTURE-V4] deterministic canonical readiness fixture installed")
+print("[CI-FIXTURE-V5] deterministic canonical readiness fixture installed")
 page_main()
