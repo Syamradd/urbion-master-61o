@@ -18,7 +18,7 @@ def test_final_workspace_and_source_contracts_exist():
     assert 'id="whatifBtn"' in workspace
     assert 'id="decisionBtn"' in workspace
     assert 'id="outputBtn"' in workspace
-    assert "Turning spatial evidence into" in about
+    assert "Turning planning principles into clear action." in about
 
 
 def test_finalization_does_not_expose_temporary_probe_files():
