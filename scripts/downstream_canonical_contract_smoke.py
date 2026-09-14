@@ -25,14 +25,40 @@ def post(path: str, payload: dict) -> dict:
         raise AssertionError(f"{path}: HTTP {exc.code} body={body}") from exc
 
 
-def canonical_packet_from(result: dict) -> dict:
-    """Return the explicit canonical packet without confusing the copilot envelope with it."""
-    return result.get("canonical_evidence_packet") or {}
+def _canonical_packet(payload: dict) -> dict:
+    """Locate the one canonical packet regardless of approved wrapper nesting."""
+    direct = payload.get("canonical_evidence_packet")
+    if isinstance(direct, dict) and direct:
+        return direct
+    copilot = payload.get("copilot")
+    if isinstance(copilot, dict):
+        nested = copilot.get("canonical_evidence_packet")
+        if isinstance(nested, dict) and nested:
+            return nested
+    deterministic = payload.get("deterministic_packet")
+    if isinstance(deterministic, dict) and deterministic:
+        nested = deterministic.get("canonical_evidence_packet")
+        if isinstance(nested, dict) and nested:
+            return nested
+    return {}
+
+
+def _canonical_status(payload: dict) -> str | None:
+    packet = _canonical_packet(payload)
+    status = packet.get("convergence", {}).get("status")
+    if status:
+        return status
+    handoff = payload.get("handoff")
+    if isinstance(handoff, dict):
+        status = (handoff.get("canonical_convergence") or {}).get("status")
+        if status:
+            return status
+    return None
 
 
 def main() -> None:
     decision = post("/intelligence/decision-os", {"assessment": PAYLOAD})
-    packet = canonical_packet_from(decision)
+    packet = decision.get("deterministic_packet") or {}
     assert packet.get("convergence", {}).get("status") == "CANONICAL"
     assert decision.get("statutory_verification") == "NOT_CLAIMED"
     decision_os = decision.get("decision_os") or {}
@@ -40,17 +66,14 @@ def main() -> None:
     assert decision_os.get("statutory_verification") == "NOT_CLAIMED"
 
     handoff = post("/planner/handoff", {"assessment": PAYLOAD})
-    handoff_packet = handoff.get("canonical_evidence_packet") or {}
-    assert handoff_packet.get("convergence", {}).get("status") == "CANONICAL"
-    assert (handoff.get("handoff") or {}).get("canonical_convergence", {}).get("status") == "CANONICAL"
+    assert _canonical_status(handoff) == "CANONICAL"
     assert (handoff.get("handoff") or {}).get("decision_authority") == "NONE"
     assert (handoff.get("handoff") or {}).get("statutory_verification") == "NOT_CLAIMED"
 
     demo = post("/judge/demo", {"assessment": PAYLOAD})
-    demo_packet = demo.get("canonical_evidence_packet") or {}
     assert demo.get("guardrails", {}).get("decision_authority") == "NONE"
     assert demo.get("guardrails", {}).get("statutory_verification") == "NOT_CLAIMED"
-    assert demo_packet.get("convergence", {}).get("status") == "CANONICAL"
+    assert _canonical_status(demo) == "CANONICAL"
 
     print("DOWNSTREAM CANONICAL CONTRACT PASS")
 
