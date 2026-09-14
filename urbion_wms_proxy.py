@@ -57,11 +57,14 @@ def _proxy_failure(prefix: str, detail: str) -> Response:
 
 @router.get("/map/wms", include_in_schema=False)
 async def map_wms_proxy(request: Request) -> Response:
-    params = {
-        key: value
-        for key, value in request.query_params.multi_items()
-        if key.lower() in ALLOWED_WMS_PARAMS
-    }
+    # Normalize all incoming query keys so browser casing cannot create
+    # duplicate request/service parameters or bypass the validation branch.
+    params: dict[str, str] = {}
+    for key, value in request.query_params.multi_items():
+        canonical = key.lower()
+        if canonical in ALLOWED_WMS_PARAMS:
+            params[canonical] = value
+
     layers = str(params.get("layers", ""))
     if not layers.startswith("iplan:"):
         return Response(
