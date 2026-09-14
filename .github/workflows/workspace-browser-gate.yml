@@ -105,22 +105,7 @@ jobs:
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
           URBION_ARTIFACT_DIR: artifacts/workspace-browser
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path("scripts/workspace_browser_smoke_ci.py")
-          s = p.read_text(encoding="utf-8")
-          s = s.replace(
-              'page.wait_for_function("document.body.innerText.includes(\'ANALYSIS COMPLETE\')", timeout=20000)',
-              'page.wait_for_function("!!window.URBION_LAST", timeout=60000)',
-          )
-          s = s.replace(
-              'page.wait_for_function("document.body.innerText.includes(\'ANALYSIS COMPLETE\')",timeout=20000)',
-              'page.wait_for_function("!!window.URBION_LAST",timeout=60000)',
-          )
-          p.write_text(s, encoding="utf-8")
-          PY
-          python scripts/workspace_browser_smoke_ci.py
+        run: python scripts/workspace_browser_gate_resilient.py
       - name: Run GIS 25-layer regression
         env:
           URBION_BASE_URL: http://127.0.0.1:8000
