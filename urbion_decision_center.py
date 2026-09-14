@@ -4,12 +4,6 @@ from typing import Any
 from urbion_evidence_contract import contract_summary
 from urbion_gis_decision import decision_feature, decision_map_payload
 from urbion_multi_source import build_spatial_intelligence
-from server import app
-from urbion_presentation_compat import install as install_presentation_compat
-
-# Install before landing_server registers its final presentation middleware so
-# the adapter can wrap that single canonical boundary without adding routes.
-install_presentation_compat(app)
 
 
 def _score_breakdown(analysis: dict[str, Any]) -> list[dict[str, Any]]:
