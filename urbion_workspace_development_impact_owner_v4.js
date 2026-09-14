@@ -4,7 +4,7 @@ if(window.__URBION_DEVELOPMENT_IMPACT_OWNER_V5__)return;
 window.__URBION_DEVELOPMENT_IMPACT_OWNER_V5__=true;
 function packet(){return window.URBION_LAST?.canonical_evidence_packet||null}
 function impactFromPacket(p){return p?.evidence?.development_impact||p?.development_impact||null}
-function esc(v){return String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>\\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;'}[c]))}
 function host(){return document.querySelector('.right')||document.querySelector('.layout > :last-child')}
 function mount(){
  const p=packet(),root=host(); if(!root)return false;
@@ -27,13 +27,17 @@ function mount(){
  return true;
 }
 function ensure(){
- mount();
- if(!document.body)return;
+ if(mount())return;
+ const root=host();
+ if(!root)return;
  if(!window.__URBION_DEVELOPMENT_IMPACT_OBSERVER_V6__){
-  window.__URBION_DEVELOPMENT_IMPACT_OBSERVER_V6__=new MutationObserver(()=>{
-   if(!document.querySelector('[data-testid="development-impact"]'))mount();
+  const observer=new MutationObserver(()=>{
+   if(mount())observer.disconnect();
   });
-  window.__URBION_DEVELOPMENT_IMPACT_OBSERVER_V6__.observe(document.body,{childList:true,subtree:true});
+  window.__URBION_DEVELOPMENT_IMPACT_OBSERVER_V6__=observer;
+  // This owner only needs to recover if its card has not mounted yet. Once
+  // mounted, disconnect so unrelated right-panel mutations cannot wake it.
+  observer.observe(root,{childList:true});
  }
  let tries=0;
  const timer=setInterval(()=>{if(mount()&&impactFromPacket(packet()))clearInterval(timer);if(++tries>=300)clearInterval(timer)},100);
