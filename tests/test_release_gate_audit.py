@@ -15,7 +15,7 @@ def test_release_manifest_keeps_explicit_authority_and_verification_boundaries()
     assert manifest['decision_authority'] == 'NONE'
     assert manifest['statutory_verification'] == 'NOT_CLAIMED'
     assert manifest['deployment_ready'] is False
-    assert 'HOLD_UNTIL_FINAL_MAIN_CI_AND_LIVE_QA' == manifest['release_gate']
+    assert 'HOLD_UNTIL_FINAL_CI_AND_LIVE_QA' == manifest['release_gate']
     assert 'LIVE SOURCE CONTEXT IS NOT AUTOMATIC STATUTORY VERIFICATION' == manifest['evidence_policy'].upper()
 
 
