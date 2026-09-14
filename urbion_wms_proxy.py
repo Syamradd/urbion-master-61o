@@ -16,9 +16,8 @@ from fastapi.responses import Response
 
 router = APIRouter()
 # i-Plan's live GeoWebCache service is the authoritative cached WMS surface.
-# The direct workspace WMS endpoint currently returns ServiceException XML for
-# the browser-sized GetMap requests used by this workspace, while GeoWebCache
-# exposes the generated WMS-C/WMTS-compatible tile surface.
+# Tiled requests include the cache grid origin so state-specific i-Plan layers
+# are resolved against the EPSG:900913 tile matrix used by the service.
 WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/iPLAN/"),
@@ -26,7 +25,7 @@ ARCGIS_ALLOWLIST = (
 )
 ALLOWED_WMS_PARAMS = {
     "service", "request", "layers", "styles", "format", "transparent",
-    "version", "tiled", "width", "height", "srs", "bbox", "crs",
+    "version", "tiled", "tilesorigin", "width", "height", "srs", "bbox", "crs",
     "bgcolor", "exceptions", "time", "elevation",
 }
 ARCGIS_PARAM_NAMES = {
