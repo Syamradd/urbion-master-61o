@@ -28,10 +28,9 @@ def wait_until(predicate, timeout=15.0, interval=0.2):
     raise AssertionError(f"Timed out waiting for condition: {last!r}")
 
 
-def expand_layer_group(page, checkbox):
-    group = checkbox.locator(
-        "xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]"
-    )
+def expand_layer_group(page, layer_id):
+    row = page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
+    group = row.locator("xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]")
     if group.count():
         classes = group.get_attribute("class") or ""
         if "closed" in classes:
@@ -39,8 +38,9 @@ def expand_layer_group(page, checkbox):
             if head.count():
                 head.click(force=True)
                 page.wait_for_timeout(120)
-    checkbox.scroll_into_view_if_needed(timeout=10000)
-    if not checkbox.is_visible():
+    row = page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
+    row.scroll_into_view_if_needed(timeout=10000)
+    if not row.is_visible():
         raise AssertionError("GIS layer checkbox remained hidden after expanding its group")
 
 
@@ -89,17 +89,16 @@ def main():
                     responses_by_layer[current_layer].append({"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url})
 
         page.on("response", on_response)
-        rows = page.locator("#layerList input[data-urbion-layer]")
-        for i in range(rows.count()):
-            cb = rows.nth(i)
-            lid = cb.get_attribute("data-urbion-layer") or f"layer-{i}"
+        layer_ids = [x for x in page.locator("#layerList input[data-urbion-layer]").evaluate_all("els => els.map(e => e.dataset.urbionLayer)" ) if x]
+        for lid in layer_ids:
             current_layer = lid
-            expand_layer_group(page, cb)
+            expand_layer_group(page, lid)
+            cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             cb.check(force=True)
-            state = page.locator(f"#layerList [data-layer-state='{lid}']")
+            page.wait_for_timeout(250)
             try:
-                wait_until(lambda: state.inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=20.0)
-                state_text = state.inner_text().strip().upper()
+                wait_until(lambda: page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=20.0)
+                state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
                 if state_text != "ON · RENDERED":
                     failures.append(f"{lid}: {state_text}; responses={responses_by_layer[lid]}")
                     print(f"GIS RENDER FAIL: {lid}: {state_text}")
@@ -107,7 +106,9 @@ def main():
                 else:
                     print(f"GIS RENDER PASS: {lid}")
             finally:
-                cb.uncheck(force=True)
+                cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
+                if cb.count() and cb.is_checked():
+                    cb.uncheck(force=True)
                 page.wait_for_timeout(120)
         current_layer = None
 
