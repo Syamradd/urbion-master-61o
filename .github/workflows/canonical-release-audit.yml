@@ -11,6 +11,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout canonical release branch
         uses: actions/checkout@v4
@@ -34,27 +35,50 @@ jobs:
           PYTHONPATH: .
         run: python -m pytest -q
 
-      - name: Canonical runtime topology smoke
+      - name: Install Playwright Chromium
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Start canonical presentation server
         env:
           PYTHONPATH: .
           PORT: 8765
-          URBION_BASE_URL: http://127.0.0.1:8765
         run: |
           set -euo pipefail
           python -m uvicorn landing_server:app --host 0.0.0.0 --port "$PORT" >/tmp/urbion.log 2>&1 &
           PID=$!
-          trap 'kill "$PID" 2>/dev/null || true' EXIT
-          python - <<'PY'
-          import time, urllib.request
-          for _ in range(30):
-              try:
-                  with urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=2) as r:
-                      assert r.status == 200
-                  break
-              except Exception:
-                  time.sleep(1)
-          else:
-              print(open('/tmp/urbion.log', encoding='utf-8').read())
-              raise SystemExit('canonical runtime did not start')
-          PY
-          python scripts/canonical_runtime_topology_smoke.py
+          echo "$PID" > /tmp/urbion.pid
+          for _ in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/urbion.log
+          exit 1
+
+      - name: Canonical runtime topology smoke
+        env:
+          PYTHONPATH: .
+          URBION_BASE_URL: http://127.0.0.1:8765
+        run: python scripts/canonical_runtime_topology_smoke.py
+
+      - name: Deep browser functional smoke
+        env:
+          PYTHONPATH: .
+          URBION_BASE_URL: http://127.0.0.1:8765
+          URBION_ARTIFACT_DIR: artifacts/canonical-release-browser
+        run: python scripts/workspace_browser_smoke_ci.py
+
+      - name: 25-layer end-to-end GIS render audit
+        env:
+          PYTHONPATH: .
+          URBION_BASE_URL: http://127.0.0.1:8765
+        run: python scripts/gis_layer_regression.py
+
+      - name: Upload canonical browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urbion-canonical-release-browser-evidence
+          path: artifacts/canonical-release-browser/
+          if-no-files-found: ignore
