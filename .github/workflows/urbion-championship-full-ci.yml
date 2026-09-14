@@ -88,24 +88,18 @@ jobs:
                   with urllib.request.urlopen(base + '/', timeout=3) as response:
                       landing = response.read().decode('utf-8')
                       require(response.status == 200, 'landing: HTTP status failed')
-                      require('<title>URBION HORIZON — Spatial Decision Intelligence</title>' in landing, 'landing: title missing')
-                      require('a href="/championship.html"' in landing or 'href="/championship.html"' in landing, 'landing: canonical CTA target missing')
+                      require('<title>URBION HORIZON — AI-Assisted Urban Planning Intelligence</title>' in landing, 'landing: title missing')
+                      require('href="/workspace"' in landing, 'landing: canonical workspace CTA target missing')
                       require('id="urbion-championship-shell"' not in landing, 'landing: dashboard shell leaked into public landing')
-                  with urllib.request.urlopen(base + '/championship.html', timeout=3) as response:
-                      html = response.read().decode('utf-8')
-                      require(response.status == 200, 'championship: HTTP status failed')
-                      require('<title>URBION HORIZON — Planning Command Centre</title>' in html, 'championship: title missing')
-                      require('window.__URBION_FRONTEND_BOOT__' in html, 'championship: frontend boot missing')
-                      require('release:"MASTER-331"' in html, 'championship: release identity missing')
-                      require('id="urbion-championship-shell"' in html, 'championship: canonical shell marker missing')
-                      require('/urbion_championship_command_shell.js' in html, 'championship: command shell missing')
-                      require('/urbion_map_identify_runtime.js' in html, 'championship: map identify runtime missing')
-                      require('/urbion_championship_horizon_ui.js' in html, 'championship: HORIZON UI missing')
-                      require('MASTER-270 · CHAMPIONSHIP EXECUTION' not in html, 'championship: legacy popup marker leaked')
-                      require('id="uhx"' not in html, 'championship: legacy popup mount leaked')
-                  for asset in ['/urbion_championship_command_shell.js','/urbion_map_identify_runtime.js','/urbion_championship_horizon_ui.js']:
-                      with urllib.request.urlopen(base + asset, timeout=3) as response:
-                          require(response.status == 200 and response.read(), f'{asset}: asset contract failed')
+                  with urllib.request.urlopen(base + '/workspace', timeout=3) as response:
+                      workspace = response.read().decode('utf-8')
+                      require(response.status == 200, 'workspace: HTTP status failed')
+                      require('<title>URBION HORIZON — Planning Workspace</title>' in workspace, 'workspace: title missing')
+                      require('class="layout"' in workspace, 'workspace: layout marker missing')
+                      require('id="map"' in workspace, 'workspace: map marker missing')
+                      require('id="run"' in workspace, 'workspace: analysis control missing')
+                      require('id="outputBtn"' in workspace, 'workspace: output control missing')
+                      require('window.URBION_LAST' in workspace, 'workspace: canonical frontend state marker missing')
                   print('RUNTIME_SMOKE_OK')
                   raise SystemExit(0)
               except Exception as exc:
