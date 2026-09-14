@@ -23,7 +23,11 @@ def test_packet_preserves_core_assessment_and_states():
     assert packet["assessment"]["final_status"] == "COMPLY"
     assert packet["identity"]["lot_no"] == "11213"
     assert packet["evidence_states"]["tod_distance"] == "CALCULATED"
-    assert packet["review_gaps"] == ["terrain", "environment:water_quality"]
+    assert packet["review_gaps"] == [
+        "terrain",
+        "environment:water_quality",
+        "RT-MBMB-2035-TOD-01: exact page/clause/table locator and current applicability require review (planning source).",
+    ]
     assert packet["statutory_verification"] == "NOT_CLAIMED"
 
 
