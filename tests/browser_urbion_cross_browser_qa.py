@@ -15,7 +15,7 @@ BROWSER_NAME = os.getenv("URBION_BROWSER", "chromium")
 ARTIFACT_DIR = Path(os.getenv("URBION_BROWSER_ARTIFACT_DIR", "/tmp/urbion-cross-browser"))
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
-LANDING_TITLE = "URBION HORIZON — Spatial Decision Intelligence"
+LANDING_TITLE = "URBION HORIZON — AI-Assisted Urban Planning Intelligence"
 WORKSPACE_TITLE = "URBION HORIZON — Planning Command Centre"
 
 
