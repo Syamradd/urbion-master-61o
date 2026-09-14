@@ -56,14 +56,19 @@ def main()->None:
         page.wait_for_function('!!window.URBION_LAST',timeout=30000)
         page.wait_for_timeout(300)
 
-        # OUTPUT is a canonical mode; use the always-visible Quick Action so the
-        # smoke exercises the supported judge path and the real result state.
+        # The canonical workspace exposes planner review as a persistent decision
+        # state, while the output modal exposes the output, planner and statutory
+        # boundary states. Test both surfaces instead of requiring a literal
+        # REVIEW token inside the export modal.
+        decision_text=page.locator('#decision').inner_text().upper()
+        assert 'REVIEW' in decision_text,'canonical planner review state missing'
+
         output_action=page.locator('#outputBtn')
         assert output_action.count()==1,'canonical output quick action missing'
         output_action.click()
         page.wait_for_function("document.querySelector('#modal')?.classList.contains('show')",timeout=5000)
         text=page.locator('#modal').inner_text().upper()
-        for expected in ('OUTPUT','PLANNER','STATUTORY','REVIEW'):
+        for expected in ('OUTPUT','PLANNER','STATUTORY','EVIDENCE GAPS','AUTHORITY BOUNDARY'):
             assert expected in text,f'missing output state: {expected}'
         page.locator('#closeModal').click()
         assert not page.locator('#modal').evaluate("el=>el.classList.contains('show')")
