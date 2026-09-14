@@ -1,0 +1,35 @@
+name: URBION Render Parity Gate
+
+on:
+  push:
+    branches:
+      - feature/championship-convergence-v1
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  render-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.11'
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Start Render-equivalent app
+        run: |
+          nohup uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-render-parity.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/health >/dev/null
+      - name: Run Render parity smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/render_parity_smoke.py
