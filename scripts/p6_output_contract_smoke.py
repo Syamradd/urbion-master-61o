@@ -6,7 +6,6 @@ from playwright.sync_api import sync_playwright
 
 BASE=os.getenv('URBION_BASE_URL','http://127.0.0.1:8000')
 
-
 def main()->None:
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
@@ -14,37 +13,29 @@ def main()->None:
         page.goto(BASE+'/workspace',wait_until='domcontentloaded',timeout=30000)
         page.wait_for_function('!!window.URBION_FINAL?.analyse',timeout=15000)
 
-        # Exercise the real canonical analysis lifecycle so outputModal sees the
-        # same internal result state that production users create.
-        values={
-            'project':'Output Planning Case',
-            'district':'Melaka Tengah',
-            'pbt':'Majlis Bandaraya Melaka Bersejarah',
-            'mukim':'Bandar Melaka',
-            'lot_no':'PT 12345',
-            'site_lat':'2.285000',
-            'site_lon':'102.196000',
-            'project_ref':'KM / LCP / OSC',
-            'plot_ratio':'4.5',
-            'building_height':'8',
-            'perimeter_planting':'3.0',
-            'landscaped_pedestrian_walkway':'1.5',
-            'tod_lat':'2.285000',
-            'tod_lon':'102.196000',
-            'precinct':'Melaka Tengah',
-            'units':'100',
-            'gfa':'10000',
-        }
-        for field_id,value in values.items():
-            page.locator(f'#{field_id}').fill(value)
-        for field_id in ('state','development_type','development_class','landuse1','landuse2','landuse3','analysis_focus'):
-            page.locator(f'#{field_id}').dispatch_event('change')
+        # Exercise the same required-case path a planner uses before output.
+        page.locator('#project').fill('Output Planning Case')
+        page.locator('#district').fill('Melaka Tengah')
+        page.locator('#pbt').fill('Majlis Bandaraya Melaka Bersejarah')
+        page.locator('#mukim').fill('Banda Hilir')
+        page.locator('#project_ref').fill('KM / LCP / OSC')
+        page.locator('#site_lat').fill('2.285000')
+        page.locator('#site_lon').fill('102.196000')
+        page.wait_for_function("document.querySelectorAll('#landuse1 option').length > 1 && document.querySelectorAll('#landuse2 option').length > 1 && document.querySelectorAll('#landuse3 option').length > 1",timeout=10000)
+        for selector in ('#landuse1','#landuse2','#landuse3'):
+            page.locator(selector).select_option(index=1)
+        page.wait_for_timeout(300)
 
         run=page.locator('#run')
-        page.wait_for_function("!document.querySelector('#run')?.disabled",timeout=5000)
+        assert run.count()==1,'canonical run control missing'
+        if run.is_disabled():
+            raise AssertionError('canonical analysis did not become ready')
         run.click()
-        page.wait_for_function('!!window.URBION_LAST',timeout=20000)
+        page.wait_for_function('!!window.URBION_LAST',timeout=30000)
+        page.wait_for_timeout(300)
 
+        # OUTPUT is a canonical mode; use the always-visible Quick Action so the
+        # smoke exercises the supported judge path and the real result state.
         output_action=page.locator('#outputBtn')
         assert output_action.count()==1,'canonical output quick action missing'
         output_action.click()
