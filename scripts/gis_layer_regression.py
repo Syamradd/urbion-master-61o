@@ -29,7 +29,6 @@ def wait_until(predicate, timeout=15.0, interval=0.2):
 
 
 def expand_layer_group(page, checkbox):
-    """Expand the hidden parent group before asking Playwright to scroll the checkbox."""
     group = checkbox.locator(
         "xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]"
     )
@@ -39,7 +38,7 @@ def expand_layer_group(page, checkbox):
             head = group.locator(".urbion-layer-head, .layer-group-head").first
             if head.count():
                 head.click(force=True)
-                page.wait_for_timeout(100)
+                page.wait_for_timeout(120)
     checkbox.scroll_into_view_if_needed(timeout=10000)
     if not checkbox.is_visible():
         raise AssertionError("GIS layer checkbox remained hidden after expanding its group")
