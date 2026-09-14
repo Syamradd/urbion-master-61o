@@ -8,8 +8,7 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Canonical workspace: `feature/canonical-workspace-v2`
 - Latest merged baseline: `ce3d86473953d4a55c4eabab2b9ef2992cd761e5`
 - Current hardening branch: `feature/championship-convergence-v1`
-- Current hardening HEAD: `23c3d7f2bb47a69b01802eb7cefe0dc779c0dd2e`
-- Current hardening PR: `#131`
+- Current hardening HEAD: `cf1989728086426105bf35054deaa9d00d95d05f`
 
 ## Engineering identity
 
@@ -35,15 +34,20 @@ Status: `RELEASE CANDIDATE — ENGINEERING P0 CONVERGENCE`
 - Canonical mobility/station evidence reuse
 - Road Intelligence attached to canonical evidence when a packet exists
 - Rule-provenance amendment-state check
+- P3 JPS station geometry adapter preserved
+- P3 MyGEMS lithology adapter preserved
+- MyEQMS/APIMS adapter preserved
+- Branch capability preservation matrix
 - Production manifest and release-document consistency
 
 ## Current hardening gates
 
-- Workspace Source: `GREEN` on prior canonical baseline
-- Rule Provenance: `GREEN` on prior canonical baseline
-- Road Intelligence: `GREEN` on prior canonical baseline
-- Workspace Browser: `GREEN` on prior canonical baseline
-- P0 downstream/error/owner checks: `PENDING` until CI completes on HEAD `23c3d7f2bb47a69b01802eb7cefe0dc779c0dd2e`
+- Workspace Source: `REQUIRES FRESH CI ON cf198972...`
+- Rule Provenance: `REQUIRES FRESH CI ON cf198972...`
+- Road Intelligence: `REQUIRES FRESH CI ON cf198972...`
+- Workspace Browser: `REQUIRES FRESH CI ON cf198972...`
+- Preservation guard: `ADDED`
+- P0 downstream/error/owner checks: `REQUIRES FRESH CI ON cf198972...`
 
 ## Deployment gates
 
