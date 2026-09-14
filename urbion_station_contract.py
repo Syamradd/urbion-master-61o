@@ -22,9 +22,11 @@ STATION_SOURCE_CONTRACT: dict[str, dict[str, Any]] = {
         "provider": "JPS Public Infobanjir",
         "mode": "PUBLIC_REAL_TIME_PORTAL",
         "machine_query": "NOT_ESTABLISHED",
-        "geometry": "NOT_CLAIMED",
+        "geometry": "STATION_DETAIL_ADAPTER",
         "reading_fields": ["rainfall", "timestamp", "warning_status"],
         "evidence_state": "SOURCE_CONTEXT",
+        "adapter": "urbion_jps_adapter.fetch_jps_station_geometry",
+        "boundary": "Station identity/coordinates may be normalized; live rainfall reading remains SOURCE_CONTEXT until machine-query verification is established.",
     },
     "water_level": {
         "provider": "JPS Public Infobanjir",
@@ -57,6 +59,8 @@ STATION_SOURCE_CONTRACT: dict[str, dict[str, Any]] = {
         "geometry": "FEATURE_QUERY",
         "reading_fields": [],
         "evidence_state": "SOURCE_CONTEXT",
+        "adapter": "urbion_mygems_adapter.query_mygems_lithology",
+        "boundary": "Lithology features are source context only; no statutory certification is implied.",
     },
 }
 
