@@ -10,8 +10,19 @@ import httpx
 
 BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8765").rstrip("/")
 UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
-WMTS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts"
-TMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/tms/1.0.0"
+WMTS_UPSTREAMS = (
+    "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts",
+    "https://iplan.planmalaysia.gov.my/geoserver/service/wmts",
+)
+TMS_UPSTREAMS = (
+    "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/tms/1.0.0",
+    "https://iplan.planmalaysia.gov.my/geoserver/service/tms/1.0.0",
+)
+ROOT_WMS_UPSTREAMS = (
+    "https://iplan.planmalaysia.gov.my/geoserver/service/wms",
+    "https://iplan.planmalaysia.gov.my/geoserver/wms",
+    "https://iplan.planmalaysia.gov.my/geoserver/ows",
+)
 DIRECT_WMS = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 GWC_GRIDSET_ORIGIN = "-20037508.342789244,-20037508.342789244"
 LAYERS = [
@@ -104,10 +115,10 @@ def wmts_params(layer: str, zoom: int, x: int, y: int, matrix: str) -> dict[str,
     }
 
 
-def tms_url(layer: str, zoom: int, x: int, y_xyz: int) -> str:
+def tms_urls(layer: str, zoom: int, x: int, y_xyz: int):
     y_tms = (2**zoom - 1) - y_xyz
     encoded_layer = quote(layer, safe=":")
-    return f"{TMS_UPSTREAM}/{encoded_layer}@EPSG:900913@png/{zoom}/{x}/{y_tms}.png"
+    return tuple(f"{base}/{encoded_layer}@EPSG:900913@png/{zoom}/{x}/{y_tms}.png" for base in TMS_UPSTREAMS)
 
 
 def main() -> None:
@@ -131,19 +142,27 @@ def main() -> None:
             if not ok:
                 if layer in TMS_FALLBACK_LAYERS:
                     wmts_ok = False
-                    for matrix in ("EPSG:900913:13", "13"):
-                        w_status, w_ct, w_size, w_elapsed, w_detail = probe(client, WMTS_UPSTREAM, wmts_params(layer, 13, tile_x, tile_y, matrix))
-                        w_ok = w_status == 200 and w_ct.lower().startswith("image/") and w_size > 100
-                        print(f"GWC WMTS FALLBACK {'PASS' if w_ok else 'FAIL'} · {layer} · matrix={matrix} · HTTP={w_status} · CT={w_ct or '-'} · bytes={w_size} · {w_elapsed:.2f}s · {w_detail}")
-                        if w_ok:
-                            wmts_ok = True
+                    for wmts_url in WMTS_UPSTREAMS:
+                        for matrix in ("EPSG:900913:13", "13"):
+                            w_status, w_ct, w_size, w_elapsed, w_detail = probe(client, wmts_url, wmts_params(layer, 13, tile_x, tile_y, matrix))
+                            w_ok = w_status == 200 and w_ct.lower().startswith("image/") and w_size > 100
+                            print(f"GWC WMTS FALLBACK {'PASS' if w_ok else 'FAIL'} · {layer} · upstream={wmts_url} · matrix={matrix} · HTTP={w_status} · CT={w_ct or '-'} · bytes={w_size} · {w_elapsed:.2f}s · {w_detail}")
+                            if w_ok:
+                                wmts_ok = True
+                                break
+                        if wmts_ok:
                             break
                     if wmts_ok:
                         continue
                 if layer in TMS_FALLBACK_LAYERS:
-                    t_status, t_ct, t_size, t_elapsed, t_detail = probe(client, tms_url(layer, 13, tile_x, tile_y), {})
-                    t_ok = t_status == 200 and t_ct.lower().startswith("image/") and t_size > 100
-                    print(f"GWC TMS FALLBACK {'PASS' if t_ok else 'FAIL'} · {layer} · HTTP={t_status} · CT={t_ct or '-'} · bytes={t_size} · {t_elapsed:.2f}s · {t_detail}")
+                    t_ok = False
+                    for t_url in tms_urls(layer, 13, tile_x, tile_y):
+                        t_status, t_ct, t_size, t_elapsed, t_detail = probe(client, t_url, {})
+                        one_ok = t_status == 200 and t_ct.lower().startswith("image/") and t_size > 100
+                        print(f"GWC TMS FALLBACK {'PASS' if one_ok else 'FAIL'} · {layer} · upstream={t_url} · HTTP={t_status} · CT={t_ct or '-'} · bytes={t_size} · {t_elapsed:.2f}s · {t_detail}")
+                        if one_ok:
+                            t_ok = True
+                            break
                     if t_ok:
                         continue
                 if layer in TMS_FALLBACK_LAYERS:
@@ -160,6 +179,17 @@ def main() -> None:
                     print(f"ARCGIS FALLBACK {'PASS' if f_ok else 'FAIL'} · {layer} · HTTP={f_status} · CT={f_ct or '-'} · bytes={f_size} · {f_elapsed:.2f}s · {f_detail}")
                     if f_ok:
                         continue
+                root_ok = False
+                for root_url in ROOT_WMS_UPSTREAMS:
+                    r_status, r_ct, r_size, r_elapsed, r_detail = probe(client, root_url, untiled_wms_params(base, layer))
+                    one_ok = r_status == 200 and r_ct.lower().startswith("image/") and r_size > 100
+                    print(f"ROOT WMS FALLBACK {'PASS' if one_ok else 'FAIL'} · {layer} · upstream={root_url} · HTTP={r_status} · CT={r_ct or '-'} · bytes={r_size} · {r_elapsed:.2f}s · {r_detail}")
+                    if one_ok:
+                        root_ok = True
+                        break
+                if root_ok:
+                    continue
+
                 u_status, u_ct, u_size, u_elapsed, u_detail = probe(client, UPSTREAM, untiled_wms_params(base, layer))
                 u_ok = u_status == 200 and u_ct.lower().startswith("image/") and u_size > 100
                 print(f"UNTILED WMS FALLBACK {'PASS' if u_ok else 'FAIL'} · {layer} · HTTP={u_status} · CT={u_ct or '-'} · bytes={u_size} · {u_elapsed:.2f}s · {u_detail}")
