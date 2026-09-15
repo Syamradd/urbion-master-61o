@@ -74,6 +74,20 @@ def _response_layer_id(url: str, catalog_by_id: dict[str, dict]) -> str | None:
     return None
 
 
+def wait_for_layer_dom(page, layer_id: str, timeout=12.0):
+    """Wait for the canonical checkbox and state node for this layer as a pair.
+
+    The layer manager hydrates/replaces groups asynchronously; a global count of 25
+    can be true briefly while one individual node is still being replaced.
+    """
+    def ready():
+        checkbox_count = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']").count()
+        state_count = page.locator(f"#layerList [data-layer-state='{layer_id}']").count()
+        return checkbox_count == 1 and state_count == 1
+
+    return wait_until(ready, timeout=timeout)
+
+
 def main():
     assert len(EXPECTED_UI_LAYER_IDS) == 25
     assert len(EXPECTED_API_CORE_IDS) == 24
@@ -108,8 +122,7 @@ def main():
         assert ids == EXPECTED_UI_LAYER_IDS, f"curated UI layer mismatch: missing={EXPECTED_UI_LAYER_IDS-ids}, unexpected={ids-EXPECTED_UI_LAYER_IDS}"
         assert page.locator("#layerList [data-urbion-layer]").count() == 25
         for lid in EXPECTED_UI_LAYER_IDS:
-            assert page.locator(f"#layerList input[data-urbion-layer='{lid}']").count() == 1
-            assert page.locator(f"#layerList [data-layer-state='{lid}']").count() == 1
+            wait_for_layer_dom(page, lid)
 
         failures = []
         responses_by_layer = defaultdict(list)
@@ -129,6 +142,7 @@ def main():
         layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)") if x]
         for lid in layer_ids:
             expand_layer_group(page, lid)
+            wait_for_layer_dom(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             if cb.count() != 1:
                 failures.append(f"{lid}: canonical layer checkbox not found")
@@ -136,6 +150,7 @@ def main():
             cb.check(force=True)
             page.wait_for_timeout(250)
             try:
+                wait_for_layer_dom(page, lid)
                 wait_until(lambda: page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=35.0)
                 state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
                 if state_text != "ON · RENDERED":
