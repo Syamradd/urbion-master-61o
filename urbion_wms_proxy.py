@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import math
 from urllib.parse import quote, urlsplit
 
@@ -264,12 +265,13 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         if len(bbox) != 4: return None
     except (TypeError, ValueError): return None
     query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
+    envelope = {"xmin": bbox[0], "ymin": bbox[1], "xmax": bbox[2], "ymax": bbox[3], "spatialReference": {"wkid": 3857}}
     common = {
         "where": "1=1", "outFields": "OBJECTID,Line_code,Type,Name", "returnGeometry": "true",
         "outSR": "3857", "geometryType": "esriGeometryEnvelope", "inSR": "3857",
-        "spatialRel": "esriSpatialRelIntersects", "geometry": bbox_raw, "f": "json",
+        "spatialRel": "esriSpatialRelIntersects", "geometry": json.dumps(envelope, separators=(",", ":")), "f": "json",
     }
-    query = {**common, "resultRecordCount": "500", "resultType": "tile", "returnExceededLimitFeatures": "true"}
+    query = {**common, "resultRecordCount": "500", "returnExceededLimitFeatures": "true"}
     try: upstream = await _client_get(query_url, query)
     except (httpx.HTTPError, asyncio.TimeoutError): return None
     if upstream.status_code != 200: return None
@@ -280,7 +282,7 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
     if isinstance(payload, dict) and payload.get("error"): return None
     svg = _svg_from_arcgis_features(payload, bbox)
     if not svg:
-        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
+        return None
     return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"})
 
 
