@@ -1,5 +1,7 @@
 name: URBION One-Time GIS Repair
 on:
+  push:
+    branches: [feature/canonical-workspace-v2]
   workflow_dispatch:
 jobs:
   repair:
