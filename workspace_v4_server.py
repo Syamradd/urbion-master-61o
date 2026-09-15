@@ -3,8 +3,8 @@
 Render keeps the historical module-level start command for this service, but the
 actual application is the single canonical public wrapper in ``landing_server``.
 This module intentionally contains no second FastAPI app, planning engine, or
-frontend owner. It exposes the canonical About raster asset and normalises
-legacy UI Yes/No values before they reach the strict planning API.
+frontend owner. It only exposes the canonical About raster asset required by the
+existing About HTML and normalizes a legacy UI payload shape before assessment.
 """
 
 import json
@@ -19,43 +19,51 @@ _BASE_DIR = Path(__file__).resolve().parent
 _ABOUT_MASTER = _BASE_DIR / "about_master.png"
 
 
-@app.middleware("http")
-async def normalise_legacy_analysis_inputs(request: Request, call_next):
-    """Keep the canonical /assess contract numeric while tolerating old UI values.
+_LEGACY_BOOLEAN_FIELDS = {
+    "perimeter_planting",
+    "landscaped_pedestrian_walkway",
+}
 
-    Some production workspace controls can still submit ``Yes``/``No`` strings
-    for optional numeric planning inputs. Those values mean that the field was
-    presented/affirmed, not that a numeric dimension is known. Preserve that
-    distinction by converting such legacy values to ``None`` so the analysis can
-    run and the rule engine can honestly surface the missing metric as review.
+
+def _normalise_legacy_inputs(payload: object) -> object:
+    """Convert legacy Yes/No/blank values to nullable numeric assessment inputs.
+
+    The current assessment contract expects metres as numbers. Older workspace
+    controls could emit Yes/No strings for these controls, which must not block
+    the canonical analysis path. Unknown values are preserved so the canonical
+    validation layer can still report them honestly.
     """
-    if request.method == "POST" and request.url.path == "/assess":
-        content_type = (request.headers.get("content-type") or "").lower()
-        if "application/json" in content_type:
-            body = await request.body()
+    if not isinstance(payload, dict):
+        return payload
+    out = dict(payload)
+    for key in _LEGACY_BOOLEAN_FIELDS:
+        if key not in out:
+            continue
+        value = out[key]
+        if isinstance(value, str):
+            token = value.strip().lower()
+            if token in {"", "yes", "no", "n/a", "na", "not verified", "unverified"}:
+                out[key] = None
+            else:
+                try:
+                    out[key] = float(token)
+                except ValueError:
+                    pass
+    return out
+
+
+@app.middleware("http")
+async def _normalise_legacy_analysis_payload(request: Request, call_next):
+    if request.method == "POST" and request.url.path in {"/assess", "/workstation/analysis"}:
+        raw = await request.body()
+        if raw:
             try:
-                payload = json.loads(body.decode("utf-8"))
-                if isinstance(payload, dict):
-                    for key in ("perimeter_planting", "landscaped_pedestrian_walkway"):
-                        value = payload.get(key)
-                        if isinstance(value, str):
-                            token = value.strip().lower()
-                            if token in {"yes", "no", "n/a", "na", "not provided", "not verified", ""}:
-                                payload[key] = None
-                            else:
-                                try:
-                                    payload[key] = float(value)
-                                except (TypeError, ValueError):
-                                    pass
-                    body = json.dumps(payload).encode("utf-8")
+                payload = json.loads(raw.decode("utf-8"))
+                normalised = _normalise_legacy_inputs(payload)
+                if normalised != payload:
+                    request._body = json.dumps(normalised, separators=(",", ":")).encode("utf-8")
             except (UnicodeDecodeError, json.JSONDecodeError):
                 pass
-
-            async def receive():
-                return {"type": "http.request", "body": body, "more_body": False}
-
-            request = Request(request.scope, receive)
-
     return await call_next(request)
 
 
