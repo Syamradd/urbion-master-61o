@@ -13,6 +13,7 @@ import math
 import os
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Any
 
@@ -50,28 +51,44 @@ def _clean(value: Any) -> str | None:
     return text or None
 
 
-def _request(query: str, timeout: float = 10.0) -> dict[str, Any]:
-    urls = []
+def _overpass_urls() -> list[str]:
+    urls: list[str] = []
     for url in (OVERPASS_URL, *OVERPASS_FALLBACKS):
         if url and url not in urls:
             urls.append(url)
-    last: Exception | None = None
+    return urls
+
+
+def _request_one(url: str, query: str, timeout: float) -> dict[str, Any]:
     body = urllib.parse.urlencode({"data": query}).encode("utf-8")
-    for url in urls:
-        try:
-            req = urllib.request.Request(
-                url,
-                data=body,
-                headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "URBION-HORIZON/1.0"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=timeout) as response:
-                payload = json.loads(response.read().decode("utf-8", errors="replace"))
-                if isinstance(payload, dict):
-                    return payload
-                raise RuntimeError("Overpass returned a non-object payload")
-        except Exception as exc:
-            last = exc
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "URBION-HORIZON/1.0"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8", errors="replace"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Overpass returned a non-object payload")
+    return payload
+
+
+def _request(query: str, timeout: float = 8.0) -> dict[str, Any]:
+    """Race configured Overpass endpoints so one slow mirror cannot block the UI."""
+    urls = _overpass_urls()
+    if not urls:
+        raise RuntimeError("No Overpass endpoint is configured")
+    last: Exception | None = None
+    with ThreadPoolExecutor(max_workers=min(3, len(urls))) as pool:
+        futures = {pool.submit(_request_one, url, query, timeout): url for url in urls[:3]}
+        for future in as_completed(futures):
+            try:
+                return future.result()
+            except Exception as exc:
+                last = exc
+        for future in futures:
+            future.cancel()
     raise RuntimeError(f"All Overpass endpoints unavailable: {last}")
 
 
@@ -85,20 +102,27 @@ def _valid_point(lat: Any, lon: Any) -> bool:
 
 def _road_query(lat: float, lon: float) -> str:
     classes = "|".join(key for key, _, _ in ROAD_CLASSES)
-    return f'''[out:json][timeout:15];way(around:{ROAD_RADIUS_M},{lat},{lon})["highway"~"^({classes})$"];out tags center;'''
+    return f'''[out:json][timeout:8];way(around:{ROAD_RADIUS_M},{lat},{lon})["highway"~"^({classes})$"];out tags center;'''
 
 
 def _centre_query(lat: float, lon: float) -> str:
-    return f'''[out:json][timeout:20];node(around:{CENTRE_RADIUS_M},{lat},{lon})["place"~"^(city|town|municipality)$"];out tags;'''
+    return f'''[out:json][timeout:8];node(around:{CENTRE_RADIUS_M},{lat},{lon})["place"~"^(city|town|municipality)$"];out tags;'''
 
 
 def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, Any]:
     """Discover source-backed OSM road hierarchy tags and nearby urban centres."""
-    if not (_valid_point(site_lat, site_lon)):
+    if not _valid_point(site_lat, site_lon):
         raise ValueError("Site coordinates must be finite numeric values")
     site_lat, site_lon = float(site_lat), float(site_lon)
     queried_at = datetime.now(timezone.utc).isoformat()
-    road_data = _request(_road_query(site_lat, site_lon), timeout=15.0)
+
+    road_error: str | None = None
+    try:
+        road_data = _request(_road_query(site_lat, site_lon), timeout=8.0)
+    except Exception as exc:
+        road_data = {"elements": []}
+        road_error = str(exc)
+
     roads = []
     for element in road_data.get("elements") or []:
         tags = element.get("tags") or {}
@@ -136,7 +160,18 @@ def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, An
             break
 
     centres: list[dict[str, Any]] = []
-    centre_data = _request(_centre_query(site_lat, site_lon), timeout=20.0)
+    centre_error: str | None = None
+    if unique_roads:
+        try:
+            centre_data = _request(_centre_query(site_lat, site_lon), timeout=8.0)
+        except Exception as exc:
+            centre_data = {"elements": []}
+            centre_error = str(exc)
+    else:
+        centre_data = {"elements": []}
+        if road_error:
+            centre_error = "Centre query skipped because no live road endpoint responded."
+
     seen_centres: set[tuple[str, str]] = set()
     for element in centre_data.get("elements") or []:
         tags = element.get("tags") or {}
@@ -182,8 +217,10 @@ def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, An
             "evidence_status": "SOURCE_CONTEXT",
         })
 
+    status = "LIVE" if unique_roads or centres else "NO_FEATURE"
+    errors = [x for x in (road_error, centre_error) if x]
     return {
-        "status": "LIVE" if unique_roads or centres else "NO_FEATURE",
+        "status": status,
         "source": "OpenStreetMap via Overpass API",
         "queried_at_utc": queried_at,
         "site": {"latitude": site_lat, "longitude": site_lon},
@@ -195,4 +232,6 @@ def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, An
         "centre_proximity": centres,
         "statutory_verification": "NOT_CLAIMED",
         "evidence_boundary": "OSM road tags and place proximity are source context; Malaysian statutory road hierarchy and accessibility thresholds require authoritative verification.",
+        "error_type": "OVERPASS_UNAVAILABLE" if errors and not unique_roads else None,
+        "error": "; ".join(errors) if errors else None,
     }
