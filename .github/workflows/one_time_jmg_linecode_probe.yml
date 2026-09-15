@@ -35,7 +35,9 @@ jobs:
                       print(f'code={code}: HTTP={r.status_code} CT={r.headers.get("content-type","")} bytes={len(r.content)} elapsed={time.perf_counter()-t:.2f}s')
                       print(r.text[:1200].replace('\\n',' ').replace('\\r',' '))
                   except Exception as e: print(f'code={code}: ERROR={type(e).__name__} elapsed={time.perf_counter()-t:.2f}s detail={e}')
-          asyncio.run(asyncio.gather(*(one(c) for c in codes)))
+          async def main():
+              await asyncio.gather(*(one(c) for c in codes))
+          asyncio.run(main())
           PY
       - name: Remove linecode probe
         shell: bash
