@@ -152,6 +152,14 @@ async def _response_json(response: Response) -> tuple[bytes, object]:
         return b"", None
 
 
+def _clean_rebuilt_headers(response: Response) -> dict[str, str]:
+    """Drop transport/body headers because the original body iterator was consumed."""
+    return {
+        k: v for k, v in dict(response.headers).items()
+        if k.lower() not in {"content-length", "content-type", "transfer-encoding"}
+    }
+
+
 def _canonical_downstream_error(request: Request, exc: Exception) -> JSONResponse:
     path = request.url.path
     if isinstance(exc, RequestValidationError):
@@ -183,14 +191,11 @@ def _canonical_downstream_error(request: Request, exc: Exception) -> JSONRespons
 
 
 def _canonical_response_error(request: Request, response: Response, body: bytes, payload: object) -> Response:
-    """Normalize downstream HTTP error responses, not only raised exceptions."""
+    """Normalize downstream HTTP error responses without reusing stale body headers."""
     if response.status_code < 400:
         return response
     if isinstance(payload, dict) and payload.get("error") is True and payload.get("version") == "URBION_ERROR_V1":
-        return JSONResponse(payload, status_code=response.status_code, headers={
-            k: v for k, v in dict(response.headers).items()
-            if k.lower() not in {"content-length", "content-type"}
-        })
+        return JSONResponse(payload, status_code=response.status_code, headers=_clean_rebuilt_headers(response))
     if isinstance(payload, dict):
         detail = payload.get("detail")
         if isinstance(detail, dict):
@@ -206,7 +211,7 @@ def _canonical_response_error(request: Request, response: Response, body: bytes,
             status_code=response.status_code,
         )
     return Response(content=body, status_code=response.status_code,
-                    headers=dict(response.headers), media_type=response.media_type)
+                    headers=_clean_rebuilt_headers(response), media_type=response.media_type)
 
 
 @app.middleware("http")
@@ -289,10 +294,11 @@ async def _urbion_canonical_presentation(request: Request, call_next):
     if path in {"/assess", "/workstation/analysis"} and request.method == "POST":
         body, payload = await _response_json(response)
         if not isinstance(payload, dict):
-            return Response(content=body, status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
+            return Response(content=body, status_code=response.status_code, headers=_clean_rebuilt_headers(response), media_type=response.media_type)
         payload = _attach_packet(payload, path)
         headers = dict(response.headers)
         headers.pop("content-length", None)
         headers.pop("content-type", None)
+        headers.pop("transfer-encoding", None)
         return JSONResponse(payload, status_code=response.status_code, headers=headers)
     return response
