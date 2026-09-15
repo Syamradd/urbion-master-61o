@@ -4,11 +4,13 @@ from __future__ import annotations
 import math
 import os
 import time
+from urllib.parse import quote
 
 import httpx
 
 BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8765").rstrip("/")
 UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
+TMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/tms/1.0.0"
 DIRECT_WMS = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 LAYERS = [
     "iplan:gunatanah_semasa_04", "iplan:gunatanah_zoning_04", "iplan:gunatanah_komited_04",
@@ -26,6 +28,10 @@ ARCGIS_FALLBACKS = {
 }
 DIRECT_WMS_FALLBACKS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:banjir", "iplan:warisan",
+    "iplan:rumah_mampu_milik", "iplan:topo",
+}
+TMS_FALLBACK_LAYERS = {
+    "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:warisan",
     "iplan:rumah_mampu_milik", "iplan:topo",
 }
 WORLD = 20037508.342789244
@@ -79,6 +85,13 @@ def direct_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
     return untiled_wms_params(base, layer)
 
 
+def tms_url(layer: str, zoom: int, x: int, y_xyz: int) -> str:
+    # GeoWebCache TMS uses a bottom-origin y index.
+    y_tms = (2**zoom - 1) - y_xyz
+    encoded_layer = quote(layer, safe=":")
+    return f"{TMS_UPSTREAM}/{encoded_layer}@EPSG:900913@png/{zoom}/{x}/{y_tms}.png"
+
+
 def main() -> None:
     bbox, tile_x, tile_y = tile_bbox(102.196, 2.285, 13)
     base = {
@@ -88,7 +101,7 @@ def main() -> None:
     }
     failures: list[str] = []
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=10.0), follow_redirects=True, headers={
-        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.8",
+        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.9",
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
         "Accept": "image/png,image/*,*/*;q=0.8", "Accept-Encoding": "identity", "Connection": "close",
     }) as client:
@@ -98,6 +111,12 @@ def main() -> None:
             ok = status == 200 and ct.lower().startswith("image/") and size > 100
             print(f"GWC {'PASS' if ok else 'FAIL'} · {layer} · HTTP={status} · CT={ct or '-'} · bytes={size} · {elapsed:.2f}s · {detail}")
             if not ok:
+                if layer in TMS_FALLBACK_LAYERS:
+                    t_status, t_ct, t_size, t_elapsed, t_detail = probe(client, tms_url(layer, 13, tile_x, tile_y), {})
+                    t_ok = t_status == 200 and t_ct.lower().startswith("image/") and t_size > 100
+                    print(f"GWC TMS FALLBACK {'PASS' if t_ok else 'FAIL'} · {layer} · HTTP={t_status} · CT={t_ct or '-'} · bytes={t_size} · {t_elapsed:.2f}s · {t_detail}")
+                    if t_ok:
+                        continue
                 fallback = ARCGIS_FALLBACKS.get(layer)
                 if fallback:
                     fallback_url, layer_id = fallback
