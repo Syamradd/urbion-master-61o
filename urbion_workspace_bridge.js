@@ -7,10 +7,17 @@
   window.__URBION_WORKSPACE_BRIDGE_V2__=true;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   let canonicalLast=null;
+  let canonicalAnalysisError=null;
   const publish=data=>{
     if(!data||typeof data!=='object')return;
     canonicalLast=data;
+    canonicalAnalysisError=null;
     try{window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:data.__http_status||200,data}}));}catch(_){ }
+  };
+  const publishError=(error,status=0)=>{
+    const message=String(error?.message||error||'Analysis request failed');
+    canonicalAnalysisError={message,status:Number(status||0)};
+    try{window.dispatchEvent(new CustomEvent('urbion-analysis-error',{detail:canonicalAnalysisError}));}catch(_){ }
   };
   const captureResponse=async(response,statusHint=0)=>{
     try{
@@ -26,15 +33,18 @@
       if(status>=200&&status<300&&data&&typeof data==='object'){
         try{Object.defineProperty(data,'__http_status',{value:status,enumerable:false});}catch(_){data.__http_status=status;}
         publish(data);
+      }else if(status>=400){
+        const detail=data?.detail?.message||data?.detail?.code||data?.message||data?.detail||data?.__analysis_error_text||`HTTP ${status}`;
+        publishError(String(detail),status);
       }
-    }catch(_){ }
+    }catch(error){publishError(error,statusHint);}
   };
   const originalFetch=window.fetch?.bind(window);
   if(originalFetch){
     window.fetch=(input,init)=>{
       const url=typeof input==='string'?input:(input?.url||'');
       const promise=originalFetch(input,init);
-      if(String(url).includes('/workstation/analysis'))promise.then(r=>captureResponse(r)).catch(()=>{});
+      if(String(url).includes('/workstation/analysis'))promise.then(r=>captureResponse(r)).catch(error=>publishError(error));
       return promise;
     };
   }
@@ -54,13 +64,18 @@
             let data=null;
             try{data=JSON.parse(xhr.responseText||'{}');}catch(_){data={__analysis_error_text:String(xhr.responseText||'').slice(0,1000)};}
             if(data&&typeof data==='object'){try{Object.defineProperty(data,'__http_status',{value:xhr.status,enumerable:false});}catch(_){data.__http_status=xhr.status;}publish(data);}
-          }
+          }else if(xhr.status>=400){publishError(xhr.responseText||`HTTP ${xhr.status}`,xhr.status);}
         };
+        const onError=()=>publishError('XMLHttpRequest network error',xhr.status||0);
+        const onAbort=()=>publishError('XMLHttpRequest aborted',xhr.status||0);
         xhr.addEventListener('load',onLoad,{once:true});
+        xhr.addEventListener('error',onError,{once:true});
+        xhr.addEventListener('abort',onAbort,{once:true});
       }
       return originalSend.apply(this,arguments);
     };
   }
+  async function waitFor(pred,tries=180,delay=100){for(let i=0;i<tries;i++){try{if(pred())return true}catch(_){}await sleep(delay)}return false}
   async function waitForCore(){
     for(let i=0;i<160;i++){
       if(typeof taxonomy!=='undefined' && typeof runAnalysis==='function' && typeof whatIfModal==='function' && typeof decisionModal==='function' && typeof outputModal==='function' && typeof loadLayers==='function'){
@@ -69,19 +84,26 @@
             configurable:true,
             enumerable:true,
             get:()=>canonicalLast ?? (typeof lastResult!=='undefined'?lastResult:null),
-            set:value=>{canonicalLast=value;}
+            set:value=>{canonicalLast=value;canonicalAnalysisError=null;}
           });
         }catch(_){ window.URBION_LAST=canonicalLast; }
         const canonicalAnalyse=async()=>{
           canonicalLast=null;
+          canonicalAnalysisError=null;
           try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }
-          await runAnalysis();
+          try{
+            await runAnalysis();
+          }catch(error){
+            publishError(error);
+            throw error;
+          }
           if(typeof lastResult!=='undefined' && lastResult)window.URBION_LAST=lastResult;
           if(!window.URBION_LAST){
-            await waitFor(()=>!!canonicalLast,180,100);
+            await waitFor(()=>!!canonicalLast||!!canonicalAnalysisError,180,100);
           }
-          if(!window.URBION_LAST)throw Error('Analysis response was not captured by canonical bridge');
-          return window.URBION_LAST;
+          if(window.URBION_LAST)return window.URBION_LAST;
+          if(canonicalAnalysisError)throw Error(`Canonical analysis failed${canonicalAnalysisError.status?` (HTTP ${canonicalAnalysisError.status})`:''}: ${canonicalAnalysisError.message}`);
+          throw Error('Analysis response was not captured by canonical bridge');
         };
         window.URBION_FINAL={
           GT:taxonomy,
