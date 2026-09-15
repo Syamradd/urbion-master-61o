@@ -11,6 +11,7 @@ from fastapi.responses import Response, StreamingResponse
 
 router = APIRouter()
 WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
+WMTS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts"
 ROOT_WMS_UPSTREAMS = (
     "https://iplan.planmalaysia.gov.my/geoserver/wms",
     "https://iplan.planmalaysia.gov.my/geoserver/ows",
@@ -24,8 +25,7 @@ TMS_FALLBACK_LAYERS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:warisan",
     "iplan:rumah_mampu_milik", "iplan:topo",
 }
-GWC_GRIDSET_FALLBACK_LAYERS = set(TMS_FALLBACK_LAYERS)
-GWC_GRIDSET_ORIGIN = "-20037508.342789244,-20037508.342789244"
+WMTS_FALLBACK_LAYERS = set(TMS_FALLBACK_LAYERS)
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/"),
     ("mygems.jmg.gov.my", "/server/rest/services/"),
@@ -108,18 +108,13 @@ def _arcgis_fallback_params(params: dict[str, str], layer_id: int) -> dict[str, 
 
 async def _arcgis_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
     target = WMS_ARCGIS_FALLBACKS.get(layer)
-    if not target:
-        return None
+    if not target: return None
     service_url, layer_id = target
-    try:
-        upstream = await _client_get(service_url + "/export", _arcgis_fallback_params(params, layer_id))
-    except (httpx.HTTPError, asyncio.TimeoutError):
-        return None
-    if upstream.status_code != 200:
-        return None
+    try: upstream = await _client_get(service_url + "/export", _arcgis_fallback_params(params, layer_id))
+    except (httpx.HTTPError, asyncio.TimeoutError): return None
+    if upstream.status_code != 200: return None
     content_type = upstream.headers.get("content-type", "image/png")
-    if not content_type.lower().startswith("image/"):
-        return None
+    if not content_type.lower().startswith("image/"): return None
     return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-ArcGIS"})
 
 
@@ -167,47 +162,41 @@ async def _root_wms_fallback(layer: str, params: dict[str, str]) -> Response | N
     return None
 
 
-async def _tms_cached_fallback(layer: str, params: dict[str, str]) -> Response | None:
-    if layer not in TMS_FALLBACK_LAYERS: return None
+def _wmts_xyz(params: dict[str, str]) -> tuple[int, int, int] | None:
     bbox_raw = str(params.get("bbox", ""))
     try:
         xmin, ymin, xmax, ymax = (float(v) for v in bbox_raw.split(",")); width = int(params.get("width", "256")); height = int(params.get("height", "256"))
     except (TypeError, ValueError): return None
     if width != 256 or height != 256 or xmax <= xmin or ymax <= ymin: return None
-    world = 20037508.342789244; span = xmax - xmin; resolution = span / 256.0
+    world = 20037508.342789244; resolution = (xmax - xmin) / 256.0
     if resolution <= 0: return None
     z_float = math.log2((world * 2.0) / (256.0 * resolution)); z = int(round(z_float))
     if z < 0 or z > 20 or abs(z_float - z) > 0.02: return None
-    tile_span = (world * 2.0) / (2 ** z); x = int(math.floor((xmin + world) / tile_span + 1e-9)); y_xyz = int(math.floor((world - ymax) / tile_span + 1e-9)); y_tms = (2 ** z - 1) - y_xyz
-    layer_path = quote(layer, safe=":") + "@EPSG:900913@png"
-    for service in TMS_UPSTREAMS:
-        url = f"{service}/{layer_path}/{z}/{x}/{y_tms}.png"
-        try: upstream = await _client_get(url, {})
+    tile_span = (world * 2.0) / (2 ** z)
+    x = int(math.floor((xmin + world) / tile_span + 1e-9))
+    y = int(math.floor((world - ymax) / tile_span + 1e-9))
+    return z, x, y
+
+
+async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    if layer not in WMTS_FALLBACK_LAYERS: return None
+    xyz = _wmts_xyz(params)
+    if xyz is None: return None
+    z, x, y = xyz
+    variants = (f"EPSG:900913:{z}", str(z))
+    for matrix in variants:
+        query = {
+            "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0", "LAYER": layer,
+            "STYLE": "", "FORMAT": "image/png", "TILEMATRIXSET": "EPSG:900913",
+            "TILEMATRIX": matrix, "TILEROW": str(y), "TILECOL": str(x),
+        }
+        try: upstream = await _client_get(WMTS_UPSTREAM, query)
         except (httpx.HTTPError, asyncio.TimeoutError): continue
         if upstream.status_code != 200: continue
         content_type = upstream.headers.get("content-type", "")
         if not content_type.lower().startswith("image/"): continue
-        return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-TMS"})
+        return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-WMTS"})
     return None
-
-
-async def _gwc_gridset_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
-    if layer not in GWC_GRIDSET_FALLBACK_LAYERS:
-        return None
-    grid_params = dict(params)
-    grid_params.pop("gridSet", None)
-    grid_params["tiled"] = "true"
-    grid_params["tilesorigin"] = GWC_GRIDSET_ORIGIN
-    try:
-        upstream = await _client_get(WMS_UPSTREAM, grid_params)
-    except (httpx.HTTPError, asyncio.TimeoutError):
-        return None
-    if upstream.status_code != 200:
-        return None
-    content_type = upstream.headers.get("content-type", "")
-    if not content_type.lower().startswith("image/"):
-        return None
-    return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-EPSG900913"})
 
 
 def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, float], width: int = 256, height: int = 256) -> str | None:
@@ -252,21 +241,14 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         "spatialRel": "esriSpatialRelIntersects", "geometry": bbox_raw, "f": "json",
     }
     query = {**common, "resultRecordCount": "500", "resultType": "tile", "returnExceededLimitFeatures": "true"}
-    try:
-        upstream = await _client_get(query_url, query)
-    except (httpx.HTTPError, asyncio.TimeoutError):
-        return None
-    if upstream.status_code != 200:
-        return None
+    try: upstream = await _client_get(query_url, query)
+    except (httpx.HTTPError, asyncio.TimeoutError): return None
+    if upstream.status_code != 200: return None
     content_type = upstream.headers.get("content-type", "")
-    if "json" not in content_type.lower():
-        return None
-    try:
-        payload = upstream.json()
-    except ValueError:
-        return None
-    if isinstance(payload, dict) and payload.get("error"):
-        return None
+    if "json" not in content_type.lower(): return None
+    try: payload = upstream.json()
+    except ValueError: return None
+    if isinstance(payload, dict) and payload.get("error"): return None
     svg = _svg_from_arcgis_features(payload, bbox)
     if not svg:
         svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
@@ -288,11 +270,9 @@ async def map_wms_proxy(request: Request) -> Response:
         content_type = upstream.headers.get("content-type", "")
         if upstream.status_code == 200 and content_type.lower().startswith("image/"):
             return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
-    fallback = await _gwc_gridset_wms_fallback(layers, params)
+    fallback = await _wmts_kvp_fallback(layers, params)
     if fallback is not None: return fallback
     fallback = await _arcgis_wms_fallback(layers, params)
-    if fallback is not None: return fallback
-    fallback = await _tms_cached_fallback(layers, params)
     if fallback is not None: return fallback
     fallback = await _root_wms_fallback(layers, params)
     if fallback is not None: return fallback
