@@ -75,7 +75,7 @@ HEADERS = {
 _LIMITS = httpx.Limits(max_connections=8, max_keepalive_connections=4)
 _JMG_LIMITS = httpx.Limits(max_connections=4, max_keepalive_connections=0)
 _TIMEOUT = httpx.Timeout(connect=6.0, read=12.0, write=6.0, pool=6.0)
-_JMG_TIMEOUT = httpx.Timeout(connect=4.0, read=6.0, write=4.0, pool=4.0)
+_JMG_TIMEOUT = httpx.Timeout(connect=4.0, read=15.0, write=4.0, pool=4.0)
 _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEADERS, limits=_LIMITS)
 _JMG_CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_JMG_TIMEOUT, headers=HEADERS, limits=_JMG_LIMITS)
 _UPSTREAM_SEMAPHORE = asyncio.Semaphore(6)
