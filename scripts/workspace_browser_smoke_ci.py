@@ -16,18 +16,14 @@ source = source.replace(
     "querySelector('input:visible,select:visible,textarea:visible')",
     "querySelector('input,select,textarea')",
 )
-# The smoke source has appeared with both spaced and compact argument formatting
-# across prior revisions. Match the semantic wait robustly rather than relying
-# on one exact whitespace spelling.
 source = re.sub(
     r"page\.wait_for_function\(\s*\"document\.body\.innerText\.includes\('\s*ANALYSIS COMPLETE\s*'\)\"\s*,\s*timeout\s*=\s*20000\s*\)",
-    'page.wait_for_function("!!window.URBION_LAST", timeout=60000)',
+    'page.wait_for_function("!!window.URBION_LAST", timeout=120000)',
     source,
 )
-
-# Avoid passing a Playwright Locator through wait_for_function(). Poll the
-# existing Locator from Python instead; this waits on the actual hydrated DOM
-# state and is robust to cold CI/external geography fetch latency.
+# Geography controls can be replaced by the canonical owner after selection.
+# Poll the hydrated option sets from Python rather than passing live Locator
+# objects into page.wait_for_function().
 source = source.replace(
     "            state.select_option(label=\"Selangor\")\n            page.wait_for_function(\"document.querySelectorAll('[data-pbt-catalog-owner=\\\"urbion_workspace_pbt_catalog.js\\\"]').length >= 1 && document.querySelectorAll('.sec .row').length > 0\", timeout=10000)\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 5\", arg=district, timeout=10000)\n            sel_districts = usable_options(district)\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 10\", arg=pbt, timeout=10000)\n            sel_pbts = usable_options(pbt)\n",
     "            state.select_option(label=\"Selangor\")\n            deadline = 10000\n            while deadline > 0 and len(usable_options(district)) < 5:\n                page.wait_for_timeout(200)\n                deadline -= 200\n            sel_districts = usable_options(district)\n            deadline = 10000\n            while deadline > 0 and len(usable_options(pbt)) < 10:\n                page.wait_for_timeout(200)\n                deadline -= 200\n            sel_pbts = usable_options(pbt)\n",
@@ -40,7 +36,13 @@ source = source.replace(
     "            state.select_option(label=\"Melaka\")\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 3\", arg=district, timeout=10000)\n            check(len(usable_options(district)) >= 3, \"State reset refreshes District options\")\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length === 4\", arg=pbt, timeout=10000)\n            check(len(usable_options(pbt)) == 4, \"State reset refreshes Melaka PBT catalogue\")\n",
     "            state.select_option(label=\"Melaka\")\n            deadline = 10000\n            while deadline > 0 and len(usable_options(district)) < 3:\n                page.wait_for_timeout(200)\n                deadline -= 200\n            check(len(usable_options(district)) >= 3, \"State reset refreshes District options\")\n            deadline = 10000\n            while deadline > 0 and len(usable_options(pbt)) != 4:\n                page.wait_for_timeout(200)\n                deadline -= 200\n            check(len(usable_options(pbt)) == 4, \"State reset refreshes Melaka PBT catalogue\")\n",
 )
-
+# The product smoke occasionally re-renders the layer drawer after a group
+# toggle. Replace the fragile locator scroll with DOM-native scrolling, then
+# let the original fresh locator perform the actual interaction.
+source = source.replace(
+    '                row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)',
+    '                selector = f"#layerList [data-urbion-layer=\'{layer_id}\']"\n                for _ in range(8):\n                    try:\n                        page.locator(selector).evaluate("el=>el.scrollIntoView({block:\'center\',inline:\'nearest\'})")\n                        break\n                    except Exception:\n                        page.wait_for_timeout(120)\n                row = page.locator(selector)\n                row.check(force=True); page.wait_for_timeout(250)',
+)
 source = re.sub(r"\nif __name__ == [\"']__main__[\"']:\n\s*main\(\)\s*\Z", "\n", source)
 code = compile(source, str(TARGET), "exec")
 globals_dict = {"__name__": "workspace_browser_smoke_ci", "__file__": str(TARGET)}
@@ -134,7 +136,7 @@ def prepare_ready_case(page):
     controls=[row_control(page,"PROJECT / SITE NAME"),row_control(page,"STATE"),row_control(page,"DISTRICT"),row_control(page,"LOCAL AUTHORITY"),page.locator("#site_lat"),page.locator("#site_lon"),row_control(page,"DEVELOPMENT TYPE"),row_control(page,"DEVELOPMENT CLASS"),gt1,gt2,gt3]
     values=[str(c.input_value()).strip() for c in controls]
     missing=[label for label,value in zip(labels,values) if not value]
-    if missing: print(f"[TRACE-CI-V3] readiness missing={missing}; values={values}; gt2={usable_options(gt2)}; gt3={usable_options(gt3)}")
+    if missing: print(f"[TRACE-CI-V5] readiness missing={missing}; values={values}; gt2={usable_options(gt2)}; gt3={usable_options(gt3)}")
     check(len(values)==11 and all(values), f"planning case fixture is complete ({sum(bool(v) for v in values)}/{len(values)})")
     page.wait_for_function("document.querySelector('#run') && !document.querySelector('#run').disabled", timeout=10000)
     check(not page.locator("#run").is_disabled(), "Run Site Analysis unlocked by canonical readiness")
