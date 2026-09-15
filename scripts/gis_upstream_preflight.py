@@ -78,14 +78,17 @@ def direct_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
 
 def main() -> None:
     bbox, tile_x, tile_y = tile_bbox(102.196, 2.285, 13)
+    # Mirror the canonical browser WMS request. In particular, omit the
+    # tilesorigin hint: several GWC layers reject that parameter even though
+    # they serve the same GetMap request successfully through the proxy.
     base = {
         "service": "WMS", "request": "GetMap", "styles": "", "format": "image/png",
         "transparent": "true", "version": "1.1.1", "tiled": "true", "width": "256", "height": "256",
-        "srs": "EPSG:900913", "bbox": bbox, "tilesorigin": GRID_ORIGIN,
+        "srs": "EPSG:900913", "bbox": bbox,
     }
     failures: list[str] = []
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=10.0), follow_redirects=True, headers={
-        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.5",
+        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.6",
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
         "Accept": "image/png,image/*,*/*;q=0.8", "Accept-Encoding": "identity",
     }) as client:
