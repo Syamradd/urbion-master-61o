@@ -156,12 +156,30 @@ def _direct_wms_params(params: dict[str, str]) -> dict[str, str]:
     return direct
 
 
+async def _direct_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    if layer not in DIRECT_WMS_FALLBACKS:
+        return None
+    try:
+        upstream = await _client_get(DIRECT_WMS_UPSTREAM, _direct_wms_params(params))
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    if upstream.status_code != 200:
+        return None
+    content_type = upstream.headers.get("content-type", "image/png")
+    if not content_type.lower().startswith("image/"):
+        return None
+    return Response(
+        upstream.content,
+        status_code=200,
+        media_type=content_type.split(";", 1)[0].strip() or "image/png",
+        headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS"},
+    )
+
+
 async def _root_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
     if layer not in ROOT_WMS_FALLBACKS:
         return None
     root_params = _direct_wms_params(params)
-    root_params.pop("tiled", None)
-    root_params.pop("tilesorigin", None)
     for upstream_url in ROOT_WMS_UPSTREAMS:
         try:
             upstream = await _client_get(upstream_url, root_params)
@@ -229,35 +247,36 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
             return None
     except (TypeError, ValueError):
         return None
-    query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
+
+    queries = [
+        f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query",
+        f"https://mygems.jmg.gov.my{parsed_path}/{layer_id}/query",
+    ]
     query = {
-        "where": "1=1", "geometry": bbox_raw, "geometryType": "esriGeometryEnvelope",
-        "inSR": "3857", "spatialRel": "esriSpatialRelIntersects", "resultType": "tile",
-        "returnExceededLimitFeatures": "true", "outFields": "OBJECTID,Line_code,Type,Name",
+        "where": "1=1", "outFields": "OBJECTID,Line_code,Type,Name",
         "returnGeometry": "true", "outSR": "3857", "resultRecordCount": "2000", "f": "json",
     }
-    try:
-        upstream = await _client_get(query_url, query)
-    except (httpx.HTTPError, asyncio.TimeoutError):
-        return None
-    if upstream.status_code != 200:
-        return None
-    content_type = upstream.headers.get("content-type", "")
-    if not content_type.lower().startswith("application/json"):
-        return None
-    try:
-        payload = upstream.json()
-    except ValueError:
-        return None
-    if isinstance(payload, dict) and payload.get("error"):
-        return None
-    svg = _svg_from_arcgis_features(payload, bbox)
-    if not svg:
-        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
-    return Response(
-        svg.encode("utf-8"), status_code=200, media_type="image/svg+xml",
-        headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"},
-    )
+    for query_url in queries:
+        try:
+            upstream = await _client_get(query_url, query)
+        except (httpx.HTTPError, asyncio.TimeoutError):
+            continue
+        if upstream.status_code != 200:
+            continue
+        content_type = upstream.headers.get("content-type", "")
+        if not content_type.lower().startswith("application/json"):
+            continue
+        try:
+            payload = upstream.json()
+        except ValueError:
+            continue
+        if isinstance(payload, dict) and payload.get("error"):
+            continue
+        svg = _svg_from_arcgis_features(payload, bbox)
+        if not svg:
+            svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
+        return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback":"JMG-FeatureServer"})
+    return None
 
 
 @router.get("/map/wms", include_in_schema=False)
