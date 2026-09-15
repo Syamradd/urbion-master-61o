@@ -61,6 +61,8 @@ JMG_DEFAULT_LAYERS = {
 JMG_FEATURE_FALLBACKS = {
     "/server/rest/services/GeologiAsas/Major_Fault/MapServer": ("/server/rest/services/GeologiAsas/Major_Fault/FeatureServer", 5),
     "/server/rest/services/LombongKuari/Lombong_Kuari_Awam/MapServer": ("/server/rest/services/LombongKuari/Lombong_Kuari_Awam/FeatureServer", 0),
+    "/server/rest/services/Air_Bawah_Tanah/Air_Bawah_Tanah_Awam/MapServer": ("/server/rest/services/Air_Bawah_Tanah/Air_Bawah_Tanah_Awam/FeatureServer", 0),
+    "/server/rest/services/Demarcation/Litology_by_Negeri/MapServer": ("/server/rest/services/Demarcation/Litology_by_Negeri/FeatureServer", 22),
 }
 ALLOWED_WMS_PARAMS = {
     "service", "request", "layers", "styles", "format", "transparent", "version", "tiled",
@@ -233,6 +235,48 @@ async def _wmts_get(params: dict[str, str]) -> httpx.Response | None:
     return None
 
 
+async def _wmts_rest_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    """Use GeoWebCache's documented RESTful WMTS resource for authoritative cached tiles."""
+    if layer not in WMTS_FALLBACK_LAYERS:
+        return None
+    xyz = _wmts_xyz(params)
+    if xyz is None:
+        return None
+    z, x, y = xyz
+    encoded_layer = quote(layer, safe=":")
+    candidates = []
+    for base in (
+        "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts/rest",
+        "https://iplan.planmalaysia.gov.my/geoserver/service/wmts/rest",
+    ):
+        for style in ("default", ""):
+            for matrix in (f"EPSG:900913:{z}", str(z)):
+                for row, col in ((y, x), (x, y)):
+                    candidates.append(
+                        f"{base}/{encoded_layer}/{style or 'default'}/EPSG:900913/{matrix}/{row}/{col}?format=image/png"
+                    )
+
+    async def probe(url: str):
+        try:
+            upstream = await _client_get(url, {})
+        except (httpx.HTTPError, asyncio.TimeoutError):
+            return None
+        content_type = upstream.headers.get("content-type", "")
+        if upstream.status_code == 200 and content_type.lower().startswith("image/") and len(upstream.content) > 100:
+            return upstream
+        return None
+
+    results = await asyncio.gather(*(probe(url) for url in candidates))
+    for upstream in results:
+        if upstream is not None:
+            return Response(
+                upstream.content, status_code=200,
+                media_type=upstream.headers.get("content-type", "image/png").split(";", 1)[0].strip() or "image/png",
+                headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-WMTS-REST"},
+            )
+    return None
+
+
 async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | None:
     if layer not in WMTS_FALLBACK_LAYERS:
         return None
@@ -380,6 +424,8 @@ async def map_wms_proxy(request: Request) -> Response:
         content_type = upstream.headers.get("content-type", "")
         if upstream.status_code == 200 and content_type.lower().startswith("image/"):
             return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
+    fallback = await _wmts_rest_fallback(layers, params)
+    if fallback is not None: return fallback
     fallback = await _tms_tile_fallback(layers, params)
     if fallback is not None: return fallback
     fallback = await _wmts_kvp_fallback(layers, params)
@@ -413,7 +459,12 @@ async def map_arcgis_proxy(request: Request) -> Response:
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
     # Major Fault is a pathological dynamic service: prefer the official
     # MapServer export image first; use bounded FeatureServer queries only as fallback.
-    export_url = f"https://{match[0]}{parsed_path}/export"; last_detail = "no response"
+    last_detail = "no response"
+    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:
+        fallback = await _jmg_feature_image_fallback(parsed_path, params)
+        if fallback is not None:
+            return fallback
+    export_url = f"https://{match[0]}{parsed_path}/export"
     export_params = dict(params)
     if is_jmg:
         export_params["format"] = "png8"
