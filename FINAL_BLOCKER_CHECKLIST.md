@@ -57,4 +57,4 @@
 - [x] No duplicate frontend/engine
 - [x] No weakened assertions solely to obtain green CI
 
-<!-- Final validation trigger: preflight parallelization repair 7912b4b25550674a905b1795d26ae9fccffdf808 -->
+<!-- Final validation trigger: clean-head 12689c41717499ced6529be76ec4a379cd110c76 -->
