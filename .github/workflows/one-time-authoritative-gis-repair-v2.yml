@@ -30,36 +30,26 @@ jobs:
                   raise SystemExit('WMTS KVP marker not found')
               text = text.replace(marker, insert + marker, 1)
 
-          old = '    fallback = await _tms_tile_fallback(layers, params)\n'
-          new = '    fallback = await _wmts_rest_fallback(layers, params)\n    if fallback is not None: return fallback\n    fallback = await _tms_tile_fallback(layers, params)\n'
-          if old not in text:
-              raise SystemExit('WMS TMS marker not found')
-          text = text.replace(old, new, 1)
+          if 'fallback = await _wmts_rest_fallback(layers, params)' not in text:
+              old = '    fallback = await _tms_tile_fallback(layers, params)\n'
+              if old not in text:
+                  raise SystemExit('WMS TMS marker not found')
+              new = '    fallback = await _wmts_rest_fallback(layers, params)\n    if fallback is not None: return fallback\n    fallback = await _tms_tile_fallback(layers, params)\n'
+              text = text.replace(old, new, 1)
 
-          text, count = re.subn(
-              r'JMG_FEATURE_FALLBACKS = \{.*?\n\}',
-              '''JMG_FEATURE_FALLBACKS = {\n    "/server/rest/services/GeologiAsas/Major_Fault/MapServer": ("/server/rest/services/GeologiAsas/Major_Fault/FeatureServer", 5),\n    "/server/rest/services/LombongKuari/Lombong_Kuari_Awam/MapServer": ("/server/rest/services/LombongKuari/Lombong_Kuari_Awam/FeatureServer", 0),\n    "/server/rest/services/Air_Bawah_Tanah/Air_Bawah_Tanah_Awam/MapServer": ("/server/rest/services/Air_Bawah_Tanah/Air_Bawah_Tanah_Awam/FeatureServer", 0),\n    "/server/rest/services/Demarcation/Litology_by_Negeri/MapServer": ("/server/rest/services/Demarcation/Litology_by_Negeri/FeatureServer", 22),\n}''',
-              text,
-              count=1,
-              flags=re.S,
-          )
+          jmg_map = '''JMG_FEATURE_FALLBACKS = {\n    "/server/rest/services/GeologiAsas/Major_Fault/MapServer": ("/server/rest/services/GeologiAsas/Major_Fault/FeatureServer", 5),\n    "/server/rest/services/LombongKuari/Lombong_Kuari_Awam/MapServer": ("/server/rest/services/LombongKuari/Lombong_Kuari_Awam/FeatureServer", 0),\n    "/server/rest/services/Air_Bawah_Tanah/Air_Bawah_Tanah_Awam/MapServer": ("/server/rest/services/Air_Bawah_Tanah/Air_Bawah_Tanah_Awam/FeatureServer", 0),\n    "/server/rest/services/Demarcation/Litology_by_Negeri/MapServer": ("/server/rest/services/Demarcation/Litology_by_Negeri/FeatureServer", 22),\n}'''
+          text, count = re.subn(r'JMG_FEATURE_FALLBACKS = \{.*?\n\}', jmg_map, text, count=1, flags=re.S)
           if count != 1:
               raise SystemExit('JMG fallback mapping not found')
 
-          anchor = '    export_url = f"https://{match[0]}{parsed_path}/export"; last_detail = "no response"\n'
-          replacement = '''    last_detail = "no response"\n    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:\n        fallback = await _jmg_feature_image_fallback(parsed_path, params)\n        if fallback is not None:\n            return fallback\n    export_url = f"https://{match[0]}{parsed_path}/export"\n'''
-          if anchor not in text:
-              raise SystemExit('ArcGIS export anchor not found')
-          text = text.replace(anchor, replacement, 1)
-
-          tail = '''    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:\n        fallback = await _jmg_feature_image_fallback(parsed_path, params)\n        if fallback is not None:\n            return fallback\n    return _proxy_failure("Authoritative ArcGIS upstream render failed", last_detail)\n'''
-          if tail not in text:
-              raise SystemExit('ArcGIS fallback tail not found')
-          text = text.replace(tail, '    return _proxy_failure("Authoritative ArcGIS upstream render failed", last_detail)\n', 1)
+          export_anchor = '    export_url = f"https://{match[0]}{parsed_path}/export"; last_detail = "no response"\n'
+          if export_anchor in text and text.count('fallback = await _jmg_feature_image_fallback(parsed_path, params)') < 2:
+              replacement = '''    last_detail = "no response"\n    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:\n        fallback = await _jmg_feature_image_fallback(parsed_path, params)\n        if fallback is not None:\n            return fallback\n    export_url = f"https://{match[0]}{parsed_path}/export"\n'''
+              text = text.replace(export_anchor, replacement, 1)
 
           path.write_text(text)
           compile(text, str(path), 'exec')
-          assert 'async def _wmts_rest_fallback(' in text
+          assert text.count('async def _wmts_rest_fallback(') == 1
           assert 'Air_Bawah_Tanah_Awam/FeatureServer' in text
           assert 'Demarcation/Litology_by_Negeri/FeatureServer' in text
           print('SURGICAL GIS REPAIR APPLIED')
