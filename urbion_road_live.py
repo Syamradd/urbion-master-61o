@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 OVERPASS_URL = os.getenv("URBION_OVERPASS_URL", "https://overpass-api.de/api/interpreter").strip()
+OVERPASS_FALLBACKS = tuple(x.strip() for x in os.getenv("URBION_OVERPASS_FALLBACKS", "https://overpass.kumi.systems/api/interpreter,https://overpass.private.coffee/api/interpreter").split(",") if x.strip())
 ROAD_RADIUS_M = 5000
 CENTRE_RADIUS_M = 50000
 ROAD_CLASSES = (
@@ -42,43 +43,62 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * r * math.asin(math.sqrt(a))
 
 
+def _clean(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
 def _request(query: str, timeout: float = 10.0) -> dict[str, Any]:
-    if not OVERPASS_URL:
-        raise RuntimeError("URBION_OVERPASS_URL is not configured")
+    urls = []
+    for url in (OVERPASS_URL, *OVERPASS_FALLBACKS):
+        if url and url not in urls:
+            urls.append(url)
+    last: Exception | None = None
     body = urllib.parse.urlencode({"data": query}).encode("utf-8")
-    request = urllib.request.Request(
-        OVERPASS_URL,
-        data=body,
-        headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "URBION-HORIZON/1.0"},
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return json.loads(response.read().decode("utf-8", errors="replace"))
+    for url in urls:
+        try:
+            req = urllib.request.Request(
+                url,
+                data=body,
+                headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "URBION-HORIZON/1.0"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                payload = json.loads(response.read().decode("utf-8", errors="replace"))
+                if isinstance(payload, dict):
+                    return payload
+                raise RuntimeError("Overpass returned a non-object payload")
+        except Exception as exc:
+            last = exc
+    raise RuntimeError(f"All Overpass endpoints unavailable: {last}")
 
 
 def _valid_point(lat: Any, lon: Any) -> bool:
     try:
-        return math.isfinite(float(lat)) and math.isfinite(float(lon))
+        lat_n, lon_n = float(lat), float(lon)
+        return math.isfinite(lat_n) and math.isfinite(lon_n) and -90 <= lat_n <= 90 and -180 <= lon_n <= 180
     except (TypeError, ValueError):
         return False
 
 
 def _road_query(lat: float, lon: float) -> str:
     classes = "|".join(key for key, _, _ in ROAD_CLASSES)
-    return f'''[out:json][timeout:8];way(around:{ROAD_RADIUS_M},{lat},{lon})["highway"~"^{classes}$"];out tags center;'''
+    return f'''[out:json][timeout:15];way(around:{ROAD_RADIUS_M},{lat},{lon})["highway"~"^({classes})$"];out tags center;'''
 
 
 def _centre_query(lat: float, lon: float) -> str:
-    return f'''[out:json][timeout:10];node(around:{CENTRE_RADIUS_M},{lat},{lon})["place"~"^(city|town|municipality)$"];out tags;'''
+    return f'''[out:json][timeout:20];node(around:{CENTRE_RADIUS_M},{lat},{lon})["place"~"^(city|town|municipality)$"];out tags;'''
 
 
 def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, Any]:
     """Discover source-backed OSM road hierarchy tags and nearby urban centres."""
     if not (_valid_point(site_lat, site_lon)):
         raise ValueError("Site coordinates must be finite numeric values")
+    site_lat, site_lon = float(site_lat), float(site_lon)
     queried_at = datetime.now(timezone.utc).isoformat()
-
-    road_data = _request(_road_query(site_lat, site_lon))
+    road_data = _request(_road_query(site_lat, site_lon), timeout=15.0)
     roads = []
     for element in road_data.get("elements") or []:
         tags = element.get("tags") or {}
@@ -88,7 +108,8 @@ def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, An
         center = element.get("center") or {}
         if not _valid_point(center.get("lat"), center.get("lon")):
             continue
-        distance = haversine_km(site_lat, site_lon, float(center["lat"]), float(center["lon"])) * 1000.0
+        center_lat, center_lon = float(center["lat"]), float(center["lon"])
+        distance = haversine_km(site_lat, site_lon, center_lat, center_lon) * 1000.0
         roads.append({
             "name": tags.get("name") or tags.get("ref") or f"{ROAD_LABEL[highway]} (unnamed)",
             "ref": tags.get("ref"),
@@ -96,6 +117,8 @@ def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, An
             "hierarchy": ROAD_LABEL[highway],
             "distance_m": round(distance, 1),
             "distance_km": round(distance / 1000.0, 3),
+            "lat": center_lat,
+            "lon": center_lon,
             "source": "OpenStreetMap via Overpass API",
             "evidence_status": "SOURCE_CONTEXT",
         })
@@ -113,7 +136,7 @@ def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, An
             break
 
     centres: list[dict[str, Any]] = []
-    centre_data = _request(_centre_query(site_lat, site_lon))
+    centre_data = _request(_centre_query(site_lat, site_lon), timeout=20.0)
     seen_centres: set[tuple[str, str]] = set()
     for element in centre_data.get("elements") or []:
         tags = element.get("tags") or {}
@@ -153,6 +176,8 @@ def discover_live_road_context(site_lat: float, site_lon: float) -> dict[str, An
             "nearest_name": nearest_for_class.get("name"),
             "distance_m": nearest_for_class.get("distance_m"),
             "distance_km": nearest_for_class.get("distance_km"),
+            "lat": nearest_for_class.get("lat"),
+            "lon": nearest_for_class.get("lon"),
             "source": "OpenStreetMap via Overpass API",
             "evidence_status": "SOURCE_CONTEXT",
         })
