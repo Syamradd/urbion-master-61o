@@ -1,6 +1,7 @@
 """End-to-end planning workstation bridge for the championship release."""
 from __future__ import annotations
 import time
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Body, HTTPException
 from server import app, AssessmentRequest, assess_core
 from urbion_spatial_intelligence import build_spatial_intelligence
@@ -23,6 +24,39 @@ def workstation_metadata():
         "decision_authority": "NONE",
         "statutory_verification": "NOT_CLAIMED",
     }
+
+
+def _build_lcp(assessment, payload, comparison):
+    return build_lcp_intelligence(
+        assessment=assessment,
+        development_inputs=payload.get("development_inputs"),
+        policy_links=payload.get("policy_links"),
+        national_links=payload.get("national_links"),
+        sdg_links=payload.get("sdg_links"),
+        spatial_inputs=payload.get("spatial_inputs"),
+        station_snapshot=payload.get("station_snapshot"),
+        km_inputs=payload.get("km_inputs"),
+        what_if_summary=comparison,
+        environment_context=payload.get("environment_context"),
+        agency_assets=payload.get("agency_assets"),
+        agency_radius_m=float(payload.get("agency_radius_m",5000)),
+        guideline_topics=payload.get("guideline_topics"),
+    )
+
+
+def _build_km(raw, payload):
+    return build_km_readiness(
+        pbt=raw.get("pbt",""),
+        development_type=raw.get("development_type",""),
+        documents=payload.get("documents"),
+        km_category=payload.get("km_category"),
+        technical_reviews=payload.get("technical_reviews"),
+    )
+
+
+def _build_agents(assessment, spatial, comparison, decision):
+    return run_agents(assessment=assessment, spatial=spatial, scenarios=comparison, decision=decision)
+
 
 @router.post("/workstation/analysis")
 def workstation_analysis(payload: dict = Body(default_factory=dict)):
@@ -64,17 +98,21 @@ def workstation_analysis(payload: dict = Body(default_factory=dict)):
     decision = build_decision_center(assessment=assessment)
     marks["DECISION"] = time.perf_counter() - t
     steps.append({"id":"DECISION","label":"Decision centre","status":"COMPLETE"})
+
+    # These enrichments are independent once the canonical inputs are ready.
+    # Parallel execution reduces end-to-end wall time without changing packet
+    # shape, evidence boundaries or the underlying deterministic builders.
     t = time.perf_counter()
-    lcp = build_lcp_intelligence(assessment=assessment, development_inputs=payload.get("development_inputs"), policy_links=payload.get("policy_links"), national_links=payload.get("national_links"), sdg_links=payload.get("sdg_links"), spatial_inputs=payload.get("spatial_inputs"), station_snapshot=payload.get("station_snapshot"), km_inputs=payload.get("km_inputs"), what_if_summary=comparison if executed else None, environment_context=payload.get("environment_context"), agency_assets=payload.get("agency_assets"), agency_radius_m=float(payload.get("agency_radius_m",5000)), guideline_topics=payload.get("guideline_topics"))
-    marks["LCP"] = time.perf_counter() - t
+    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="urbion-analysis") as pool:
+        f_lcp = pool.submit(_build_lcp, assessment, payload, comparison if executed else None)
+        f_km = pool.submit(_build_km, raw, payload)
+        f_agents = pool.submit(_build_agents, assessment, spatial, comparison if executed else None, decision)
+        lcp = f_lcp.result()
+        km = f_km.result()
+        agents = f_agents.result()
+    marks["ENRICHMENTS_PARALLEL"] = time.perf_counter() - t
     steps.append({"id":"LCP","label":"LCP intelligence","status":"COMPLETE"})
-    t = time.perf_counter()
-    km = build_km_readiness(pbt=raw.get("pbt",""), development_type=raw.get("development_type",""), documents=payload.get("documents"), km_category=payload.get("km_category"), technical_reviews=payload.get("technical_reviews"))
-    marks["KM"] = time.perf_counter() - t
     steps.append({"id":"KM","label":"KM readiness","status":"COMPLETE"})
-    t = time.perf_counter()
-    agents = run_agents(assessment=assessment, spatial=spatial, scenarios=comparison if executed else None, decision=decision)
-    marks["AGENTS"] = time.perf_counter() - t
     steps.append({"id":"AGENTS","label":"Bounded agent synthesis","status":"COMPLETE"})
     total = time.perf_counter() - started
     marks["TOTAL"] = total
