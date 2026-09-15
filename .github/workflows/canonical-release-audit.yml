@@ -106,4 +106,4 @@ jobs:
           path: artifacts/canonical-release-browser/
           if-no-files-found: ignore
 
-      # Human-triggered release validation after the canonical GIS fallback repair.
+      # Clean release validation after 67e9055 authoritative GIS repair.
