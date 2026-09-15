@@ -267,9 +267,9 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
     query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
     envelope = {"xmin": bbox[0], "ymin": bbox[1], "xmax": bbox[2], "ymax": bbox[3], "spatialReference": {"wkid": 3857}}
     common = {
-        "where": "1=1", "outFields": "OBJECTID,Line_code,Type,Name", "returnGeometry": "true",
+        "where": "1=1", "outFields": "OBJECTID", "returnGeometry": "true",
         "outSR": "3857", "geometryType": "esriGeometryEnvelope", "inSR": "3857",
-        "spatialRel": "esriSpatialRelIntersects", "geometry": json.dumps(envelope, separators=(",", ":")), "f": "json",
+        "spatialRel": "esriSpatialRelEnvelopeIntersects", "geometry": json.dumps(envelope, separators=(",", ":")), "f": "json",
     }
     query = {**common, "resultRecordCount": "500", "returnExceededLimitFeatures": "true"}
     try: upstream = await _client_get(query_url, query)
@@ -332,6 +332,12 @@ async def map_arcgis_proxy(request: Request) -> Response:
     parsed_path = parsed.path.rstrip("/"); is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
+    # Prefer the authoritative JMG FeatureServer geometry query for the
+    # Major Fault polyline layer; retain MapServer export as fallback.
+    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:
+        fallback = await _jmg_feature_image_fallback(parsed_path, params)
+        if fallback is not None: return fallback
+
     export_url = f"https://{match[0]}{parsed_path}/export"; last_detail = "no response"
     try:
         upstream = await _client_get(export_url, dict(params))
@@ -342,7 +348,4 @@ async def map_arcgis_proxy(request: Request) -> Response:
         if upstream.status_code == 200 and content_type.lower().startswith("image/"):
             return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
         body = upstream.text[:240].replace("\n", " ").replace("\r", " "); last_detail = f"HTTP={upstream.status_code} CT={content_type or '-'} BODY={body}"
-    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:
-        fallback = await _jmg_feature_image_fallback(parsed_path, params)
-        if fallback is not None: return fallback
     return _proxy_failure("Authoritative ArcGIS upstream render failed", last_detail)
