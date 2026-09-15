@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from collections import defaultdict
+from urllib.parse import parse_qs, unquote, urlparse
 from playwright.sync_api import expect, sync_playwright
 
 BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8000")
@@ -54,6 +55,25 @@ def expand_layer_group(page, layer_id):
         raise AssertionError("GIS layer checkbox remained hidden after expanding its group")
 
 
+def _response_layer_id(url: str, catalog_by_id: dict[str, dict]) -> str | None:
+    """Associate a GIS response with its actual canonical service, not loop state."""
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    if "/map/wms" in parsed.path:
+        layer = unquote(query.get("layers", [""])[0])
+        for lid, item in catalog_by_id.items():
+            if item.get("type") == "GEOSERVER_WMS" and item.get("layers") == layer:
+                return lid
+        return None
+    if "/map/arcgis" in parsed.path:
+        service = unquote(query.get("service", [""])[0]).rstrip("/")
+        for lid, item in catalog_by_id.items():
+            if item.get("type") == "ARCGIS_MAP" and str(item.get("url", "")).rstrip("/") == service:
+                return lid
+        return None
+    return None
+
+
 def main():
     assert len(EXPECTED_UI_LAYER_IDS) == 25
     assert len(EXPECTED_API_CORE_IDS) == 24
@@ -65,7 +85,8 @@ def main():
         r = page.request.get(BASE_URL + "/map/layers?state=Melaka", timeout=15000)
         assert r.status == 200
         catalog = [x for x in r.json().get("layers", []) if isinstance(x, dict)]
-        raw = {x.get("id") for x in catalog}
+        catalog_by_id = {str(x.get("id")): x for x in catalog if x.get("id")}
+        raw = set(catalog_by_id)
         assert "osm" in raw
         incoming = raw - {"osm"}
         missing_core = EXPECTED_API_CORE_IDS - incoming
@@ -91,17 +112,21 @@ def main():
 
         failures = []
         responses_by_layer = defaultdict(list)
-        current_layer = None
 
         def on_response(response):
-            if current_layer and ("/map/wms" in response.url or "/map/arcgis" in response.url):
-                if len(responses_by_layer[current_layer]) < 8:
-                    responses_by_layer[current_layer].append({"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url})
+            if "/map/wms" not in response.url and "/map/arcgis" not in response.url:
+                return
+            lid = _response_layer_id(response.url, catalog_by_id)
+            if lid and len(responses_by_layer[lid]) < 8:
+                responses_by_layer[lid].append({
+                    "status": response.status,
+                    "content_type": response.headers.get("content-type", ""),
+                    "url": response.url,
+                })
 
         page.on("response", on_response)
         layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)") if x]
         for lid in layer_ids:
-            current_layer = lid
             expand_layer_group(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             if cb.count() != 1:
@@ -123,7 +148,6 @@ def main():
                 if cb.count() and cb.is_checked():
                     cb.uncheck(force=True)
                 page.wait_for_timeout(120)
-        current_layer = None
 
         if failures:
             raise AssertionError("25-layer end-to-end GIS render failures:\n" + "\n".join(failures))
