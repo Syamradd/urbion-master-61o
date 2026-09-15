@@ -127,10 +127,8 @@ def wmts_rest_urls(layer: str, zoom: int, x: int, y: int):
         "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts/rest",
         "https://iplan.planmalaysia.gov.my/geoserver/service/wmts/rest",
     ):
-        for style in ("default", ""):
-            for matrix in (f"EPSG:900913:{zoom}", str(zoom)):
-                for row, col in ((y, x), (x, y)):
-                    yield f"{base}/{encoded_layer}/{style or 'default'}/EPSG:900913/{matrix}/{row}/{col}?format=image/png"
+        for matrix in (f"EPSG:900913:{zoom}", str(zoom)):
+            yield f"{base}/{encoded_layer}//EPSG:900913/{matrix}/{y}/{x}?format=image/png"
 
 
 def main() -> None:
@@ -251,7 +249,6 @@ def main() -> None:
                         break
                 if root_ok:
                     continue
-
                 u_status, u_ct, u_size, u_elapsed, u_detail = probe(client, UPSTREAM, untiled_wms_params(base, layer))
                 u_ok = u_status == 200 and u_ct.lower().startswith("image/") and u_size > 100
                 print(f"UNTILED WMS FALLBACK {'PASS' if u_ok else 'FAIL'} · {layer} · HTTP={u_status} · CT={u_ct or '-'} · bytes={u_size} · {u_elapsed:.2f}s · {u_detail}")
