@@ -248,15 +248,29 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
     except (TypeError, ValueError):
         return None
 
-    queries = [
-        f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query",
-        f"https://mygems.jmg.gov.my{parsed_path}/{layer_id}/query",
-    ]
-    query = {
+    base_query = {
         "where": "1=1", "outFields": "OBJECTID,Line_code,Type,Name",
         "returnGeometry": "true", "outSR": "3857", "resultRecordCount": "2000", "f": "json",
     }
-    for query_url in queries:
+    queries = [
+        (
+            f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query",
+            {
+                **base_query,
+                "geometry": bbox_raw,
+                "geometryType": "esriGeometryEnvelope",
+                "inSR": "3857",
+                "spatialRel": "esriSpatialRelIntersects",
+                "resultType": "tile",
+                "returnExceededLimitFeatures": "true",
+            },
+        ),
+        (
+            f"https://mygems.jmg.gov.my{parsed_path}/{layer_id}/query",
+            base_query,
+        ),
+    ]
+    for query_url, query in queries:
         try:
             upstream = await _client_get(query_url, query)
         except (httpx.HTTPError, asyncio.TimeoutError):
@@ -275,7 +289,10 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         svg = _svg_from_arcgis_features(payload, bbox)
         if not svg:
             svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
-        return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback":"JMG-FeatureServer"})
+        return Response(
+            svg.encode("utf-8"), status_code=200, media_type="image/svg+xml",
+            headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"},
+        )
     return None
 
 
@@ -363,7 +380,12 @@ async def map_arcgis_proxy(request: Request) -> Response:
             continue
         content_type = upstream.headers.get("content-type", "")
         if upstream.status_code == 200 and content_type.lower().startswith("image/"):
-            return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
+            return Response(
+                upstream.content,
+                status_code=200,
+                media_type=content_type.split(";", 1)[0].strip() or "image/png",
+                headers=_cache_headers(),
+            )
         body = upstream.text[:240].replace("\n", " ").replace("\r", " ")
         last_detail = f"HTTP={upstream.status_code} CT={content_type or '-'} BODY={body}"
 
