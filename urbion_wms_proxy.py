@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import asyncio
-from urllib.parse import urlsplit
+import math
+from urllib.parse import quote, urlsplit
 
 import httpx
 from fastapi import APIRouter, Request
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 
 router = APIRouter()
 WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
@@ -15,6 +16,14 @@ ROOT_WMS_UPSTREAMS = (
     "https://iplan.planmalaysia.gov.my/geoserver/ows",
 )
 DIRECT_WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
+TMS_UPSTREAMS = (
+    "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/tms/1.0.0",
+    "https://iplan.planmalaysia.gov.my/geoserver/service/tms/1.0.0",
+)
+TMS_FALLBACK_LAYERS = {
+    "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:warisan",
+    "iplan:rumah_mampu_milik", "iplan:topo",
+}
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/"),
     ("mygems.jmg.gov.my", "/server/rest/services/"),
@@ -79,8 +88,10 @@ def _cache_headers() -> dict[str, str]:
     return {"Cache-Control": "public, max-age=60, stale-while-revalidate=30"}
 
 
-def _proxy_failure(prefix: str, detail: str) -> Response:
-    return Response(f"{prefix}: {detail}", status_code=502, media_type="text/plain")
+def _proxy_failure(prefix: str, detail: str) -> StreamingResponse:
+    """Stream transport errors so the outer presentation middleware cannot reuse a stale Content-Length."""
+    body = f"{prefix}: {detail}".encode("utf-8")
+    return StreamingResponse(iter([body]), status_code=502, media_type="text/plain")
 
 
 def _arcgis_fallback_params(params: dict[str, str], layer_id: int) -> dict[str, str]:
@@ -199,6 +210,52 @@ async def _root_wms_fallback(layer: str, params: dict[str, str]) -> Response | N
     return None
 
 
+async def _tms_cached_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    """Read the exact global EPSG:900913 tile from GWC cache for layers whose public demo exposes it."""
+    if layer not in TMS_FALLBACK_LAYERS:
+        return None
+    bbox_raw = str(params.get("bbox", ""))
+    try:
+        xmin, ymin, xmax, ymax = (float(v) for v in bbox_raw.split(","))
+        width = int(params.get("width", "256")); height = int(params.get("height", "256"))
+    except (TypeError, ValueError):
+        return None
+    if width != 256 or height != 256 or xmax <= xmin or ymax <= ymin:
+        return None
+    world = 20037508.342789244
+    span = xmax - xmin
+    resolution = span / 256.0
+    if resolution <= 0:
+        return None
+    z_float = math.log2((world * 2.0) / (256.0 * resolution))
+    z = int(round(z_float))
+    if z < 0 or z > 20 or abs(z_float - z) > 0.02:
+        return None
+    tile_span = (world * 2.0) / (2 ** z)
+    x = int(math.floor((xmin + world) / tile_span + 1e-9))
+    y_xyz = int(math.floor((world - ymax) / tile_span + 1e-9))
+    y_tms = (2 ** z - 1) - y_xyz
+    layer_path = quote(layer, safe=":") + "@EPSG:900913@png"
+    for service in TMS_UPSTREAMS:
+        url = f"{service}/{layer_path}/{z}/{x}/{y_tms}.png"
+        try:
+            upstream = await _client_get(url, {})
+        except (httpx.HTTPError, asyncio.TimeoutError):
+            continue
+        if upstream.status_code != 200:
+            continue
+        content_type = upstream.headers.get("content-type", "")
+        if not content_type.lower().startswith("image/"):
+            continue
+        return Response(
+            upstream.content,
+            status_code=200,
+            media_type=content_type.split(";", 1)[0].strip() or "image/png",
+            headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-TMS"},
+        )
+    return None
+
+
 def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, float], width: int = 256, height: int = 256) -> str | None:
     xmin, ymin, xmax, ymax = bbox
     dx = xmax - xmin
@@ -250,7 +307,7 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
 
     base_query = {
         "where": "1=1", "outFields": "OBJECTID,Line_code,Type,Name",
-        "returnGeometry": "true", "outSR": "3857", "resultRecordCount": "2000", "f": "json",
+        "returnGeometry": "true", "outSR": "3857", "resultRecordCount": "500", "f": "json",
     }
     queries = [
         (
@@ -327,6 +384,10 @@ async def map_wms_proxy(request: Request) -> Response:
     if fallback is not None:
         return fallback
 
+    fallback = await _tms_cached_fallback(layers, params)
+    if fallback is not None:
+        return fallback
+
     fallback = await _root_wms_fallback(layers, params)
     if fallback is not None:
         return fallback
@@ -370,11 +431,6 @@ async def map_arcgis_proxy(request: Request) -> Response:
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"):
         params["layers"] = "show:5"
 
-    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:
-        fallback = await _jmg_feature_image_fallback(parsed_path, params)
-        if fallback is not None:
-            return fallback
-
     export_url = f"https://{match[0]}{parsed_path}/export"
     attempts = [dict(params)]
     last_detail = "no response"
@@ -395,7 +451,7 @@ async def map_arcgis_proxy(request: Request) -> Response:
         body = upstream.text[:240].replace("\n", " ").replace("\r", " ")
         last_detail = f"HTTP={upstream.status_code} CT={content_type or '-'} BODY={body}"
 
-    if is_jmg:
+    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:
         fallback = await _jmg_feature_image_fallback(parsed_path, params)
         if fallback is not None:
             return fallback
