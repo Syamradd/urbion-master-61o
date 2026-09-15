@@ -187,7 +187,7 @@ async def _tms_tile_fallback(layer: str, params: dict[str, str]) -> Response | N
         return None
     z, x, y_xyz = xyz
     y_tms = (2 ** z - 1) - y_xyz
-    encoded_layer = quote(layer, safe="")
+    encoded_layer = quote(layer, safe=":")
     for base in TMS_UPSTREAMS:
         for gridset in ("EPSG:900913", "EPSG:4326"):
             for ext in ("png", "jpeg"):
