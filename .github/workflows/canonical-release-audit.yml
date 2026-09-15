@@ -105,3 +105,5 @@ jobs:
           name: urbion-canonical-release-browser-evidence
           path: artifacts/canonical-release-browser/
           if-no-files-found: ignore
+
+      # Human-triggered release validation after the canonical GIS fallback repair.
