@@ -7,6 +7,27 @@
   window.__URBION_WORKSPACE_BRIDGE_V2__=true;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   let canonicalLast=null;
+  const originalFetch=window.fetch?.bind(window);
+  if(originalFetch){
+    window.fetch=(input,init)=>{
+      const url=typeof input==='string'?input:(input?.url||'');
+      const promise=originalFetch(input,init);
+      if(String(url).includes('/workstation/analysis')){
+        promise.then(async response=>{
+          try{
+            if(response.ok){
+              const data=await response.clone().json();
+              if(data&&typeof data==='object'){
+                canonicalLast=data;
+                window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:response.status}}));
+              }
+            }
+          }catch(_){ }
+        }).catch(()=>{});
+      }
+      return promise;
+    };
+  }
   async function waitForCore(){
     for(let i=0;i<160;i++){
       if(typeof taxonomy!=='undefined' && typeof runAnalysis==='function' && typeof whatIfModal==='function' && typeof decisionModal==='function' && typeof outputModal==='function' && typeof loadLayers==='function'){
@@ -21,6 +42,13 @@
         const canonicalAnalyse=async()=>{
           await runAnalysis();
           if(typeof lastResult!=='undefined' && lastResult) window.URBION_LAST=lastResult;
+          if(!window.URBION_LAST){
+            await new Promise(resolve=>{
+              const timer=setTimeout(resolve,12000);
+              const done=()=>{clearTimeout(timer);window.removeEventListener('urbion-analysis-captured',done);resolve()};
+              window.addEventListener('urbion-analysis-captured',done,{once:true});
+            });
+          }
           return window.URBION_LAST;
         };
         window.URBION_FINAL={
