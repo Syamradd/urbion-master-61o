@@ -7,25 +7,58 @@
   window.__URBION_WORKSPACE_BRIDGE_V2__=true;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   let canonicalLast=null;
+  const publish=data=>{
+    if(!data||typeof data!=='object')return;
+    canonicalLast=data;
+    try{window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:data.__http_status||200,data}}));}catch(_){ }
+  };
+  const captureResponse=async(response,statusHint=0)=>{
+    try{
+      if(!response)return;
+      const status=Number(statusHint||response.status||0);
+      const clone=response.clone();
+      let data=null;
+      try{data=await clone.json();}
+      catch(_){
+        const text=await response.clone().text().catch(()=>"");
+        if(text.trim())data={__analysis_error_text:text.slice(0,1000)};
+      }
+      if(status>=200&&status<300&&data&&typeof data==='object'){
+        try{Object.defineProperty(data,'__http_status',{value:status,enumerable:false});}catch(_){data.__http_status=status;}
+        publish(data);
+      }
+    }catch(_){ }
+  };
   const originalFetch=window.fetch?.bind(window);
   if(originalFetch){
     window.fetch=(input,init)=>{
       const url=typeof input==='string'?input:(input?.url||'');
       const promise=originalFetch(input,init);
-      if(String(url).includes('/workstation/analysis')){
-        promise.then(async response=>{
-          try{
-            if(response.ok){
-              const data=await response.clone().json();
-              if(data&&typeof data==='object'){
-                canonicalLast=data;
-                window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:response.status}}));
-              }
-            }
-          }catch(_){ }
-        }).catch(()=>{});
-      }
+      if(String(url).includes('/workstation/analysis'))promise.then(r=>captureResponse(r)).catch(()=>{});
       return promise;
+    };
+  }
+  const OriginalXHR=window.XMLHttpRequest;
+  if(OriginalXHR?.prototype){
+    const originalOpen=OriginalXHR.prototype.open;
+    const originalSend=OriginalXHR.prototype.send;
+    OriginalXHR.prototype.open=function(method,url){
+      try{this.__urbionAnalysisUrl=String(url||'');}catch(_){this.__urbionAnalysisUrl='';}
+      return originalOpen.apply(this,arguments);
+    };
+    OriginalXHR.prototype.send=function(){
+      const xhr=this;
+      if(String(xhr.__urbionAnalysisUrl||'').includes('/workstation/analysis')){
+        const onLoad=()=>{
+          if(xhr.status>=200&&xhr.status<300){
+            let data=null;
+            try{data=JSON.parse(xhr.responseText||'{}');}catch(_){data={__analysis_error_text:String(xhr.responseText||'').slice(0,1000)};}
+            if(data&&typeof data==='object'){try{Object.defineProperty(data,'__http_status',{value:xhr.status,enumerable:false});}catch(_){data.__http_status=xhr.status;}publish(data);}
+          }
+        };
+        xhr.addEventListener('load',onLoad,{once:true});
+      }
+      return originalSend.apply(this,arguments);
     };
   }
   async function waitForCore(){
@@ -40,15 +73,14 @@
           });
         }catch(_){ window.URBION_LAST=canonicalLast; }
         const canonicalAnalyse=async()=>{
+          canonicalLast=null;
+          try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }
           await runAnalysis();
-          if(typeof lastResult!=='undefined' && lastResult) window.URBION_LAST=lastResult;
+          if(typeof lastResult!=='undefined' && lastResult)window.URBION_LAST=lastResult;
           if(!window.URBION_LAST){
-            await new Promise(resolve=>{
-              const timer=setTimeout(resolve,12000);
-              const done=()=>{clearTimeout(timer);window.removeEventListener('urbion-analysis-captured',done);resolve()};
-              window.addEventListener('urbion-analysis-captured',done,{once:true});
-            });
+            await waitFor(()=>!!canonicalLast,180,100);
           }
+          if(!window.URBION_LAST)throw Error('Analysis response was not captured by canonical bridge');
           return window.URBION_LAST;
         };
         window.URBION_FINAL={
