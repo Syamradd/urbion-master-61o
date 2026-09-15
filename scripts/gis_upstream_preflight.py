@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Preflight authoritative i-Plan GWC WMS directly and through the canonical proxy.
+"""Preflight authoritative i-Plan GIS directly and through the canonical proxy.
 
-The GWC WMS surface is tile-oriented. Probe with a real WebMercator tile-aligned
-bbox and the top-left grid origin used by the EPSG:900913 cache so CI validates
-the same request shape used by tiled WMS clients.
+The primary surface is i-Plan GeoWebCache. A small, explicit set of layers also
+has an official PLANMalaysia ArcGIS REST rendering path when GWC currently
+returns a GeoServer 400. CI validates that fallback rather than requiring a
+known-broken cache path to remain green.
 """
 from __future__ import annotations
 
@@ -21,6 +22,23 @@ LAYERS = [
     "iplan:rangkaian_ekologi", "iplan:warisan", "iplan:rumah_mampu_milik", "iplan:topo",
     "iplan:hakisan_pantai", "iplan:rmm01",
 ]
+ARCGIS_FALLBACKS = {
+    "iplan:gunatanah_semasa_04": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTsemasa_04/MapServer", 0,
+    ),
+    "iplan:gunatanah_zoning_04": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTzoning_04/MapServer", 0,
+    ),
+    "iplan:rfn": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer", 5,
+    ),
+    "iplan:ksas": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer", 2,
+    ),
+    "iplan:hakisan_pantai": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 5,
+    ),
+}
 WORLD = 20037508.342789244
 # EPSG:900913 gridset is anchored at the top-left corner of WebMercator.
 GRID_ORIGIN = f"{-WORLD},{WORLD}"
@@ -59,6 +77,20 @@ def probe(client: httpx.Client, url: str, params: dict[str, str]) -> tuple[int, 
         return 0, "", 0, time.perf_counter() - started, f"ERROR: {type(exc).__name__}: {exc}"
 
 
+def arcgis_params(base: dict[str, str], layer_id: int) -> dict[str, str]:
+    return {
+        "bbox": base["bbox"],
+        "bboxSR": "3857",
+        "imageSR": "3857",
+        "size": f"{base['width']},{base['height']}",
+        "dpi": "96",
+        "format": "png32",
+        "transparent": base["transparent"],
+        "f": "image",
+        "layers": f"show:{layer_id}",
+    }
+
+
 def main() -> None:
     bbox, tile_x, tile_y = tile_bbox(102.196, 2.285, 13)
     base = {
@@ -69,7 +101,7 @@ def main() -> None:
     }
     failures: list[str] = []
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=10.0), follow_redirects=True, headers={
-        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.3",
+        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.4",
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
         "Accept": "image/png,image/*,*/*;q=0.8",
         "Accept-Encoding": "identity",
@@ -78,9 +110,19 @@ def main() -> None:
         for layer in LAYERS:
             status, ct, size, elapsed, detail = probe(client, UPSTREAM, dict(base, layers=layer))
             ok = status == 200 and ct.lower().startswith("image/") and size > 100
-            print(f"DIRECT {'PASS' if ok else 'FAIL'} · {layer} · HTTP={status} · CT={ct or '-'} · bytes={size} · {elapsed:.2f}s · {detail}")
+            print(f"GWC {'PASS' if ok else 'FAIL'} · {layer} · HTTP={status} · CT={ct or '-'} · bytes={size} · {elapsed:.2f}s · {detail}")
             if not ok:
-                failures.append(f"DIRECT {layer}: HTTP={status} CT={ct or '-'} bytes={size} detail={detail}")
+                fallback = ARCGIS_FALLBACKS.get(layer)
+                if fallback:
+                    fallback_url, layer_id = fallback
+                    f_status, f_ct, f_size, f_elapsed, f_detail = probe(
+                        client, fallback_url + "/export", arcgis_params(base, layer_id)
+                    )
+                    f_ok = f_status == 200 and f_ct.lower().startswith("image/") and f_size > 100
+                    print(f"ARCGIS FALLBACK {'PASS' if f_ok else 'FAIL'} · {layer} · HTTP={f_status} · CT={f_ct or '-'} · bytes={f_size} · {f_elapsed:.2f}s · {f_detail}")
+                    if f_ok:
+                        continue
+                failures.append(f"UPSTREAM {layer}: GWC HTTP={status} CT={ct or '-'} bytes={size} detail={detail}")
         print(f"GIS PROXY PREFLIGHT · {BASE_URL}/map/wms")
         for layer in LAYERS:
             status, ct, size, elapsed, detail = probe(client, f"{BASE_URL}/map/wms", dict(base, layers=layer))
