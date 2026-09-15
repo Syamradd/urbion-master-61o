@@ -8,7 +8,6 @@ and concurrency-bounded so aborted map tiles cannot starve the planning APIs.
 from __future__ import annotations
 
 import asyncio
-import math
 from urllib.parse import urlsplit
 
 import httpx
@@ -17,7 +16,6 @@ from fastapi.responses import Response
 
 router = APIRouter()
 WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
-WMTS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts"
 DIRECT_WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/"),
@@ -29,6 +27,7 @@ WMS_ARCGIS_FALLBACKS = {
     "iplan:rfn": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer", 5),
     "iplan:ksas": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer", 2),
     "iplan:hakisan_pantai": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 5),
+    "iplan:banjir": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 2),
 }
 DIRECT_WMS_FALLBACKS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:banjir", "iplan:warisan",
@@ -57,15 +56,15 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36",
     "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
     "Referer": "https://www.planmalaysia.gov.my/",
+    "Connection": "close",
 }
 _LIMITS = httpx.Limits(max_connections=8, max_keepalive_connections=4)
 _JMG_LIMITS = httpx.Limits(max_connections=4, max_keepalive_connections=0)
 _TIMEOUT = httpx.Timeout(connect=6.0, read=12.0, write=6.0, pool=6.0)
 _JMG_TIMEOUT = httpx.Timeout(connect=4.0, read=6.0, write=4.0, pool=4.0)
 _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEADERS, limits=_LIMITS)
-_JMG_CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_JMG_TIMEOUT, headers={**HEADERS, "Connection": "close"}, limits=_JMG_LIMITS)
+_JMG_CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_JMG_TIMEOUT, headers=HEADERS, limits=_JMG_LIMITS)
 _UPSTREAM_SEMAPHORE = asyncio.Semaphore(6)
-WORLD = 20037508.342789244
 
 async def _client_get(url: str, params: dict[str, str]) -> httpx.Response:
     async with _UPSTREAM_SEMAPHORE:
@@ -99,6 +98,24 @@ async def _arcgis_wms_fallback(layer: str, params: dict[str, str]) -> Response |
     if not content_type.lower().startswith("image/"): return None
     return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-ArcGIS"})
 
+def _untiled_wms_params(params: dict[str, str]) -> dict[str, str]:
+    untiled = dict(params)
+    untiled.pop("tiled", None)
+    untiled.pop("tilesorigin", None)
+    untiled.setdefault("format", "image/png")
+    untiled.setdefault("version", "1.1.1")
+    untiled.setdefault("request", "GetMap")
+    untiled.setdefault("service", "WMS")
+    return untiled
+
+async def _untiled_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    try: upstream = await _client_get(WMS_UPSTREAM, _untiled_wms_params(params))
+    except (httpx.HTTPError, asyncio.TimeoutError): return None
+    if upstream.status_code != 200: return None
+    content_type = upstream.headers.get("content-type", "")
+    if not content_type.lower().startswith("image/"): return None
+    return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS-UNTILED"})
+
 def _direct_wms_params(params: dict[str, str]) -> dict[str, str]:
     direct = dict(params); direct.pop("tiled", None); direct.pop("tilesorigin", None)
     direct.setdefault("format", "image/png"); direct.setdefault("version", "1.1.1"); direct.setdefault("request", "GetMap"); direct.setdefault("service", "WMS")
@@ -112,41 +129,6 @@ async def _direct_wms_fallback(layer: str, params: dict[str, str]) -> Response |
     content_type = upstream.headers.get("content-type", "image/png")
     if not content_type.lower().startswith("image/"): return None
     return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS"})
-
-def _wmts_tile_params(layer: str, params: dict[str, str]) -> dict[str, str] | None:
-    if str(params.get("width", "256")) != "256" or str(params.get("height", "256")) != "256": return None
-    spatial_ref = str(params.get("srs") or params.get("crs") or "").upper()
-    if spatial_ref not in {"EPSG:900913", "EPSG:3857"}: return None
-    raw = str(params.get("bbox", ""))
-    try: xmin, ymin, xmax, ymax = (float(x) for x in raw.split(","))
-    except (TypeError, ValueError): return None
-    dx = xmax - xmin
-    dy = ymax - ymin
-    if dx <= 0 or dy <= 0 or abs(dx - dy) > max(dx, dy) * 1e-6: return None
-    z_float = math.log2((2.0 * WORLD) / (dx * 256.0))
-    z = int(round(z_float))
-    if z < 0 or z > 22 or abs(z_float - z) > 1e-6: return None
-    span = 2.0 * WORLD / (256.0 * (2**z))
-    x_float = (xmin + WORLD) / span
-    y_float = (WORLD - ymax) / span
-    x = int(round(x_float)); y = int(round(y_float))
-    if abs(x_float - x) > 1e-6 or abs(y_float - y) > 1e-6: return None
-    return {
-        "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0",
-        "LAYER": layer, "STYLE": "", "TILEMATRIXSET": "EPSG:900913",
-        "FORMAT": "image/png", "TILEMATRIX": f"EPSG:900913:{z}",
-        "TILEROW": str(y), "TILECOL": str(x),
-    }
-
-async def _wmts_tile_fallback(layer: str, params: dict[str, str]) -> Response | None:
-    tile = _wmts_tile_params(layer, params)
-    if tile is None: return None
-    try: upstream = await _client_get(WMTS_UPSTREAM, tile)
-    except (httpx.HTTPError, asyncio.TimeoutError): return None
-    if upstream.status_code != 200: return None
-    content_type = upstream.headers.get("content-type", "image/png")
-    if not content_type.lower().startswith("image/"): return None
-    return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMTS"})
 
 def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, float], width: int = 256, height: int = 256) -> str | None:
     xmin, ymin, xmax, ymax = bbox; dx = xmax - xmin; dy = ymax - ymin
@@ -213,9 +195,9 @@ async def map_wms_proxy(request: Request) -> Response:
     if upstream is None or upstream.status_code != 200 or not upstream.headers.get("content-type", "").lower().startswith("image/"):
         fallback = await _arcgis_wms_fallback(layers, params)
         if fallback is not None: return fallback
-        fallback = await _direct_wms_fallback(layers, params)
+        fallback = await _untiled_wms_fallback(layers, params)
         if fallback is not None: return fallback
-        fallback = await _wmts_tile_fallback(layers, params)
+        fallback = await _direct_wms_fallback(layers, params)
         if fallback is not None: return fallback
         detail = f"GWC={upstream.status_code if upstream is not None else 'UNAVAILABLE'}"
         if upstream is not None and upstream.headers.get("content-type"): detail += f" CT={upstream.headers.get('content-type')}"
