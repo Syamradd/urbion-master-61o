@@ -324,13 +324,19 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         if isinstance(payload, dict) and payload.get("error"): return None
         return payload if isinstance(payload, dict) else None
 
-    xmid = (xmin + xmax) / 2.0
-    ymid = (ymin + ymax) / 2.0
-    boxes = (
-        (xmin, ymin, xmid, ymid), (xmid, ymin, xmax, ymid),
-        (xmin, ymid, xmid, ymax), (xmid, ymid, xmax, ymax),
-    )
-    results = await asyncio.gather(*(run_query(box) for box in boxes), return_exceptions=True)
+    async def render_box(query_bbox: tuple[float, float, float, float]) -> dict | None:
+        return await run_query(query_bbox)
+
+    primary = await render_box((xmin, ymin, xmax, ymax))
+    results = [primary] if isinstance(primary, dict) else []
+    if isinstance(primary, dict) and primary.get("exceededTransferLimit"):
+        xmid = (xmin + xmax) / 2.0
+        ymid = (ymin + ymax) / 2.0
+        boxes = (
+            (xmin, ymin, xmid, ymid), (xmid, ymin, xmax, ymid),
+            (xmin, ymid, xmid, ymax), (xmid, ymid, xmax, ymax),
+        )
+        results = await asyncio.gather(*(render_box(box) for box in boxes), return_exceptions=True)
     features = []
     seen_ids = set()
     for result in results:
@@ -343,7 +349,8 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
             features.append(feature)
     svg = _svg_from_arcgis_features({"features": features}, bbox, width, int(params.get("height", "256")))
     if not svg: return None
-    return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer-Split"})
+    fallback_name = "JMG-FeatureServer-Split" if isinstance(primary, dict) and primary.get("exceededTransferLimit") else "JMG-FeatureServer"
+    return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": fallback_name})
 
 
 @router.get("/map/wms", include_in_schema=False)
@@ -402,7 +409,7 @@ async def map_arcgis_proxy(request: Request) -> Response:
     last_detail = "no response"
     export_url = f"https://{match[0]}{parsed_path}/export"
     export_params = dict(params)
-    if is_jmg: export_params["format"] = "png8"
+    if is_jmg: export_params["format"] = "png32"
     try: upstream = await _client_get(export_url, export_params)
     except (httpx.HTTPError, asyncio.TimeoutError) as exc:
         upstream = None; last_detail = str(exc)
