@@ -24,10 +24,8 @@ TMS_FALLBACK_LAYERS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:warisan",
     "iplan:rumah_mampu_milik", "iplan:topo",
 }
-# The public GWC demo advertises these five layers on EPSG:900913, but the
-# live WMS endpoint currently rejects the same ordinary tile request. Keep a
-# layer-specific retry that explicitly supplies the advertised gridset.
 GWC_GRIDSET_FALLBACK_LAYERS = set(TMS_FALLBACK_LAYERS)
+GWC_GRIDSET_ORIGIN = "-20037508.342789244,-20037508.342789244"
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/"),
     ("mygems.jmg.gov.my", "/server/rest/services/"),
@@ -197,9 +195,9 @@ async def _gwc_gridset_wms_fallback(layer: str, params: dict[str, str]) -> Respo
     if layer not in GWC_GRIDSET_FALLBACK_LAYERS:
         return None
     grid_params = dict(params)
-    grid_params.pop("tilesorigin", None)
+    grid_params.pop("gridSet", None)
     grid_params["tiled"] = "true"
-    grid_params["gridSet"] = "EPSG:900913"
+    grid_params["tilesorigin"] = GWC_GRIDSET_ORIGIN
     try:
         upstream = await _client_get(WMS_UPSTREAM, grid_params)
     except (httpx.HTTPError, asyncio.TimeoutError):
@@ -253,32 +251,26 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         "outSR": "3857", "geometryType": "esriGeometryEnvelope", "inSR": "3857",
         "spatialRel": "esriSpatialRelIntersects", "geometry": bbox_raw, "f": "json",
     }
-    attempts = [
-        {**common, "resultRecordCount": "500", "resultType": "tile", "returnExceededLimitFeatures": "true"},
-        {**common, "resultRecordCount": "2000"},
-        {k: v for k, v in common.items() if k not in {"geometry", "geometryType", "inSR", "spatialRel"}},
-    ]
-    for query in attempts:
-        try:
-            upstream = await _client_get(query_url, query)
-        except (httpx.HTTPError, asyncio.TimeoutError):
-            continue
-        if upstream.status_code != 200:
-            continue
-        content_type = upstream.headers.get("content-type", "")
-        if "json" not in content_type.lower():
-            continue
-        try:
-            payload = upstream.json()
-        except ValueError:
-            continue
-        if isinstance(payload, dict) and payload.get("error"):
-            continue
-        svg = _svg_from_arcgis_features(payload, bbox)
-        if not svg:
-            svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
-        return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"})
-    return None
+    query = {**common, "resultRecordCount": "500", "resultType": "tile", "returnExceededLimitFeatures": "true"}
+    try:
+        upstream = await _client_get(query_url, query)
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    if upstream.status_code != 200:
+        return None
+    content_type = upstream.headers.get("content-type", "")
+    if "json" not in content_type.lower():
+        return None
+    try:
+        payload = upstream.json()
+    except ValueError:
+        return None
+    if isinstance(payload, dict) and payload.get("error"):
+        return None
+    svg = _svg_from_arcgis_features(payload, bbox)
+    if not svg:
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
+    return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"})
 
 
 @router.get("/map/wms", include_in_schema=False)
@@ -327,9 +319,6 @@ async def map_arcgis_proxy(request: Request) -> Response:
     parsed_path = parsed.path.rstrip("/"); is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
-    if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"):
-        feature_first = await _jmg_feature_image_fallback(parsed_path, params)
-        if feature_first is not None: return feature_first
     export_url = f"https://{match[0]}{parsed_path}/export"; last_detail = "no response"
     try:
         upstream = await _client_get(export_url, dict(params))
