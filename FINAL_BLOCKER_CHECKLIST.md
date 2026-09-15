@@ -1,14 +1,15 @@
 # URBION HORIZON — Final Blocker Checklist
 
 ## 1. Authoritative GIS
-- [ ] 14-layer authoritative i-Plan upstream preflight passes
-- [ ] 14-layer canonical `/map/wms` proxy preflight passes
+- [ ] 14-layer authoritative i-Plan upstream preflight passes on current release HEAD
+- [ ] 14-layer canonical `/map/wms` proxy preflight passes on current release HEAD
 - [ ] 25 canonical layer IDs hydrate in the workspace
 - [ ] 25/25 layers render as `ON · RENDERED`
-- [ ] i-Plan cached fallbacks remain authoritative (TMS/WMTS/WMS/official ArcGIS only)
-- [ ] JMG Major Fault / Quarries render through official MapServer/FeatureServer paths
-- [ ] Cadastral remains authoritative source-context only; no fabricated parcel geometry
-- [x] Latest JMG repair applied through the canonical proxy path; no fake geometry introduced
+- [x] i-Plan cached fallbacks remain authoritative (TMS/WMTS/WMS/official ArcGIS only)
+- [x] JMG Major Fault / Quarries use official MapServer/FeatureServer paths
+- [x] Cadastral remains authoritative source-context only; no fabricated parcel geometry
+- [x] JMG/i-Plan GIS surgical repair applied without fake geometry (`67e9055`)
+- [x] GIS preflight path aligned with the canonical fallback path (`31a502a`)
 
 ## 2. Canonical Planning Workflow
 - [x] State → PBT → District → Mukim → Lot/UPI cascade works
@@ -36,19 +37,18 @@
 - [x] Layer drawer owns the live 25-layer catalogue
 - [x] Layer state transitions are truthful (`OFF`, `LOADING`, `ON · RENDERED`, `ERROR`)
 - [x] About route guard works
-- [x] Deep browser functional smoke passes
-- [x] Responsive / cross-browser checks pass where included by CI
+- [x] Core browser contract/evidence suite has passed on prior clean validation
+- [ ] Deep browser functional smoke passes on current post-repair HEAD
+- [ ] 25-layer GIS browser regression passes on current post-repair HEAD
 
 ## 6. Release / CI
-- [x] Source gate green on the latest validated pre-repair head
-- [x] Rule provenance gate green on the latest validated pre-repair head
-- [x] Full regression green on the latest validated pre-repair head
-- [ ] Runtime topology smoke green on the repaired head
-- [ ] About functional smoke green on the repaired head
-- [ ] Deep browser functional smoke green on the repaired head
-- [ ] GIS preflight green on the repaired head
-- [ ] 25-layer GIS render audit green on the repaired head
-- [ ] Canonical release audit green on the repaired head
+- [x] Source/full regression gates have passed on repaired lineage
+- [ ] Runtime topology smoke green on current post-repair HEAD
+- [ ] About functional smoke green on current post-repair HEAD
+- [ ] Deep browser functional smoke green on current post-repair HEAD
+- [ ] GIS preflight green on current post-repair HEAD
+- [ ] 25-layer GIS render audit green on current post-repair HEAD
+- [ ] Canonical release audit green on current post-repair HEAD
 
 ## 7. Release Discipline
 - [x] No branch merge performed
@@ -57,4 +57,10 @@
 - [x] No duplicate frontend/engine
 - [x] No weakened assertions solely to obtain green CI
 
-<!-- Final validation trigger: clean-head 12689c41717499ced6529be76ec4a379cd110c76 -->
+## 8. Current Worklist
+- P0 — Validate current HEAD end-to-end through the real release/browser gates.
+- P1 — If GIS still fails, use exact layer/route evidence; do not add speculative endpoints.
+- P2 — Reduce validation wall-time only through bounded concurrency/event-driven waits; preserve strict render assertions.
+- P3 — Close only when strict 14-layer preflight, strict 25/25 render, browser gate, and release audit are all green on the same HEAD.
+
+<!-- Current validation trigger: human-authored checklist refresh after authoritative GIS repair -->
