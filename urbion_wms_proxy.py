@@ -19,11 +19,37 @@ router = APIRouter()
 # Tiled requests include the cache grid origin so state-specific i-Plan layers
 # are resolved against the EPSG:900913 tile matrix used by the service.
 WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
-WMS_DIRECT_FALLBACK = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 ARCGIS_ALLOWLIST = (
-    ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/iPLAN/"),
+    ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/"),
     ("mygems.jmg.gov.my", "/server/rest/services/"),
 )
+# Some i-Plan GeoWebCache layers are currently configured but return a live
+# 400 "Problem communicating with GeoServer". For layers where PLANMalaysia
+# exposes the same authoritative planning dataset through public ArcGIS REST,
+# keep the browser-facing WMS contract but render through that official service.
+# The fallback is deliberately explicit and small: no speculative layer swaps.
+WMS_ARCGIS_FALLBACKS = {
+    "iplan:gunatanah_semasa_04": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTsemasa_04/MapServer",
+        0,
+    ),
+    "iplan:gunatanah_zoning_04": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTzoning_04/MapServer",
+        0,
+    ),
+    "iplan:rfn": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer",
+        5,
+    ),
+    "iplan:ksas": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer",
+        2,
+    ),
+    "iplan:hakisan_pantai": (
+        "https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer",
+        5,
+    ),
+}
 ALLOWED_WMS_PARAMS = {
     "service", "request", "layers", "styles", "format", "transparent",
     "version", "tiled", "tilesorigin", "width", "height", "srs", "bbox", "crs",
@@ -59,14 +85,49 @@ def _proxy_failure(prefix: str, detail: str) -> Response:
     return Response(f"{prefix}: {detail}", status_code=502, media_type="text/plain")
 
 
-def _direct_wms_params(params: dict[str, str]) -> dict[str, str]:
-    # GeoServer WMS is the authoritative fallback when GeoWebCache cannot
-    # satisfy a layer. Strip cache-only flags so the request becomes a normal
-    # GetMap operation against the live i-Plan WMS endpoint.
-    direct = dict(params)
-    direct.pop("tiled", None)
-    direct.pop("tilesorigin", None)
-    return direct
+def _arcgis_fallback_params(params: dict[str, str], layer_id: int) -> dict[str, str]:
+    spatial_ref = str(params.get("srs") or params.get("crs") or "EPSG:3857").upper()
+    if spatial_ref.endswith(":900913") or spatial_ref.endswith(":3857"):
+        wkid = "3857"
+    elif spatial_ref.endswith(":4326"):
+        wkid = "4326"
+    else:
+        wkid = "3857"
+    width = str(params.get("width", "256"))
+    height = str(params.get("height", "256"))
+    return {
+        "bbox": str(params.get("bbox", "")),
+        "bboxSR": wkid,
+        "imageSR": wkid,
+        "size": f"{width},{height}",
+        "dpi": "96",
+        "format": "png32",
+        "transparent": str(params.get("transparent", "true")),
+        "f": "image",
+        "layers": f"show:{layer_id}",
+    }
+
+
+async def _arcgis_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    target = WMS_ARCGIS_FALLBACKS.get(layer)
+    if not target:
+        return None
+    service_url, layer_id = target
+    try:
+        upstream = await _client_get(service_url + "/export", _arcgis_fallback_params(params, layer_id))
+    except (httpx.HTTPError, asyncio.TimeoutError) as exc:
+        return _proxy_failure("Authoritative PLANMalaysia ArcGIS fallback unavailable", str(exc))
+    if upstream.status_code != 200:
+        return _proxy_failure("Authoritative PLANMalaysia ArcGIS fallback returned HTTP", str(upstream.status_code))
+    content_type = upstream.headers.get("content-type", "image/png")
+    if not content_type.lower().startswith("image/"):
+        return _proxy_failure("Authoritative PLANMalaysia ArcGIS fallback did not return an image", content_type)
+    return Response(
+        upstream.content,
+        status_code=200,
+        media_type=content_type.split(";", 1)[0].strip() or "image/png",
+        headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-ArcGIS"},
+    )
 
 
 @router.get("/map/wms", include_in_schema=False)
@@ -100,26 +161,14 @@ async def map_wms_proxy(request: Request) -> Response:
     except (httpx.HTTPError, asyncio.TimeoutError):
         upstream = None
 
-    # GWC can return a 4xx when its backing GeoServer cannot render a configured
-    # cached layer. Fall through to the same official i-Plan WMS service rather
-    # than exposing a dead overlay in the canonical workspace.
+    # Prefer the live GWC result. When its GeoServer backing layer is broken,
+    # use only an explicit official PLANMalaysia ArcGIS equivalent.
     if upstream is None or upstream.status_code != 200:
-        try:
-            fallback = await _client_get(WMS_DIRECT_FALLBACK, _direct_wms_params(params))
-        except (httpx.HTTPError, asyncio.TimeoutError) as exc:
-            return _proxy_failure("i-Plan WMS upstream unavailable", str(exc))
-        if fallback.status_code != 200:
-            detail = f"GWC={upstream.status_code if upstream is not None else 'UNAVAILABLE'}; DIRECT={fallback.status_code}"
-            return _proxy_failure("i-Plan WMS upstream returned HTTP", detail)
-        content_type = fallback.headers.get("content-type", "image/png")
-        if not content_type.lower().startswith("image/"):
-            return _proxy_failure("i-Plan WMS upstream did not return an image", content_type)
-        return Response(
-            fallback.content,
-            status_code=200,
-            media_type=content_type.split(";", 1)[0].strip() or "image/png",
-            headers=_cache_headers(),
-        )
+        fallback = await _arcgis_wms_fallback(layers, params)
+        if fallback is not None:
+            return fallback
+        detail = f"GWC={upstream.status_code if upstream is not None else 'UNAVAILABLE'}"
+        return _proxy_failure("i-Plan WMS upstream returned HTTP", detail)
 
     content_type = upstream.headers.get("content-type", "image/png")
     if not content_type.lower().startswith("image/"):
@@ -164,10 +213,9 @@ async def map_arcgis_proxy(request: Request) -> Response:
     params.setdefault("transparent", "true")
     parsed_path = parsed.path.rstrip("/")
     # JMG's Major Fault MapServer exposes its authoritative drawable layer as
-    # child layer 5. Keep that selection server-side as a compatibility guard
-    # even when a client does not include `layers=show:5`.
+    # child layer 5. Force that selection server-side as a compatibility guard.
     if parsed.hostname.lower() == "mygems.jmg.gov.my" and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"):
-        params.setdefault("layers", "show:5")
+        params["layers"] = "show:5"
     export_url = f"https://{match[0]}{parsed_path}/export"
 
     try:
