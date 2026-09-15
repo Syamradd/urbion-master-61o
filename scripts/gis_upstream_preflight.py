@@ -12,6 +12,7 @@ BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8765").rstrip("/")
 UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
 TMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/tms/1.0.0"
 DIRECT_WMS = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
+GWC_GRIDSET_ORIGIN = "-20037508.342789244,-20037508.342789244"
 LAYERS = [
     "iplan:gunatanah_semasa_04", "iplan:gunatanah_zoning_04", "iplan:gunatanah_komited_04",
     "iplan:rfn", "iplan:rsn", "iplan:banjir", "iplan:ksas", "iplan:cfs",
@@ -85,8 +86,15 @@ def direct_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
     return untiled_wms_params(base, layer)
 
 
+def gridset_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
+    return {
+        **untiled_wms_params(base, layer),
+        "tiled": "true",
+        "tilesorigin": GWC_GRIDSET_ORIGIN,
+    }
+
+
 def tms_url(layer: str, zoom: int, x: int, y_xyz: int) -> str:
-    # GeoWebCache TMS uses a bottom-origin y index.
     y_tms = (2**zoom - 1) - y_xyz
     encoded_layer = quote(layer, safe=":")
     return f"{TMS_UPSTREAM}/{encoded_layer}@EPSG:900913@png/{zoom}/{x}/{y_tms}.png"
@@ -101,7 +109,7 @@ def main() -> None:
     }
     failures: list[str] = []
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=10.0), follow_redirects=True, headers={
-        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.9",
+        "User-Agent": "URBION-HORIZON-GIS-Preflight/2.0",
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
         "Accept": "image/png,image/*,*/*;q=0.8", "Accept-Encoding": "identity", "Connection": "close",
     }) as client:
@@ -116,6 +124,12 @@ def main() -> None:
                     t_ok = t_status == 200 and t_ct.lower().startswith("image/") and t_size > 100
                     print(f"GWC TMS FALLBACK {'PASS' if t_ok else 'FAIL'} · {layer} · HTTP={t_status} · CT={t_ct or '-'} · bytes={t_size} · {t_elapsed:.2f}s · {t_detail}")
                     if t_ok:
+                        continue
+                if layer in TMS_FALLBACK_LAYERS:
+                    o_status, o_ct, o_size, o_elapsed, o_detail = probe(client, UPSTREAM, gridset_wms_params(base, layer))
+                    o_ok = o_status == 200 and o_ct.lower().startswith("image/") and o_size > 100
+                    print(f"GWC GRIDSET-ORIGIN FALLBACK {'PASS' if o_ok else 'FAIL'} · {layer} · HTTP={o_status} · CT={o_ct or '-'} · bytes={o_size} · {o_elapsed:.2f}s · {o_detail}")
+                    if o_ok:
                         continue
                 fallback = ARCGIS_FALLBACKS.get(layer)
                 if fallback:
