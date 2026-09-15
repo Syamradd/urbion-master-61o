@@ -122,6 +122,45 @@ def tms_urls(layer: str, zoom: int, x: int, y_xyz: int):
 
 
 def main() -> None:
+    selected = os.getenv("URBION_PREFLIGHT_LAYER")
+    if selected:
+        if selected not in LAYERS:
+            raise SystemExit(f"Unknown URBION_PREFLIGHT_LAYER: {selected}")
+    else:
+        import concurrent.futures
+        import subprocess
+        import sys
+        failures = []
+        max_workers = min(6, len(LAYERS))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {
+                pool.submit(
+                    subprocess.run,
+                    [sys.executable, __file__],
+                    env={**os.environ, "URBION_PREFLIGHT_LAYER": layer},
+                    capture_output=True,
+                    text=True,
+                ): layer
+                for layer in LAYERS
+            }
+            ordered = {}
+            for future, layer in [(future, futures[future]) for future in futures]:
+                result = future.result()
+                ordered[layer] = result
+                if result.returncode != 0:
+                    failures.append(layer)
+            for layer in ([selected] if selected else LAYERS):
+                result = ordered[layer]
+                print(f"\n===== PREFLIGHT LAYER {layer} =====")
+                if result.stdout:
+                    print(result.stdout, end="")
+                if result.stderr:
+                    print(result.stderr, end="", file=sys.stderr)
+        if failures:
+            raise SystemExit("Parallel GIS preflight failures: " + ", ".join(failures))
+        print(f"Parallel GIS authoritative + proxy preflight: PASS · {len(LAYERS)}/{len(LAYERS)} layers")
+        return
+
     bbox, tile_x, tile_y = tile_bbox(102.196, 2.285, 13)
     base = {
         "service": "WMS", "request": "GetMap", "styles": "", "format": "image/png",
