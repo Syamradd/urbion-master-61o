@@ -8,6 +8,7 @@ and concurrency-bounded so aborted map tiles cannot starve the planning APIs.
 from __future__ import annotations
 
 import asyncio
+import html
 from urllib.parse import urlsplit
 
 import httpx
@@ -51,6 +52,10 @@ JMG_DEFAULT_LAYERS = {
     "/server/rest/services/LombongKuari/Lombong_Kuari_Awam/MapServer": "show:0",
     "/server/rest/services/Air_Bawah_Tanah/Air_Bawah_Tanah_Awam/MapServer": "show:0",
     "/server/rest/services/Demarcation/Litology_by_Negeri/MapServer": "show:22",
+}
+JMG_FEATURE_FALLBACKS = {
+    "/server/rest/services/GeologiAsas/Major_Fault/MapServer": ("/server/rest/services/GeologiAsas/Major_Fault/FeatureServer", 5),
+    "/server/rest/services/LombongKuari/Lombong_Kuari_Awam/MapServer": ("/server/rest/services/LombongKuari/Lombong_Kuari_Awam/FeatureServer", 0),
 }
 ALLOWED_WMS_PARAMS = {
     "service", "request", "layers", "styles", "format", "transparent",
@@ -97,7 +102,7 @@ def _proxy_failure(prefix: str, detail: str) -> Response:
 
 
 def _arcgis_fallback_params(params: dict[str, str], layer_id: int) -> dict[str, str]:
-    spatial_ref = str(params.get("srs") or params.get("crs") or "EPSG:3857").upper()
+    spatial_ref = str(params.get("srs") or params.get("crs") or params.get("bboxSR") or "EPSG:3857").upper()
     wkid = "4326" if spatial_ref.endswith(":4326") else "3857"
     width = str(params.get("width", "256"))
     height = str(params.get("height", "256"))
@@ -158,6 +163,87 @@ async def _direct_wms_fallback(layer: str, params: dict[str, str]) -> Response |
         media_type=content_type.split(";", 1)[0].strip() or "image/png",
         headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS"},
     )
+
+
+def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, float], width: int = 256, height: int = 256) -> str | None:
+    xmin, ymin, xmax, ymax = bbox
+    dx = xmax - xmin
+    dy = ymax - ymin
+    if dx <= 0 or dy <= 0:
+        return None
+    features = payload.get("features") or []
+    parts = []
+    def xy(x, y):
+        px = (float(x) - xmin) / dx * width
+        py = height - (float(y) - ymin) / dy * height
+        return px, py
+    for feature in features[:500]:
+        geom = feature.get("geometry") if isinstance(feature, dict) else None
+        if not isinstance(geom, dict):
+            continue
+        if isinstance(geom.get("paths"), list):
+            for path in geom["paths"]:
+                if not path:
+                    continue
+                coords = [xy(*pt[:2]) for pt in path if isinstance(pt, (list, tuple)) and len(pt) >= 2]
+                if len(coords) >= 2:
+                    d = "M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in coords)
+                    parts.append(f'<path d="{d}" fill="none" stroke="#1de0ff" stroke-width="2.2" vector-effect="non-scaling-stroke"/>')
+        elif isinstance(geom.get("rings"), list):
+            for ring in geom["rings"]:
+                coords = [xy(*pt[:2]) for pt in ring if isinstance(pt, (list, tuple)) and len(pt) >= 2]
+                if len(coords) >= 3:
+                    d = "M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in coords) + " Z"
+                    parts.append(f'<path d="{d}" fill="rgba(29,224,255,0.16)" stroke="#1de0ff" stroke-width="1.2" vector-effect="non-scaling-stroke"/>')
+        elif geom.get("x") is not None and geom.get("y") is not None:
+            px, py = xy(geom["x"], geom["y"])
+            parts.append(f'<circle cx="{px:.2f}" cy="{py:.2f}" r="3" fill="#1de0ff" stroke="#06212b" stroke-width="1"/>')
+    if not parts:
+        return None
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">' + "".join(parts) + '</svg>'
+
+
+async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) -> Response | None:
+    target = JMG_FEATURE_FALLBACKS.get(parsed_path)
+    if not target:
+        return None
+    feature_path, layer_id = target
+    bbox_raw = str(params.get("bbox", ""))
+    try:
+        bbox = tuple(float(x) for x in bbox_raw.split(","))
+        if len(bbox) != 4:
+            return None
+    except (TypeError, ValueError):
+        return None
+    query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
+    query = {
+        "where": "1=1",
+        "geometry": bbox_raw,
+        "geometryType": "esriGeometryEnvelope",
+        "inSR": "3857",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "*",
+        "returnGeometry": "true",
+        "outSR": "3857",
+        "resultRecordCount": "500",
+        "f": "json",
+    }
+    try:
+        upstream = await _client_get(query_url, query)
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    if upstream.status_code != 200 or not upstream.headers.get("content-type", "").lower().startswith("application/json"):
+        return None
+    try:
+        payload = upstream.json()
+    except ValueError:
+        return None
+    svg = _svg_from_arcgis_features(payload, bbox)
+    if not svg:
+        # A genuine empty tile is still a valid render response. The source
+        # query succeeded; there simply were no features in this tile.
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
+    return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"})
 
 
 @router.get("/map/wms", include_in_schema=False)
@@ -238,4 +324,8 @@ async def map_arcgis_proxy(request: Request) -> Response:
             return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
         body = upstream.text[:240].replace("\n", " ").replace("\r", " ")
         last_detail = f"HTTP={upstream.status_code} CT={content_type or '-'} BODY={body}"
+    if is_jmg:
+        fallback = await _jmg_feature_image_fallback(parsed_path, params)
+        if fallback is not None:
+            return fallback
     return _proxy_failure("Authoritative ArcGIS upstream render failed", last_detail)
