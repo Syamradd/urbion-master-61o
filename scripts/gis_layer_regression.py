@@ -1,9 +1,11 @@
 """Canonical GIS layer catalogue + browser end-to-end render regression."""
 from __future__ import annotations
+
 import os
 import time
 from collections import defaultdict
 from urllib.parse import parse_qs, unquote, urlparse
+
 from playwright.sync_api import expect, sync_playwright
 
 BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8000")
@@ -31,10 +33,26 @@ def wait_until(predicate, timeout=15.0, interval=0.2):
 
 def hydrated_ui_ids(page):
     return {
-        x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all(
+        x
+        for x in page.locator("#layerList [data-urbion-layer]").evaluate_all(
             "els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)"
-        ) if x
+        )
+        if x
     }
+
+
+def wait_for_layer_dom(page, layer_id: str, timeout=12.0):
+    """Wait for one canonical checkbox/state pair; never use a global state count."""
+    def ready():
+        checkbox_count = page.locator(
+            f"#layerList input[data-urbion-layer='{layer_id}']"
+        ).count()
+        state_count = page.locator(
+            f"#layerList [data-layer-state='{layer_id}']"
+        ).count()
+        return checkbox_count == 1 and state_count == 1
+
+    return wait_until(ready, timeout=timeout)
 
 
 def expand_layer_group(page, layer_id):
@@ -64,36 +82,23 @@ def _response_layer_id(url: str, catalog_by_id: dict[str, dict]) -> str | None:
         for lid, item in catalog_by_id.items():
             if item.get("type") == "GEOSERVER_WMS" and item.get("layers") == layer:
                 return lid
-        return None
     if "/map/arcgis" in parsed.path:
         service = unquote(query.get("service", [""])[0]).rstrip("/")
         for lid, item in catalog_by_id.items():
             if item.get("type") == "ARCGIS_MAP" and str(item.get("url", "")).rstrip("/") == service:
                 return lid
-        return None
     return None
-
-
-def wait_for_layer_dom(page, layer_id: str, timeout=12.0):
-    """Wait for the canonical checkbox and state node for this layer as a pair.
-
-    The layer manager hydrates/replaces groups asynchronously; a global count of 25
-    can be true briefly while one individual node is still being replaced.
-    """
-    def ready():
-        checkbox_count = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']").count()
-        state_count = page.locator(f"#layerList [data-layer-state='{layer_id}']").count()
-        return checkbox_count == 1 and state_count == 1
-
-    return wait_until(ready, timeout=timeout)
 
 
 def main():
     assert len(EXPECTED_UI_LAYER_IDS) == 25
     assert len(EXPECTED_API_CORE_IDS) == 24
+
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        context = browser.new_context(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
+        context = browser.new_context(
+            viewport={"width": 1440, "height": 900}, device_scale_factor=1
+        )
         page = context.new_page()
 
         r = page.request.get(BASE_URL + "/map/layers?state=Melaka", timeout=15000)
@@ -109,18 +114,29 @@ def main():
         print(f"GIS API catalogue: PASS (core={len(EXPECTED_API_CORE_IDS)}, extras={len(extras)})")
         for item in catalog:
             if item.get("id") in EXPECTED_API_CORE_IDS:
-                print("GIS CATALOG:", item.get("id"), "type=", item.get("type"), "layers=", item.get("layers"), "url=", item.get("url"))
+                print(
+                    "GIS CATALOG:", item.get("id"),
+                    "type=", item.get("type"),
+                    "layers=", item.get("layers"),
+                    "url=", item.get("url"),
+                )
 
         page.goto(BASE_URL + "/workspace", wait_until="domcontentloaded", timeout=30000)
         expect(page).to_have_title("URBION HORIZON — Planning Workspace")
         page.locator("#layerBtn").click()
         expect(page.locator("#layers")).to_have_class("layers open")
         expect(page.locator("#layerList")).to_be_visible(timeout=15000)
+
         wait_until(lambda: hydrated_ui_ids(page) == EXPECTED_UI_LAYER_IDS, timeout=25.0)
-        wait_until(lambda: page.locator("#layerList [data-layer-state]").count() == 25, timeout=10.0)
         ids = hydrated_ui_ids(page)
-        assert ids == EXPECTED_UI_LAYER_IDS, f"curated UI layer mismatch: missing={EXPECTED_UI_LAYER_IDS-ids}, unexpected={ids-EXPECTED_UI_LAYER_IDS}"
+        assert ids == EXPECTED_UI_LAYER_IDS, (
+            f"curated UI layer mismatch: missing={EXPECTED_UI_LAYER_IDS-ids}, "
+            f"unexpected={ids-EXPECTED_UI_LAYER_IDS}"
+        )
         assert page.locator("#layerList [data-urbion-layer]").count() == 25
+
+        # Hydration is per-row. Do not assert a global state-node count because
+        # the canonical layer manager may replace individual rows asynchronously.
         for lid in EXPECTED_UI_LAYER_IDS:
             wait_for_layer_dom(page, lid)
 
@@ -132,29 +148,50 @@ def main():
                 return
             lid = _response_layer_id(response.url, catalog_by_id)
             if lid and len(responses_by_layer[lid]) < 8:
-                responses_by_layer[lid].append({
-                    "status": response.status,
-                    "content_type": response.headers.get("content-type", ""),
-                    "url": response.url,
-                })
+                responses_by_layer[lid].append(
+                    {
+                        "status": response.status,
+                        "content_type": response.headers.get("content-type", ""),
+                        "url": response.url,
+                    }
+                )
 
         page.on("response", on_response)
-        layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)") if x]
+        layer_ids = [
+            x
+            for x in page.locator("#layerList [data-urbion-layer]").evaluate_all(
+                "els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)"
+            )
+            if x
+        ]
+
         for lid in layer_ids:
+            wait_for_layer_dom(page, lid)
             expand_layer_group(page, lid)
             wait_for_layer_dom(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             if cb.count() != 1:
                 failures.append(f"{lid}: canonical layer checkbox not found")
                 continue
+
             cb.check(force=True)
             page.wait_for_timeout(250)
             try:
                 wait_for_layer_dom(page, lid)
-                wait_until(lambda: page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=35.0)
-                state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
+                wait_until(
+                    lambda: page.locator(
+                        f"#layerList [data-layer-state='{lid}']"
+                    ).inner_text().strip().upper()
+                    in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"},
+                    timeout=35.0,
+                )
+                state_text = page.locator(
+                    f"#layerList [data-layer-state='{lid}']"
+                ).inner_text().strip().upper()
                 if state_text != "ON · RENDERED":
-                    failures.append(f"{lid}: {state_text}; responses={responses_by_layer[lid]}")
+                    failures.append(
+                        f"{lid}: {state_text}; responses={responses_by_layer[lid]}"
+                    )
                     print(f"GIS RENDER FAIL: {lid}: {state_text}")
                     print(f"GIS RESPONSE TRACE: {lid}: {responses_by_layer[lid]}")
                 else:
@@ -166,8 +203,12 @@ def main():
                 page.wait_for_timeout(120)
 
         if failures:
-            raise AssertionError("25-layer end-to-end GIS render failures:\n" + "\n".join(failures))
+            raise AssertionError(
+                "25-layer end-to-end GIS render failures:\n" + "\n".join(failures)
+            )
+
         browser.close()
+
     print("GIS 25-layer end-to-end regression: PASS")
 
 
