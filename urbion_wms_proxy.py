@@ -184,12 +184,13 @@ async def _tms_tile_fallback(layer: str, params: dict[str, str]) -> Response | N
     xyz = _wmts_xyz(params)
     if xyz is None:
         return None
-    z, x, y = xyz
+    z, x, y_xyz = xyz
+    y_tms = (2 ** z - 1) - y_xyz
     encoded_layer = quote(layer, safe="")
     for base in TMS_UPSTREAMS:
         for gridset in ("EPSG:900913", "EPSG:4326"):
             for ext in ("png", "jpeg"):
-                url = f"{base}/{encoded_layer}@{gridset}@{ext}/{z}/{x}/{y}.{ext}"
+                url = f"{base}/{encoded_layer}@{gridset}@{ext}/{z}/{x}/{y_tms}.{ext}"
                 try:
                     upstream = await _client_get(url, {})
                 except (httpx.HTTPError, asyncio.TimeoutError):
