@@ -1,10 +1,4 @@
-"""Same-origin proxies for authoritative i-Plan/JMG GIS imagery.
-
-Browser-facing imagery stays same-origin while upstream GIS hosts and service
-prefixes remain tightly allow-listed. Query parameters are normalized to the
-upstream APIs' canonical names before forwarding. Upstream requests are async
-and concurrency-bounded so aborted map tiles cannot starve the planning APIs.
-"""
+"""Same-origin proxies for authoritative i-Plan/JMG GIS imagery."""
 from __future__ import annotations
 
 import asyncio
@@ -16,6 +10,10 @@ from fastapi.responses import Response
 
 router = APIRouter()
 WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
+ROOT_WMS_UPSTREAMS = (
+    "https://iplan.planmalaysia.gov.my/geoserver/wms",
+    "https://iplan.planmalaysia.gov.my/geoserver/ows",
+)
 DIRECT_WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/"),
@@ -31,6 +29,10 @@ WMS_ARCGIS_FALLBACKS = {
 }
 DIRECT_WMS_FALLBACKS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:banjir", "iplan:warisan",
+    "iplan:rumah_mampu_milik", "iplan:topo",
+}
+ROOT_WMS_FALLBACKS = {
+    "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:warisan",
     "iplan:rumah_mampu_milik", "iplan:topo",
 }
 JMG_DEFAULT_LAYERS = {
@@ -66,16 +68,20 @@ _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEA
 _JMG_CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_JMG_TIMEOUT, headers=HEADERS, limits=_JMG_LIMITS)
 _UPSTREAM_SEMAPHORE = asyncio.Semaphore(6)
 
+
 async def _client_get(url: str, params: dict[str, str]) -> httpx.Response:
     async with _UPSTREAM_SEMAPHORE:
         client = _JMG_CLIENT if urlsplit(url).hostname == "mygems.jmg.gov.my" else _CLIENT
         return await client.get(url, params=params)
 
+
 def _cache_headers() -> dict[str, str]:
     return {"Cache-Control": "public, max-age=60, stale-while-revalidate=30"}
 
+
 def _proxy_failure(prefix: str, detail: str) -> Response:
     return Response(f"{prefix}: {detail}", status_code=502, media_type="text/plain")
+
 
 def _arcgis_fallback_params(params: dict[str, str], layer_id: int) -> dict[str, str]:
     spatial_ref = str(params.get("srs") or params.get("crs") or params.get("bboxSR") or "EPSG:3857").upper()
@@ -87,16 +93,28 @@ def _arcgis_fallback_params(params: dict[str, str], layer_id: int) -> dict[str, 
         "transparent": str(params.get("transparent", "true")), "f": "image", "layers": f"show:{layer_id}",
     }
 
+
 async def _arcgis_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
     target = WMS_ARCGIS_FALLBACKS.get(layer)
-    if not target: return None
+    if not target:
+        return None
     service_url, layer_id = target
-    try: upstream = await _client_get(service_url + "/export", _arcgis_fallback_params(params, layer_id))
-    except (httpx.HTTPError, asyncio.TimeoutError): return None
-    if upstream.status_code != 200: return None
+    try:
+        upstream = await _client_get(service_url + "/export", _arcgis_fallback_params(params, layer_id))
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    if upstream.status_code != 200:
+        return None
     content_type = upstream.headers.get("content-type", "image/png")
-    if not content_type.lower().startswith("image/"): return None
-    return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-ArcGIS"})
+    if not content_type.lower().startswith("image/"):
+        return None
+    return Response(
+        upstream.content,
+        status_code=200,
+        media_type=content_type.split(";", 1)[0].strip() or "image/png",
+        headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-ArcGIS"},
+    )
+
 
 def _untiled_wms_params(params: dict[str, str]) -> dict[str, str]:
     untiled = dict(params)
@@ -108,36 +126,77 @@ def _untiled_wms_params(params: dict[str, str]) -> dict[str, str]:
     untiled.setdefault("service", "WMS")
     return untiled
 
+
 async def _untiled_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
-    try: upstream = await _client_get(WMS_UPSTREAM, _untiled_wms_params(params))
-    except (httpx.HTTPError, asyncio.TimeoutError): return None
-    if upstream.status_code != 200: return None
+    try:
+        upstream = await _client_get(WMS_UPSTREAM, _untiled_wms_params(params))
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    if upstream.status_code != 200:
+        return None
     content_type = upstream.headers.get("content-type", "")
-    if not content_type.lower().startswith("image/"): return None
-    return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS-UNTILED"})
+    if not content_type.lower().startswith("image/"):
+        return None
+    return Response(
+        upstream.content,
+        status_code=200,
+        media_type=content_type.split(";", 1)[0].strip() or "image/png",
+        headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS-UNTILED"},
+    )
+
 
 def _direct_wms_params(params: dict[str, str]) -> dict[str, str]:
-    direct = dict(params); direct.pop("tiled", None); direct.pop("tilesorigin", None)
-    direct.setdefault("format", "image/png"); direct.setdefault("version", "1.1.1"); direct.setdefault("request", "GetMap"); direct.setdefault("service", "WMS")
+    direct = dict(params)
+    direct.pop("tiled", None)
+    direct.pop("tilesorigin", None)
+    direct.setdefault("format", "image/png")
+    direct.setdefault("version", "1.1.1")
+    direct.setdefault("request", "GetMap")
+    direct.setdefault("service", "WMS")
     return direct
 
-async def _direct_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
-    if layer not in DIRECT_WMS_FALLBACKS: return None
-    try: upstream = await _client_get(DIRECT_WMS_UPSTREAM, _direct_wms_params(params))
-    except (httpx.HTTPError, asyncio.TimeoutError): return None
-    if upstream.status_code != 200: return None
-    content_type = upstream.headers.get("content-type", "image/png")
-    if not content_type.lower().startswith("image/"): return None
-    return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS"})
+
+async def _root_wms_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    if layer not in ROOT_WMS_FALLBACKS:
+        return None
+    root_params = _direct_wms_params(params)
+    root_params.pop("tiled", None)
+    root_params.pop("tilesorigin", None)
+    for upstream_url in ROOT_WMS_UPSTREAMS:
+        try:
+            upstream = await _client_get(upstream_url, root_params)
+        except (httpx.HTTPError, asyncio.TimeoutError):
+            continue
+        if upstream.status_code != 200:
+            continue
+        content_type = upstream.headers.get("content-type", "")
+        if not content_type.lower().startswith("image/"):
+            continue
+        return Response(
+            upstream.content,
+            status_code=200,
+            media_type=content_type.split(";", 1)[0].strip() or "image/png",
+            headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS-ROOT"},
+        )
+    return None
+
 
 def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, float], width: int = 256, height: int = 256) -> str | None:
-    xmin, ymin, xmax, ymax = bbox; dx = xmax - xmin; dy = ymax - ymin
-    if dx <= 0 or dy <= 0: return None
-    features = payload.get("features") or []; parts = []
-    def xy(x, y): return (float(x) - xmin) / dx * width, height - (float(y) - ymin) / dy * height
+    xmin, ymin, xmax, ymax = bbox
+    dx = xmax - xmin
+    dy = ymax - ymin
+    if dx <= 0 or dy <= 0:
+        return None
+    features = payload.get("features") or []
+    parts = []
+
+    def xy(x, y):
+        return (float(x) - xmin) / dx * width, height - (float(y) - ymin) / dy * height
+
     for feature in features[:500]:
         geom = feature.get("geometry") if isinstance(feature, dict) else None
-        if not isinstance(geom, dict): continue
+        if not isinstance(geom, dict):
+            continue
         if isinstance(geom.get("paths"), list):
             for path in geom["paths"]:
                 coords = [xy(*pt[:2]) for pt in path if isinstance(pt, (list, tuple)) and len(pt) >= 2]
@@ -151,19 +210,25 @@ def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, fl
                     d = "M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in coords) + " Z"
                     parts.append(f'<path d="{d}" fill="rgba(29,224,255,0.16)" stroke="#1de0ff" stroke-width="1.2" vector-effect="non-scaling-stroke"/>')
         elif geom.get("x") is not None and geom.get("y") is not None:
-            px, py = xy(geom["x"], geom["y"]); parts.append(f'<circle cx="{px:.2f}" cy="{py:.2f}" r="3" fill="#1de0ff" stroke="#06212b" stroke-width="1"/>')
-    if not parts: return None
+            px, py = xy(geom["x"], geom["y"])
+            parts.append(f'<circle cx="{px:.2f}" cy="{py:.2f}" r="3" fill="#1de0ff" stroke="#06212b" stroke-width="1"/>')
+    if not parts:
+        return None
     return '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">' + "".join(parts) + '</svg>'
+
 
 async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) -> Response | None:
     target = JMG_FEATURE_FALLBACKS.get(parsed_path)
-    if not target: return None
+    if not target:
+        return None
     feature_path, layer_id = target
     bbox_raw = str(params.get("bbox", ""))
     try:
         bbox = tuple(float(x) for x in bbox_raw.split(","))
-        if len(bbox) != 4: return None
-    except (TypeError, ValueError): return None
+        if len(bbox) != 4:
+            return None
+    except (TypeError, ValueError):
+        return None
     query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
     query = {
         "where": "1=1", "geometry": bbox_raw, "geometryType": "esriGeometryEnvelope",
@@ -171,68 +236,120 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         "returnExceededLimitFeatures": "true", "outFields": "OBJECTID,Line_code,Type,Name",
         "returnGeometry": "true", "outSR": "3857", "resultRecordCount": "2000", "f": "json",
     }
-    try: upstream = await _client_get(query_url, query)
-    except (httpx.HTTPError, asyncio.TimeoutError): return None
-    if upstream.status_code != 200: return None
+    try:
+        upstream = await _client_get(query_url, query)
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    if upstream.status_code != 200:
+        return None
     content_type = upstream.headers.get("content-type", "")
-    if not content_type.lower().startswith("application/json"): return None
-    try: payload = upstream.json()
-    except ValueError: return None
-    if isinstance(payload, dict) and payload.get("error"): return None
+    if not content_type.lower().startswith("application/json"):
+        return None
+    try:
+        payload = upstream.json()
+    except ValueError:
+        return None
+    if isinstance(payload, dict) and payload.get("error"):
+        return None
     svg = _svg_from_arcgis_features(payload, bbox)
-    if not svg: svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
-    return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback":"JMG-FeatureServer"})
+    if not svg:
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
+    return Response(
+        svg.encode("utf-8"), status_code=200, media_type="image/svg+xml",
+        headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"},
+    )
+
 
 @router.get("/map/wms", include_in_schema=False)
 async def map_wms_proxy(request: Request) -> Response:
-    params = {key.lower(): value for key, value in request.query_params.multi_items() if key.lower() in ALLOWED_WMS_PARAMS}
+    params = {
+        key.lower(): value
+        for key, value in request.query_params.multi_items()
+        if key.lower() in ALLOWED_WMS_PARAMS
+    }
     layers = str(params.get("layers", ""))
-    if not layers.startswith("iplan:"): return Response("WMS layer is not in the allow-listed i-Plan workspace namespace.", status_code=400, media_type="text/plain")
-    if str(params.get("request", "GetMap")).upper() != "GETMAP": return Response("Only WMS GetMap requests are exposed by this proxy.", status_code=400, media_type="text/plain")
-    params.setdefault("service", "WMS"); params.setdefault("request", "GetMap"); params.setdefault("format", "image/png"); params.setdefault("transparent", "true"); params.setdefault("version", "1.1.1")
-    try: upstream = await _client_get(WMS_UPSTREAM, params)
-    except (httpx.HTTPError, asyncio.TimeoutError): upstream = None
-    if upstream is None or upstream.status_code != 200 or not upstream.headers.get("content-type", "").lower().startswith("image/"):
-        fallback = await _arcgis_wms_fallback(layers, params)
-        if fallback is not None: return fallback
-        fallback = await _untiled_wms_fallback(layers, params)
-        if fallback is not None: return fallback
-        fallback = await _direct_wms_fallback(layers, params)
-        if fallback is not None: return fallback
-        detail = f"GWC={upstream.status_code if upstream is not None else 'UNAVAILABLE'}"
-        if upstream is not None and upstream.headers.get("content-type"): detail += f" CT={upstream.headers.get('content-type')}"
-        return _proxy_failure("i-Plan WMS authoritative fallbacks unavailable", detail)
-    content_type = upstream.headers.get("content-type", "image/png")
-    return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
+    if not layers.startswith("iplan:"):
+        return Response("WMS layer is not in the allow-listed i-Plan workspace namespace.", status_code=400, media_type="text/plain")
+    if str(params.get("request", "GetMap")).upper() != "GETMAP":
+        return Response("Only WMS GetMap requests are exposed by this proxy.", status_code=400, media_type="text/plain")
+    params.setdefault("service", "WMS")
+    params.setdefault("request", "GetMap")
+    params.setdefault("format", "image/png")
+    params.setdefault("transparent", "true")
+    params.setdefault("version", "1.1.1")
+
+    try:
+        upstream = await _client_get(WMS_UPSTREAM, params)
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        upstream = None
+    if upstream is not None:
+        content_type = upstream.headers.get("content-type", "")
+        if upstream.status_code == 200 and content_type.lower().startswith("image/"):
+            return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
+
+    fallback = await _arcgis_wms_fallback(layers, params)
+    if fallback is not None:
+        return fallback
+
+    fallback = await _root_wms_fallback(layers, params)
+    if fallback is not None:
+        return fallback
+
+    fallback = await _untiled_wms_fallback(layers, params)
+    if fallback is not None:
+        return fallback
+
+    fallback = await _direct_wms_fallback(layers, params)
+    if fallback is not None:
+        return fallback
+
+    detail = f"GWC={upstream.status_code if upstream is not None else 'UNAVAILABLE'}"
+    if upstream is not None and upstream.headers.get("content-type"):
+        detail += f" CT={upstream.headers.get('content-type')}"
+    return _proxy_failure("i-Plan WMS authoritative fallbacks unavailable", detail)
+
 
 @router.get("/map/arcgis", include_in_schema=False)
 async def map_arcgis_proxy(request: Request) -> Response:
-    raw_service = str(request.query_params.get("service", "")).strip(); parsed = urlsplit(raw_service)
-    if parsed.scheme.lower() != "https" or not parsed.hostname: return Response("ArcGIS service URL must be HTTPS.", status_code=400, media_type="text/plain")
-    match = next(((host,prefix) for host,prefix in ARCGIS_ALLOWLIST if parsed.hostname.lower() == host and parsed.path.startswith(prefix)), None)
-    if not match or not parsed.path.endswith("/MapServer"): return Response("ArcGIS service is outside the allow-listed authoritative GIS namespace.", status_code=400, media_type="text/plain")
-    params = {}
-    for key,value in request.query_params.multi_items():
+    raw_service = str(request.query_params.get("service", "")).strip()
+    parsed = urlsplit(raw_service)
+    if parsed.scheme.lower() != "https" or not parsed.hostname:
+        return Response("ArcGIS service URL must be HTTPS.", status_code=400, media_type="text/plain")
+    match = next(((host, prefix) for host, prefix in ARCGIS_ALLOWLIST if parsed.hostname.lower() == host and parsed.path.startswith(prefix)), None)
+    if not match or not parsed.path.endswith("/MapServer"):
+        return Response("ArcGIS service is outside the allow-listed authoritative GIS namespace.", status_code=400, media_type="text/plain")
+
+    params: dict[str, str] = {}
+    for key, value in request.query_params.multi_items():
         canonical = ARCGIS_PARAM_NAMES.get(key.lower())
-        if canonical and key.lower() != "service": params[canonical] = value
-    params.setdefault("f","image"); params.setdefault("format","png32"); params.setdefault("transparent","true")
-    parsed_path = parsed.path.rstrip("/"); is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
-    if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
-    is_jmg_fault = is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer")
-    if is_jmg_fault: params["layers"] = "show:5"
+        if canonical and key.lower() != "service":
+            params[canonical] = value
+    params.setdefault("f", "image")
+    params.setdefault("format", "png32")
+    params.setdefault("transparent", "true")
+    parsed_path = parsed.path.rstrip("/")
+    is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
+    if is_jmg:
+        params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
+    if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"):
+        params["layers"] = "show:5"
     export_url = f"https://{match[0]}{parsed_path}/export"
     attempts = [dict(params)]
     last_detail = "no response"
     for attempt in attempts:
-        try: upstream = await _client_get(export_url, attempt)
+        try:
+            upstream = await _client_get(export_url, attempt)
         except (httpx.HTTPError, asyncio.TimeoutError) as exc:
-            last_detail = str(exc); continue
+            last_detail = str(exc)
+            continue
         content_type = upstream.headers.get("content-type", "")
         if upstream.status_code == 200 and content_type.lower().startswith("image/"):
-            return Response(upstream.content, status_code=200, media_type=content_type.split(";",1)[0].strip() or "image/png", headers=_cache_headers())
+            return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
         body = upstream.text[:240].replace("\n", " ").replace("\r", " ")
         last_detail = f"HTTP={upstream.status_code} CT={content_type or '-'} BODY={body}"
+
     if is_jmg:
         fallback = await _jmg_feature_image_fallback(parsed_path, params)
-        if fallback is not None: return fallback
+        if fallback is not None:
+            return fallback
     return _proxy_failure("Authoritative ArcGIS upstream render failed", last_detail)
