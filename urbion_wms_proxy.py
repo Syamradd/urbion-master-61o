@@ -261,6 +261,7 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
                 "geometryType": "esriGeometryEnvelope",
                 "inSR": "3857",
                 "spatialRel": "esriSpatialRelIntersects",
+                "resultType": "tile",
                 "returnExceededLimitFeatures": "true",
             },
         ),
