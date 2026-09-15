@@ -80,7 +80,7 @@ HEADERS = {
 _LIMITS = httpx.Limits(max_connections=8, max_keepalive_connections=4)
 _JMG_LIMITS = httpx.Limits(max_connections=4, max_keepalive_connections=0)
 _TIMEOUT = httpx.Timeout(connect=6.0, read=12.0, write=6.0, pool=6.0)
-_JMG_TIMEOUT = httpx.Timeout(connect=4.0, read=15.0, write=4.0, pool=4.0)
+_JMG_TIMEOUT = httpx.Timeout(connect=6.0, read=20.0, write=6.0, pool=6.0)
 _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEADERS, limits=_LIMITS)
 _JMG_CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_JMG_TIMEOUT, headers=HEADERS, limits=_JMG_LIMITS)
 _UPSTREAM_SEMAPHORE = asyncio.Semaphore(6)
@@ -288,53 +288,75 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
             return None
     except (TypeError, ValueError):
         return None
-
+    xmin, ymin, xmax, ymax = bbox
+    width = max(int(params.get("width", "256")), 1)
+    pixel_offset = max((xmax - xmin) / width, 1.0)
     base_query = {
-        "where": "1=1", "outFields": "OBJECTID,Line_code,Type,Name",
-        "returnGeometry": "true", "outSR": "3857", "resultRecordCount": "500", "f": "json",
+        "where": "1=1", "outFields": "OBJECTID",
+        "returnGeometry": "true", "outSR": "3857",
+        "resultRecordCount": "500", "f": "json",
     }
-    queries = [
-        (
-            f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query",
-            {
-                **base_query,
-                "geometry": bbox_raw,
-                "geometryType": "esriGeometryEnvelope",
-                "inSR": "3857",
-                "spatialRel": "esriSpatialRelIntersects",
-                "resultType": "tile",
-                "returnExceededLimitFeatures": "true",
-            },
-        ),
-        (
-            f"https://mygems.jmg.gov.my{parsed_path}/{layer_id}/query",
-            base_query,
-        ),
-    ]
-    for query_url, query in queries:
+
+    async def run_query(query_bbox: tuple[float, float, float, float]) -> dict | None:
+        qxmin, qymin, qxmax, qymax = query_bbox
+        query = {
+            **base_query,
+            "geometry": f"{qxmin},{qymin},{qxmax},{qymax}",
+            "geometryType": "esriGeometryEnvelope",
+            "inSR": "3857",
+            "spatialRel": "esriSpatialRelIntersects",
+            "resultType": "tile",
+            "returnExceededLimitFeatures": "true",
+            "maxAllowableOffset": f"{pixel_offset:.3f}",
+        }
+        query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
         try:
             upstream = await _client_get(query_url, query)
         except (httpx.HTTPError, asyncio.TimeoutError):
-            continue
+            return None
         if upstream.status_code != 200:
-            continue
+            return None
         content_type = upstream.headers.get("content-type", "")
         if "json" not in content_type.lower():
-            continue
+            return None
         try:
             payload = upstream.json()
         except ValueError:
-            continue
+            return None
         if isinstance(payload, dict) and payload.get("error"):
-            continue
-        svg = _svg_from_arcgis_features(payload, bbox)
-        if not svg:
-            svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
-        return Response(
-            svg.encode("utf-8"), status_code=200, media_type="image/svg+xml",
-            headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"},
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    if parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"):
+        xmid = (xmin + xmax) / 2.0
+        ymid = (ymin + ymax) / 2.0
+        boxes = (
+            (xmin, ymin, xmid, ymid), (xmid, ymin, xmax, ymid),
+            (xmin, ymid, xmid, ymax), (xmid, ymid, xmax, ymax),
         )
-    return None
+        results = await asyncio.gather(*(run_query(box) for box in boxes), return_exceptions=True)
+        features = []
+        for result in results:
+            if isinstance(result, dict):
+                features.extend(result.get("features") or [])
+        svg = _svg_from_arcgis_features({"features": features}, bbox, width, int(params.get("height", "256")))
+        if svg:
+            return Response(
+                svg.encode("utf-8"), status_code=200, media_type="image/svg+xml",
+                headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer-Split"},
+            )
+        return None
+
+    payload = await run_query(bbox)
+    if payload is None:
+        return None
+    svg = _svg_from_arcgis_features(payload, bbox, width, int(params.get("height", "256")))
+    if not svg:
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
+    return Response(
+        svg.encode("utf-8"), status_code=200, media_type="image/svg+xml",
+        headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"},
+    )
 
 
 @router.get("/map/wms", include_in_schema=False)
@@ -383,9 +405,19 @@ async def map_arcgis_proxy(request: Request) -> Response:
     parsed_path = parsed.path.rstrip("/"); is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
+    # Major Fault is a pathological dynamic service: prefer four bounded
+    # official FeatureServer spatial queries, then fall back to MapServer export.
+    if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"):
+        fallback = await _jmg_feature_image_fallback(parsed_path, params)
+        if fallback is not None:
+            return fallback
+
     export_url = f"https://{match[0]}{parsed_path}/export"; last_detail = "no response"
+    export_params = dict(params)
+    if is_jmg:
+        export_params["format"] = "png8"
     try:
-        upstream = await _client_get(export_url, dict(params))
+        upstream = await _client_get(export_url, export_params)
     except (httpx.HTTPError, asyncio.TimeoutError) as exc:
         upstream = None; last_detail = str(exc)
     if upstream is not None:
