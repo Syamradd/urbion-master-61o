@@ -270,8 +270,10 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         "where": "1=1", "outFields": "OBJECTID", "returnGeometry": "true",
         "outSR": "3857", "geometryType": "esriGeometryEnvelope", "inSR": "3857",
         "spatialRel": "esriSpatialRelEnvelopeIntersects", "geometry": json.dumps(envelope, separators=(",", ":")), "f": "json",
+        "resultType": "tile",
+        "returnExceededLimitFeatures": "false",
     }
-    query = {**common, "resultRecordCount": "500", "returnExceededLimitFeatures": "true"}
+    query = {**common, "resultRecordCount": "500"}
     try: upstream = await _client_get(query_url, query)
     except (httpx.HTTPError, asyncio.TimeoutError): return None
     if upstream.status_code != 200: return None
