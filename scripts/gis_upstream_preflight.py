@@ -10,6 +10,7 @@ import httpx
 
 BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8765").rstrip("/")
 UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
+WMTS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts"
 DIRECT_WMS = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 LAYERS = [
     "iplan:gunatanah_semasa_04", "iplan:gunatanah_zoning_04", "iplan:gunatanah_komited_04",
@@ -23,13 +24,13 @@ ARCGIS_FALLBACKS = {
     "iplan:rfn": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer", 5),
     "iplan:ksas": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer", 2),
     "iplan:hakisan_pantai": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 5),
+    "iplan:banjir": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 2),
 }
 DIRECT_WMS_FALLBACKS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:banjir", "iplan:warisan",
     "iplan:rumah_mampu_milik", "iplan:topo",
 }
 WORLD = 20037508.342789244
-GRID_ORIGIN = f"{-WORLD},{WORLD}"
 
 
 def tile_bbox(lon: float, lat: float, zoom: int) -> tuple[str, int, int]:
@@ -76,11 +77,28 @@ def direct_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
     }
 
 
+def wmts_params(layer: str, base: dict[str, str], zoom: int) -> dict[str, str] | None:
+    if base["width"] != "256" or base["height"] != "256":
+        return None
+    xmin, ymin, xmax, ymax = (float(x) for x in base["bbox"].split(","))
+    span = 2.0 * WORLD / (256.0 * (2**zoom))
+    x = round((xmin + WORLD) / span)
+    y = round((WORLD - ymax) / span)
+    if abs(xmin - (-WORLD + x * span)) > 1e-4 or abs(ymax - (WORLD - y * span)) > 1e-4:
+        return None
+    return {
+        "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0",
+        "LAYER": layer, "STYLE": "", "TILEMATRIXSET": "EPSG:900913",
+        "FORMAT": "image/png", "TILEMATRIX": f"EPSG:900913:{zoom}",
+        "TILEROW": str(y), "TILECOL": str(x),
+    }
+
+
 def main() -> None:
     bbox, tile_x, tile_y = tile_bbox(102.196, 2.285, 13)
-    # Mirror the canonical browser WMS request. In particular, omit the
-    # tilesorigin hint: several GWC layers reject that parameter even though
-    # they serve the same GetMap request successfully through the proxy.
+    # Mirror the canonical browser WMS request. The canonical proxy uses the
+    # same bbox/tile contract and may fall through to GWC WMTS for a tile when
+    # the WMS path is unhealthy.
     base = {
         "service": "WMS", "request": "GetMap", "styles": "", "format": "image/png",
         "transparent": "true", "version": "1.1.1", "tiled": "true", "width": "256", "height": "256",
@@ -88,9 +106,10 @@ def main() -> None:
     }
     failures: list[str] = []
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=10.0), follow_redirects=True, headers={
-        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.6",
+        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.7",
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
         "Accept": "image/png,image/*,*/*;q=0.8", "Accept-Encoding": "identity",
+        "Connection": "close",
     }) as client:
         print(f"GIS UPSTREAM PREFLIGHT · {len(LAYERS)} representative i-Plan layers · tile z13/{tile_x}/{tile_y} · EPSG:900913")
         for layer in LAYERS:
@@ -111,6 +130,13 @@ def main() -> None:
                     d_ok = d_status == 200 and d_ct.lower().startswith("image/") and d_size > 100
                     print(f"DIRECT WMS FALLBACK {'PASS' if d_ok else 'FAIL'} · {layer} · HTTP={d_status} · CT={d_ct or '-'} · bytes={d_size} · {d_elapsed:.2f}s · {d_detail}")
                     if d_ok:
+                        continue
+                w_params = wmts_params(layer, base, 13)
+                if w_params is not None:
+                    w_status, w_ct, w_size, w_elapsed, w_detail = probe(client, WMTS_UPSTREAM, w_params)
+                    w_ok = w_status == 200 and w_ct.lower().startswith("image/") and w_size > 100
+                    print(f"WMTS FALLBACK {'PASS' if w_ok else 'FAIL'} · {layer} · HTTP={w_status} · CT={w_ct or '-'} · bytes={w_size} · {w_elapsed:.2f}s · {w_detail}")
+                    if w_ok:
                         continue
                 failures.append(f"UPSTREAM {layer}: GWC HTTP={status} CT={ct or '-'} bytes={size} detail={detail}")
         print(f"GIS PROXY PREFLIGHT · {BASE_URL}/map/wms")
