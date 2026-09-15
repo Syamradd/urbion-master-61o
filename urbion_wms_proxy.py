@@ -193,32 +193,42 @@ async def _tms_tile_fallback(layer: str, params: dict[str, str]) -> Response | N
     z, x, y_xyz = xyz
     y_tms = (2 ** z - 1) - y_xyz
     encoded_layer = quote(layer, safe=":")
-    for base in TMS_UPSTREAMS:
-        for gridset in ("EPSG:900913", "EPSG:4326"):
-            for ext in ("png", "jpeg"):
-                url = f"{base}/{encoded_layer}@{gridset}@{ext}/{z}/{x}/{y_tms}.{ext}"
-                try:
-                    upstream = await _client_get(url, {})
-                except (httpx.HTTPError, asyncio.TimeoutError):
-                    continue
-                if upstream.status_code != 200:
-                    continue
-                content_type = upstream.headers.get("content-type", "")
-                if not content_type.lower().startswith("image/"):
-                    continue
-                return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or f"image/{ext}", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-TMS"})
+    urls = [
+        f"{base}/{encoded_layer}@{gridset}@{ext}/{z}/{x}/{y_tms}.{ext}"
+        for base in TMS_UPSTREAMS
+        for gridset in ("EPSG:900913", "EPSG:4326")
+        for ext in ("png", "jpeg")
+    ]
+    async def probe(url: str):
+        try:
+            upstream = await _client_get(url, {})
+        except (httpx.HTTPError, asyncio.TimeoutError):
+            return None
+        content_type = upstream.headers.get("content-type", "")
+        if upstream.status_code == 200 and content_type.lower().startswith("image/") and len(upstream.content) > 100:
+            return upstream
+        return None
+    results = await asyncio.gather(*(probe(url) for url in urls))
+    for upstream in results:
+        if upstream is not None:
+            return Response(upstream.content, status_code=200, media_type=upstream.headers.get("content-type", "image/png").split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-TMS"})
     return None
 
 
 async def _wmts_get(params: dict[str, str]) -> httpx.Response | None:
-    """Try each official WMTS route, accepting only actual image tiles."""
-    for url in WMTS_UPSTREAMS:
+    """Try official WMTS routes concurrently, accepting only actual image tiles."""
+    async def probe(url: str):
         try:
             upstream = await _client_get(url, params)
         except (httpx.HTTPError, asyncio.TimeoutError):
-            continue
+            return None
         content_type = upstream.headers.get("content-type", "")
         if upstream.status_code == 200 and content_type.lower().startswith("image/") and len(upstream.content) > 100:
+            return upstream
+        return None
+    results = await asyncio.gather(*(probe(url) for url in WMTS_UPSTREAMS))
+    for upstream in results:
+        if upstream is not None:
             return upstream
     return None
 
@@ -230,23 +240,19 @@ async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | N
     if xyz is None:
         return None
     z, x, y = xyz
-    variants = (f"EPSG:900913:{z}", str(z))
-    for matrix in variants:
-        for style in ("", "default"):
-            query = {
-                "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0", "LAYER": layer,
-                "STYLE": style, "FORMAT": "image/png", "TILEMATRIXSET": "EPSG:900913",
-                "TILEMATRIX": matrix, "TILEROW": str(y), "TILECOL": str(x),
-            }
-            try:
-                upstream = await _wmts_get(query)
-            except (httpx.HTTPError, asyncio.TimeoutError):
-                continue
-            if upstream is None or upstream.status_code != 200:
-                continue
-            content_type = upstream.headers.get("content-type", "")
-            if not content_type.lower().startswith("image/"): continue
-            return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-WMTS"})
+    queries = [
+        {
+            "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0", "LAYER": layer,
+            "STYLE": style, "FORMAT": "image/png", "TILEMATRIXSET": "EPSG:900913",
+            "TILEMATRIX": matrix, "TILEROW": str(y), "TILECOL": str(x),
+        }
+        for matrix in (f"EPSG:900913:{z}", str(z))
+        for style in ("", "default")
+    ]
+    results = await asyncio.gather(*(_wmts_get(query) for query in queries), return_exceptions=True)
+    for upstream in results:
+        if isinstance(upstream, httpx.Response):
+            return Response(upstream.content, status_code=200, media_type=upstream.headers.get("content-type", "image/png").split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-WMTS"})
     return None
 
 
@@ -405,13 +411,8 @@ async def map_arcgis_proxy(request: Request) -> Response:
     parsed_path = parsed.path.rstrip("/"); is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
-    # Major Fault is a pathological dynamic service: prefer four bounded
-    # official FeatureServer spatial queries, then fall back to MapServer export.
-    if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"):
-        fallback = await _jmg_feature_image_fallback(parsed_path, params)
-        if fallback is not None:
-            return fallback
-
+    # Major Fault is a pathological dynamic service: prefer the official
+    # MapServer export image first; use bounded FeatureServer queries only as fallback.
     export_url = f"https://{match[0]}{parsed_path}/export"; last_detail = "no response"
     export_params = dict(params)
     if is_jmg:
