@@ -57,4 +57,4 @@
 - [x] No duplicate frontend/engine
 - [x] No weakened assertions solely to obtain green CI
 
-<!-- Final validation trigger: repaired GIS head 67cbd479c0d9d6adcf75ad0a3b71f43ea4186318 -->
+<!-- Final validation trigger: repaired GIS head d003ccdee7f41363efeb7d188efd6b350f824568 -->
