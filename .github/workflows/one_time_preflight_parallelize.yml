@@ -40,7 +40,6 @@ jobs:
           p.write_text(s)
           PY
           python -m py_compile scripts/gis_upstream_preflight.py
-          python scripts/gis_upstream_preflight.py --help >/dev/null 2>&1 || true
           git diff --check
           grep -n "URBION_PREFLIGHT_LAYER\|ThreadPoolExecutor\|Parallel GIS authoritative" scripts/gis_upstream_preflight.py
       - name: Commit repair and remove workflow
