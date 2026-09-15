@@ -8,6 +8,7 @@ and concurrency-bounded so aborted map tiles cannot starve the planning APIs.
 from __future__ import annotations
 
 import asyncio
+import math
 from urllib.parse import urlsplit
 
 import httpx
@@ -16,6 +17,7 @@ from fastapi.responses import Response
 
 router = APIRouter()
 WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
+WMTS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts"
 DIRECT_WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/"),
@@ -63,6 +65,7 @@ _JMG_TIMEOUT = httpx.Timeout(connect=4.0, read=6.0, write=4.0, pool=4.0)
 _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEADERS, limits=_LIMITS)
 _JMG_CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_JMG_TIMEOUT, headers={**HEADERS, "Connection": "close"}, limits=_JMG_LIMITS)
 _UPSTREAM_SEMAPHORE = asyncio.Semaphore(6)
+WORLD = 20037508.342789244
 
 async def _client_get(url: str, params: dict[str, str]) -> httpx.Response:
     async with _UPSTREAM_SEMAPHORE:
@@ -110,6 +113,41 @@ async def _direct_wms_fallback(layer: str, params: dict[str, str]) -> Response |
     if not content_type.lower().startswith("image/"): return None
     return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS"})
 
+def _wmts_tile_params(layer: str, params: dict[str, str]) -> dict[str, str] | None:
+    if str(params.get("width", "256")) != "256" or str(params.get("height", "256")) != "256": return None
+    spatial_ref = str(params.get("srs") or params.get("crs") or "").upper()
+    if spatial_ref not in {"EPSG:900913", "EPSG:3857"}: return None
+    raw = str(params.get("bbox", ""))
+    try: xmin, ymin, xmax, ymax = (float(x) for x in raw.split(","))
+    except (TypeError, ValueError): return None
+    dx = xmax - xmin
+    dy = ymax - ymin
+    if dx <= 0 or dy <= 0 or abs(dx - dy) > max(dx, dy) * 1e-6: return None
+    z_float = math.log2((2.0 * WORLD) / (dx * 256.0))
+    z = int(round(z_float))
+    if z < 0 or z > 22 or abs(z_float - z) > 1e-6: return None
+    span = 2.0 * WORLD / (256.0 * (2**z))
+    x_float = (xmin + WORLD) / span
+    y_float = (WORLD - ymax) / span
+    x = int(round(x_float)); y = int(round(y_float))
+    if abs(x_float - x) > 1e-6 or abs(y_float - y) > 1e-6: return None
+    return {
+        "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0",
+        "LAYER": layer, "STYLE": "", "TILEMATRIXSET": "EPSG:900913",
+        "FORMAT": "image/png", "TILEMATRIX": f"EPSG:900913:{z}",
+        "TILEROW": str(y), "TILECOL": str(x),
+    }
+
+async def _wmts_tile_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    tile = _wmts_tile_params(layer, params)
+    if tile is None: return None
+    try: upstream = await _client_get(WMTS_UPSTREAM, tile)
+    except (httpx.HTTPError, asyncio.TimeoutError): return None
+    if upstream.status_code != 200: return None
+    content_type = upstream.headers.get("content-type", "image/png")
+    if not content_type.lower().startswith("image/"): return None
+    return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMTS"})
+
 def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, float], width: int = 256, height: int = 256) -> str | None:
     xmin, ymin, xmax, ymax = bbox; dx = xmax - xmin; dy = ymax - ymin
     if dx <= 0 or dy <= 0: return None
@@ -144,43 +182,23 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         bbox = tuple(float(x) for x in bbox_raw.split(","))
         if len(bbox) != 4: return None
     except (TypeError, ValueError): return None
-
-    # Use one authoritative, spatially bounded FeatureServer query per tile.
-    # The JMG layer advertises query-with-result-type support, so resultType=tile
-    # avoids downloading the full fault dataset while preserving live geometry.
     query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
     query = {
-        "where": "1=1",
-        "geometry": bbox_raw,
-        "geometryType": "esriGeometryEnvelope",
-        "inSR": "3857",
-        "spatialRel": "esriSpatialRelIntersects",
-        "resultType": "tile",
-        "returnExceededLimitFeatures": "true",
-        "outFields": "OBJECTID,Line_code,Type,Name",
-        "returnGeometry": "true",
-        "outSR": "3857",
-        "resultRecordCount": "2000",
-        "f": "json",
+        "where": "1=1", "geometry": bbox_raw, "geometryType": "esriGeometryEnvelope",
+        "inSR": "3857", "spatialRel": "esriSpatialRelIntersects", "resultType": "tile",
+        "returnExceededLimitFeatures": "true", "outFields": "OBJECTID,Line_code,Type,Name",
+        "returnGeometry": "true", "outSR": "3857", "resultRecordCount": "2000", "f": "json",
     }
-    try:
-        upstream = await _client_get(query_url, query)
-    except (httpx.HTTPError, asyncio.TimeoutError):
-        return None
-    if upstream.status_code != 200:
-        return None
+    try: upstream = await _client_get(query_url, query)
+    except (httpx.HTTPError, asyncio.TimeoutError): return None
+    if upstream.status_code != 200: return None
     content_type = upstream.headers.get("content-type", "")
-    if not content_type.lower().startswith("application/json"):
-        return None
-    try:
-        payload = upstream.json()
-    except ValueError:
-        return None
-    if isinstance(payload, dict) and payload.get("error"):
-        return None
+    if not content_type.lower().startswith("application/json"): return None
+    try: payload = upstream.json()
+    except ValueError: return None
+    if isinstance(payload, dict) and payload.get("error"): return None
     svg = _svg_from_arcgis_features(payload, bbox)
-    if not svg:
-        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
+    if not svg: svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
     return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback":"JMG-FeatureServer"})
 
 @router.get("/map/wms", include_in_schema=False)
@@ -196,6 +214,8 @@ async def map_wms_proxy(request: Request) -> Response:
         fallback = await _arcgis_wms_fallback(layers, params)
         if fallback is not None: return fallback
         fallback = await _direct_wms_fallback(layers, params)
+        if fallback is not None: return fallback
+        fallback = await _wmts_tile_fallback(layers, params)
         if fallback is not None: return fallback
         detail = f"GWC={upstream.status_code if upstream is not None else 'UNAVAILABLE'}"
         if upstream is not None and upstream.headers.get("content-type"): detail += f" CT={upstream.headers.get('content-type')}"
@@ -219,10 +239,6 @@ async def map_arcgis_proxy(request: Request) -> Response:
     is_jmg_fault = is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer")
     if is_jmg_fault: params["layers"] = "show:5"
     export_url = f"https://{match[0]}{parsed_path}/export"
-
-    # JMG MapServer export endpoints can be slow or terminate the HTTP body.
-    # Keep one bounded authoritative export attempt, then use the
-    # FeatureServer fallback for the two known JMG layers.
     attempts = [dict(params)]
     last_detail = "no response"
     for attempt in attempts:
