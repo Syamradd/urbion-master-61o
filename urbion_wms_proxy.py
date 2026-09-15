@@ -244,17 +244,14 @@ async def _wmts_rest_fallback(layer: str, params: dict[str, str]) -> Response | 
         return None
     z, x, y = xyz
     encoded_layer = quote(layer, safe=":")
-    candidates = []
-    for base in (
-        "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts/rest",
-        "https://iplan.planmalaysia.gov.my/geoserver/service/wmts/rest",
-    ):
-        for style in ("default", ""):
-            for matrix in (f"EPSG:900913:{z}", str(z)):
-                for row, col in ((y, x), (x, y)):
-                    candidates.append(
-                        f"{base}/{encoded_layer}/{style or 'default'}/EPSG:900913/{matrix}/{row}/{col}?format=image/png"
-                    )
+    candidates = [
+        f"{base}/{encoded_layer}//EPSG:900913/{matrix}/{y}/{x}?format=image/png"
+        for base in (
+            "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts/rest",
+            "https://iplan.planmalaysia.gov.my/geoserver/service/wmts/rest",
+        )
+        for matrix in (f"EPSG:900913:{z}", str(z))
+    ]
 
     async def probe(url: str):
         try:
@@ -457,13 +454,7 @@ async def map_arcgis_proxy(request: Request) -> Response:
     parsed_path = parsed.path.rstrip("/"); is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
-    # Major Fault is a pathological dynamic service: prefer the official
-    # MapServer export image first; use bounded FeatureServer queries only as fallback.
     last_detail = "no response"
-    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:
-        fallback = await _jmg_feature_image_fallback(parsed_path, params)
-        if fallback is not None:
-            return fallback
     export_url = f"https://{match[0]}{parsed_path}/export"
     export_params = dict(params)
     if is_jmg:
