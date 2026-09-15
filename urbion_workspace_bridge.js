@@ -12,6 +12,7 @@
     if(!data||typeof data!=='object')return;
     canonicalLast=data;
     canonicalAnalysisError=null;
+    try{window.URBION_LAST=data;}catch(_){ }
     try{window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:data.__http_status||200,data}}));}catch(_){ }
   };
   const publishError=(error,status=0)=>{
@@ -84,9 +85,11 @@
             configurable:true,
             enumerable:true,
             get:()=>canonicalLast ?? (typeof lastResult!=='undefined'?lastResult:null),
-            set:value=>{canonicalLast=value;canonicalAnalysisError=null;}
+            set:value=>{canonicalLast=value;canonicalAnalysisError=null;try{window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:value?.__http_status||200,data:value}}));}catch(_){ }}
           });
-        }catch(_){ window.URBION_LAST=canonicalLast; }
+        }catch(_){
+          try{if(typeof lastResult!=='undefined' && lastResult)window.URBION_LAST=lastResult;}catch(__){}
+        }
         const canonicalAnalyse=async()=>{
           canonicalLast=null;
           canonicalAnalysisError=null;
