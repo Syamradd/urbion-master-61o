@@ -1,6 +1,6 @@
 # URBION HORIZON — Master Release Checklist
 
-Status: `REPAIR INTEGRATED / FRESH VALIDATION RUNNING`
+Status: `PRE-RENDER DEEP REPAIR / DEPLOYMENT LOCKED`
 
 This is the single release-control checklist for the current canonical release. The only active release branch is `feature/canonical-workspace-v2`. Historical, parallel, temporary, forensic and legacy branches are retained as reference only and must not be deployed over the canonical release.
 
@@ -14,7 +14,7 @@ This is the single release-control checklist for the current canonical release. 
 - [x] One canonical application entrypoint: `landing_server:app`
 - [x] Existing Render launcher is a compatibility shim only: `workspace_v4_server:app → landing_server:app`
 - [x] One canonical workspace route: `/workspace`
-- [x] Deterministic planning/scoring engine preserved; no parallel scoring engine introduced
+- [x] Deterministic planning/scoring engine preserved; no parallel planning/scoring engine introduced
 - [x] Statutory boundary preserved: `NOT_CLAIMED`
 - [x] Decision authority preserved: `NONE`
 
@@ -40,37 +40,48 @@ This is the single release-control checklist for the current canonical release. 
 - [x] Existing Welcome page preserved
 - [x] Canonical About Us page preserved
 
-## 3. Current repair integrated on canonical head
+## 3. Deep pre-render repair pass
 
-- [x] i-Plan WMS rendering uses the same-origin `/map/wms` proxy
-- [x] WMS query parameters are normalized case-insensitively before validation/forwarding
-- [x] ArcGIS imagery uses the same-origin `/map/arcgis` proxy
-- [x] About navigation is guarded to `/about`
-- [x] English workspace label normalization retained
-- [x] GIS layer catalogue remains restricted to the 24 core API IDs plus the explicit cadastral layer
-- [x] GIS UI only reports `ON · RENDERED` after actual tile-load success; timeout/error remains a failure state
-- [x] Existing Render service and launcher remain unchanged
-- [x] Canonical release CI now includes browser + GIS end-to-end gates
+### Analysis / data contract
 
-## 4. Browser / regression proof
+- [x] Legacy `Yes/No` perimeter-planting and pedestrian-walkway values no longer hard-fail canonical assessment; unknown values remain unverified rather than fabricated.
+- [x] Workstation development inputs are propagated into the canonical proposal/evidence packet.
+- [x] GFA + plot ratio can produce a transparent calculated site-area input when explicit site area is absent.
+- [x] Development Impact reads explicit units/GFA/jobs/population/trips/road/flood/facility inputs and preserves `REVIEW_REQUIRED` where evidence is missing.
+- [ ] Fresh end-to-end browser proof that `RUN SITE ANALYSIS` completes on the canonical case.
 
-Prior candidate evidence remains historical reference only.
+### GIS / map rendering
 
-- [x] Prior candidate regression matrix: 17 lanes passed
-- [x] Prior candidate runtime smoke passed
-- [x] Prior candidate full regression passed
-- [x] Prior candidate Workspace Browser Gate passed
-- [x] Prior candidate Render Parity Gate passed
-- [x] Prior candidate UX Contract passed
-- [x] Prior candidate Final Command Centre Contract passed
-- [x] Prior candidate browser evidence upload passed
-- [x] Fresh current-head full regression passed on `ae91eabc` before subsequent hardening
-- [ ] Fresh current-head regression after latest GIS/browser/docs hardening
-- [ ] Fresh browser functional smoke after latest hardening
-- [ ] Fresh 25-layer end-to-end GIS render audit after latest hardening
-- [ ] Controlled live smoke on exact final deployed SHA
+- [x] i-Plan WMS rendering uses the same-origin `/map/wms` proxy.
+- [x] Critical Melaka Current Land Use is routed to the proven i-Plan ArcGIS service `GTsemasa_04/MapServer` for deterministic imagery.
+- [x] Critical Melaka Zoning is routed to the proven i-Plan ArcGIS service `GTzoning_04/MapServer` for deterministic imagery.
+- [x] ArcGIS imagery uses the same-origin `/map/arcgis` proxy.
+- [x] Decorative map veil is forced below Leaflet imagery so overlay visibility is not visually masked by the workspace chrome.
+- [x] GIS layer controls are reclaimed exactly once after the canonical catalogue renders; stale checkbox handlers are removed by cloning before binding.
+- [x] Per-layer opacity sliders added to the visible GIS controls.
+- [x] GIS layer states remain explicit: loading / rendered / source-connected / error.
+- [x] Critical Current Land Use + Zoning can be auto-enabled for the initial planning view.
+- [ ] Fresh browser proof for each required 25-layer toggle + actual map imagery.
+- [ ] Fresh GIS end-to-end audit of layer render success/failure states.
 
-## 5. Duplicate / overlap control
+### Road / transport intelligence
+
+- [x] Road Intelligence uses live OSM/Overpass source context without claiming Malaysian statutory hierarchy.
+- [x] Multiple Overpass endpoints are attempted before reporting source unavailability.
+- [x] Road results retain centroid coordinates so the UI can visualise nearby road context on the map.
+- [x] Road hierarchy levels are presented explicitly in the Road Access drawer.
+- [x] Road Access UI refreshes from the current site coordinates and can attach the result to the canonical evidence packet when analysis has run.
+- [ ] Fresh browser proof of Road Access open → query → hierarchy result → map context.
+
+### Visual / right rail
+
+- [x] Development Impact compact visual surface.
+- [x] Decision Story / Live Evidence Story / Review Gaps presentation owners retained.
+- [x] Right rail spacing compacted for usable single-screen scanning.
+- [x] Map controls retain Map / Satellite / Hybrid / Layers.
+- [ ] Fresh visual regression after the complete repair pass.
+
+## 4. Duplicate / overlap audit
 
 ### Code/runtime
 
@@ -78,7 +89,8 @@ Prior candidate evidence remains historical reference only.
 - [x] `championship_server.py` is the shared FastAPI application base, not a second planning engine.
 - [x] `workspace_v2_server.py` is historical/preview-only.
 - [x] `workspace_v4_server.py` is a compatibility launcher only.
-- [x] Historical frontends are isolated from `/workspace`.
+- [x] New GIS visual hardening runs inside the existing workspace runtime compatibility path; no second planning engine is introduced.
+- [x] Historical frontends remain isolated from `/workspace`.
 
 ### Render
 
@@ -88,7 +100,7 @@ Prior candidate evidence remains historical reference only.
 - [x] Legacy Render surfaces are untouched
 - [x] No new Render service is required
 
-## 6. Selected Render target contract
+## 5. Selected Render target contract
 
 Target service: `urbion-horizon-workspace-v4` (`srv-dahm749594qs73fk2tag`)
 
@@ -100,11 +112,9 @@ Target service: `urbion-horizon-workspace-v4` (`srv-dahm749594qs73fk2tag`)
 - start: `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`
 - auto deploy: `off`
 
-Current live deployment: `ae91eabc6dcc4df9d5312294526ff65f9b7616c6` (intermediate validation build).
-Current branch candidate: `59dba5abeccedf48af4417c215af3f8b27bdf72f`.
-The branch candidate is not yet live because auto-deploy remains OFF.
+Current branch is intentionally **not being rendered by this checklist pass**. Live state must not be treated as proof of the new repairs until controlled deployment + smoke is explicitly performed.
 
-## 7. Known non-blocking product gaps
+## 6. Known non-blocking product gaps
 
 These remain deliberately outside certification scope:
 
@@ -116,22 +126,25 @@ These remain deliberately outside certification scope:
 - advanced environmental simulation
 - enterprise GIS/BIM connectors
 
-## 8. Final certification sequence
+## 7. Final certification sequence
 
 - [x] Preserve pre-convergence canonical snapshot
 - [x] Keep `feature/canonical-workspace-v2` as the sole active release branch
 - [x] Reconcile release documentation to canonical branch
 - [x] Integrate WMS proxy + GIS render truth repair
 - [x] Integrate browser/GIS audit into canonical release workflow
+- [x] Complete deep pre-render repair pass across analysis, GIS, road and visual surfaces
 - [ ] Fresh required CI on final candidate
 - [ ] Fresh full functional workspace audit
 - [ ] Fresh 25-layer GIS end-to-end audit
+- [ ] Fresh Road Intelligence browser proof
+- [ ] Fresh visual regression
 - [ ] Controlled live smoke on the exact final deployed SHA
 - [ ] Final release SHA lock
 - [ ] Final release identity/tag
 
 ## Release gate
 
-`RENDER = LIVE ON AE91EABC / BRANCH CANDIDATE 59DBA5A NOT YET DEPLOYED`
+`RENDER = LOCKED`
 
-The application is not declared production-ready until the fresh current-head gates pass and controlled live smoke proves the repaired canonical build on the exact deployed SHA.
+The application is not declared production-ready until fresh current-head gates prove the complete repaired canonical workspace and controlled live smoke proves the exact deployed SHA.
