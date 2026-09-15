@@ -225,6 +225,7 @@ async def map_arcgis_proxy(request: Request) -> Response:
     if is_jmg_fault:
         attempts.append({k: v for k, v in params.items() if k != "layers"})
         attempts.append({k: v for k, v in attempts[-1].items() if k not in {"format", "transparent"}} | {"format": "png", "transparent": "true"})
+        attempts.append({k: v for k, v in attempts[-1].items() if k != "transparent"} | {"format": "png", "transparent": "false", "layers": "show:5"})
     last_detail = "no response"
     for attempt in attempts:
         try:
