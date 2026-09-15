@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Preflight authoritative i-Plan GIS directly and through the canonical proxy."""
 from __future__ import annotations
-
 import math
 import os
 import time
@@ -10,7 +9,6 @@ import httpx
 
 BASE_URL = os.getenv("URBION_BASE_URL", "http://127.0.0.1:8765").rstrip("/")
 UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
-WMTS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts"
 DIRECT_WMS = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
 LAYERS = [
     "iplan:gunatanah_semasa_04", "iplan:gunatanah_zoning_04", "iplan:gunatanah_komited_04",
@@ -53,7 +51,7 @@ def probe(client: httpx.Client, url: str, params: dict[str, str]) -> tuple[int, 
         elapsed = time.perf_counter() - started
         ct = r.headers.get("content-type", "")
         detail = str(r.url.path)
-        if r.status_code >= 400:
+        if r.status_code >= 400 or not ct.lower().startswith("image/"):
             body = r.text[:500].replace("\n", " ").replace("\r", " ")
             detail += f" :: {body}"
         return r.status_code, ct, len(r.content), elapsed, detail
@@ -69,7 +67,7 @@ def arcgis_params(base: dict[str, str], layer_id: int) -> dict[str, str]:
     }
 
 
-def direct_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
+def untiled_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
     return {
         "service": "WMS", "request": "GetMap", "layers": layer, "styles": "",
         "format": "image/png", "transparent": "true", "version": "1.1.1",
@@ -77,28 +75,12 @@ def direct_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
     }
 
 
-def wmts_params(layer: str, base: dict[str, str], zoom: int) -> dict[str, str] | None:
-    if base["width"] != "256" or base["height"] != "256":
-        return None
-    xmin, ymin, xmax, ymax = (float(x) for x in base["bbox"].split(","))
-    span = 2.0 * WORLD / (256.0 * (2**zoom))
-    x = round((xmin + WORLD) / span)
-    y = round((WORLD - ymax) / span)
-    if abs(xmin - (-WORLD + x * span)) > 1e-4 or abs(ymax - (WORLD - y * span)) > 1e-4:
-        return None
-    return {
-        "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0",
-        "LAYER": layer, "STYLE": "", "TILEMATRIXSET": "EPSG:900913",
-        "FORMAT": "image/png", "TILEMATRIX": f"EPSG:900913:{zoom}",
-        "TILEROW": str(y), "TILECOL": str(x),
-    }
+def direct_wms_params(base: dict[str, str], layer: str) -> dict[str, str]:
+    return untiled_wms_params(base, layer)
 
 
 def main() -> None:
     bbox, tile_x, tile_y = tile_bbox(102.196, 2.285, 13)
-    # Mirror the canonical browser WMS request. The canonical proxy uses the
-    # same bbox/tile contract and may fall through to GWC WMTS for a tile when
-    # the WMS path is unhealthy.
     base = {
         "service": "WMS", "request": "GetMap", "styles": "", "format": "image/png",
         "transparent": "true", "version": "1.1.1", "tiled": "true", "width": "256", "height": "256",
@@ -106,10 +88,9 @@ def main() -> None:
     }
     failures: list[str] = []
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=10.0), follow_redirects=True, headers={
-        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.7",
+        "User-Agent": "URBION-HORIZON-GIS-Preflight/1.8",
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
-        "Accept": "image/png,image/*,*/*;q=0.8", "Accept-Encoding": "identity",
-        "Connection": "close",
+        "Accept": "image/png,image/*,*/*;q=0.8", "Accept-Encoding": "identity", "Connection": "close",
     }) as client:
         print(f"GIS UPSTREAM PREFLIGHT · {len(LAYERS)} representative i-Plan layers · tile z13/{tile_x}/{tile_y} · EPSG:900913")
         for layer in LAYERS:
@@ -125,18 +106,16 @@ def main() -> None:
                     print(f"ARCGIS FALLBACK {'PASS' if f_ok else 'FAIL'} · {layer} · HTTP={f_status} · CT={f_ct or '-'} · bytes={f_size} · {f_elapsed:.2f}s · {f_detail}")
                     if f_ok:
                         continue
+                u_status, u_ct, u_size, u_elapsed, u_detail = probe(client, UPSTREAM, untiled_wms_params(base, layer))
+                u_ok = u_status == 200 and u_ct.lower().startswith("image/") and u_size > 100
+                print(f"UNTILED WMS FALLBACK {'PASS' if u_ok else 'FAIL'} · {layer} · HTTP={u_status} · CT={u_ct or '-'} · bytes={u_size} · {u_elapsed:.2f}s · {u_detail}")
+                if u_ok:
+                    continue
                 if layer in DIRECT_WMS_FALLBACKS:
                     d_status, d_ct, d_size, d_elapsed, d_detail = probe(client, DIRECT_WMS, direct_wms_params(base, layer))
                     d_ok = d_status == 200 and d_ct.lower().startswith("image/") and d_size > 100
                     print(f"DIRECT WMS FALLBACK {'PASS' if d_ok else 'FAIL'} · {layer} · HTTP={d_status} · CT={d_ct or '-'} · bytes={d_size} · {d_elapsed:.2f}s · {d_detail}")
                     if d_ok:
-                        continue
-                w_params = wmts_params(layer, base, 13)
-                if w_params is not None:
-                    w_status, w_ct, w_size, w_elapsed, w_detail = probe(client, WMTS_UPSTREAM, w_params)
-                    w_ok = w_status == 200 and w_ct.lower().startswith("image/") and w_size > 100
-                    print(f"WMTS FALLBACK {'PASS' if w_ok else 'FAIL'} · {layer} · HTTP={w_status} · CT={w_ct or '-'} · bytes={w_size} · {w_elapsed:.2f}s · {w_detail}")
-                    if w_ok:
                         continue
                 failures.append(f"UPSTREAM {layer}: GWC HTTP={status} CT={ct or '-'} bytes={size} detail={detail}")
         print(f"GIS PROXY PREFLIGHT · {BASE_URL}/map/wms")
