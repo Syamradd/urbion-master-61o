@@ -5,9 +5,15 @@ Only explicit development inputs are quantified; missing inputs become review
 items instead of fabricated estimates.
 """
 from __future__ import annotations
+from pathlib import Path
 from typing import Any
 
+from fastapi.responses import FileResponse, Response
+from server import app
+
 IMPACT_DOMAINS = ("physical", "social", "economic")
+_BASE_DIR = Path(__file__).resolve().parent
+_IMPACT_UI_ASSET = _BASE_DIR / "urbion_workspace_development_impact_owner_v4.js"
 
 
 def _number(value: Any) -> float | None:
@@ -80,3 +86,11 @@ def build_development_impact(*, development_type: str = "", units: float | None 
         "decision_boundary": "PLANNING_SCREENING_ONLY",
         "statutory_verification": "NOT_CLAIMED",
     }
+
+
+@app.get("/urbion_workspace_development_impact_owner_v4.js", include_in_schema=False)
+def development_impact_ui_asset():
+    """Serve the canonical Development Impact presentation owner on every app entrypoint."""
+    if not _IMPACT_UI_ASSET.is_file():
+        return Response("URBION HORIZON development impact UI asset missing.", status_code=500, media_type="text/plain; charset=utf-8")
+    return FileResponse(_IMPACT_UI_ASSET, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-store, max-age=0, must-revalidate"})
