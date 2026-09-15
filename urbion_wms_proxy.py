@@ -184,12 +184,9 @@ def _wmts_xyz(params: dict[str, str]) -> tuple[int, int, int] | None:
 
 
 async def _tms_tile_fallback(layer: str, params: dict[str, str]) -> Response | None:
-    """Use GWC's authoritative TMS tile endpoint for layers whose WMS path is broken."""
-    if layer not in TMS_FALLBACK_LAYERS:
-        return None
+    if layer not in TMS_FALLBACK_LAYERS: return None
     xyz = _wmts_xyz(params)
-    if xyz is None:
-        return None
+    if xyz is None: return None
     z, x, y_xyz = xyz
     y_tms = (2 ** z - 1) - y_xyz
     encoded_layer = quote(layer, safe=":")
@@ -197,15 +194,11 @@ async def _tms_tile_fallback(layer: str, params: dict[str, str]) -> Response | N
         for gridset in ("EPSG:900913", "EPSG:4326"):
             for ext in ("png", "jpeg"):
                 url = f"{base}/{encoded_layer}@{gridset}@{ext}/{z}/{x}/{y_tms}.{ext}"
-                try:
-                    upstream = await _client_get(url, {})
-                except (httpx.HTTPError, asyncio.TimeoutError):
-                    continue
-                if upstream.status_code != 200:
-                    continue
+                try: upstream = await _client_get(url, {})
+                except (httpx.HTTPError, asyncio.TimeoutError): continue
+                if upstream.status_code != 200: continue
                 content_type = upstream.headers.get("content-type", "")
-                if not content_type.lower().startswith("image/"):
-                    continue
+                if not content_type.lower().startswith("image/"): continue
                 return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or f"image/{ext}", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-TMS"})
     return None
 
@@ -222,11 +215,9 @@ async def _wmts_get(params: dict[str, str]) -> httpx.Response | None:
 
 
 async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | None:
-    if layer not in WMTS_FALLBACK_LAYERS:
-        return None
+    if layer not in WMTS_FALLBACK_LAYERS: return None
     xyz = _wmts_xyz(params)
-    if xyz is None:
-        return None
+    if xyz is None: return None
     z, x, y = xyz
     variants = (f"EPSG:900913:{z}", str(z))
     for matrix in variants:
@@ -236,72 +227,78 @@ async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | N
                 "STYLE": style, "FORMAT": "image/png", "TILEMATRIXSET": "EPSG:900913",
                 "TILEMATRIX": matrix, "TILEROW": str(y), "TILECOL": str(x),
             }
-            try: upstream = await _wmts_get(query)
-            except (httpx.HTTPError, asyncio.TimeoutError): continue
-            if upstream.status_code != 200: continue
+            try:
+                upstream = await _wmts_get(query)
+            except (httpx.HTTPError, asyncio.TimeoutError):
+                continue
+            if upstream is None:
+                continue
+            if upstream.status_code != 200:
+                continue
             content_type = upstream.headers.get("content-type", "")
-            if not content_type.lower().startswith("image/"): continue
+            if not content_type.lower().startswith("image/"):
+                continue
             return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-WMTS"})
     return None
 
 
-def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, float], width: int = 256, height: int = 256) -> str | None:
-    xmin, ymin, xmax, ymax = bbox; dx = xmax - xmin; dy = ymax - ymin
-    if dx <= 0 or dy <= 0: return None
-    features = payload.get("features") or []; parts = []
-    def xy(x, y): return (float(x) - xmin) / dx * width, height - (float(y) - ymin) / dy * height
-    for feature in features[:500]:
+def _svg_from_arcgis_features(payload: dict, bbox: str) -> str | None:
+    if not isinstance(payload, dict): return None
+    features = payload.get("features") or []
+    if not features: return None
+    try: xmin, ymin, xmax, ymax = (float(v) for v in bbox.split(","))
+    except (TypeError, ValueError): return None
+    if xmax <= xmin or ymax <= ymin: return None
+    width = height = 256
+    def point_xy(x: float, y: float) -> tuple[float, float]:
+        return ((x - xmin) / (xmax - xmin) * width, (ymax - y) / (ymax - ymin) * height)
+    paths = []
+    for feature in features:
         geom = feature.get("geometry") if isinstance(feature, dict) else None
         if not isinstance(geom, dict): continue
-        if isinstance(geom.get("paths"), list):
-            for path in geom["paths"]:
-                coords = [xy(*pt[:2]) for pt in path if isinstance(pt, (list, tuple)) and len(pt) >= 2]
-                if len(coords) >= 2:
-                    d = "M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in coords)
-                    parts.append(f'<path d="{d}" fill="none" stroke="#1de0ff" stroke-width="2.2" vector-effect="non-scaling-stroke"/>')
-        elif isinstance(geom.get("rings"), list):
-            for ring in geom["rings"]:
-                coords = [xy(*pt[:2]) for pt in ring if isinstance(pt, (list, tuple)) and len(pt) >= 2]
-                if len(coords) >= 3:
-                    d = "M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in coords) + " Z"
-                    parts.append(f'<path d="{d}" fill="rgba(29,224,255,0.16)" stroke="#1de0ff" stroke-width="1.2" vector-effect="non-scaling-stroke"/>')
-        elif geom.get("x") is not None and geom.get("y") is not None:
-            px, py = xy(geom["x"], geom["y"]); parts.append(f'<circle cx="{px:.2f}" cy="{py:.2f}" r="3" fill="#1de0ff" stroke="#06212b" stroke-width="1"/>')
-    if not parts: return None
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">' + "".join(parts) + '</svg>'
+        paths_raw = geom.get("paths")
+        if not isinstance(paths_raw, list): continue
+        for path in paths_raw:
+            if not isinstance(path, list) or len(path) < 2: continue
+            pts = []
+            for p in path:
+                if not isinstance(p, (list, tuple)) or len(p) < 2: continue
+                try: pts.append(point_xy(float(p[0]), float(p[1])))
+                except (TypeError, ValueError): continue
+            if len(pts) >= 2:
+                d = " ".join((f"M {x:.2f} {y:.2f}" if i == 0 else f"L {x:.2f} {y:.2f}") for i, (x, y) in enumerate(pts))
+                paths.append(d)
+    if not paths: return None
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><g fill="none" stroke="#d946ef" stroke-width="2">{"".join(f"<path d=\"{d}\"/>" for d in paths)}</g></svg>'
 
 
 async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) -> Response | None:
     target = JMG_FEATURE_FALLBACKS.get(parsed_path)
     if not target: return None
-    feature_path, layer_id = target
-    bbox_raw = str(params.get("bbox", ""))
+    feature_base, layer_id = target
+    bbox = str(params.get("bbox", ""))
+    if not bbox: return None
     try:
-        bbox = tuple(float(x) for x in bbox_raw.split(","))
-        if len(bbox) != 4: return None
+        xmin, ymin, xmax, ymax = (float(v) for v in bbox.split(","))
     except (TypeError, ValueError): return None
-    query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
-    envelope = {"xmin": bbox[0], "ymin": bbox[1], "xmax": bbox[2], "ymax": bbox[3], "spatialReference": {"wkid": 3857}}
-    common = {
-        "where": "1=1", "outFields": "OBJECTID", "returnGeometry": "true",
-        "outSR": "3857", "geometryType": "esriGeometryEnvelope", "inSR": "3857",
-        "spatialRel": "esriSpatialRelEnvelopeIntersects", "geometry": json.dumps(envelope, separators=(",", ":")), "f": "json",
-        "resultType": "tile",
-        "returnExceededLimitFeatures": "false",
+    geometry = json.dumps({"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax, "spatialReference": {"wkid": 3857}}, separators=(",", ":"))
+    query = {
+        "f": "json", "where": "1=1", "outFields": "OBJECTID", "returnGeometry": "true",
+        "geometryType": "esriGeometryEnvelope", "inSR": "3857", "spatialRel": "esriSpatialRelEnvelopeIntersects",
+        "geometry": geometry, "outSR": "3857", "resultType": "tile", "returnExceededLimitFeatures": "false",
     }
-    query = {**common, "resultRecordCount": "500"}
-    try: upstream = await _client_get(query_url, query)
-    except (httpx.HTTPError, asyncio.TimeoutError): return None
-    if upstream.status_code != 200: return None
-    content_type = upstream.headers.get("content-type", "")
-    if "json" not in content_type.lower(): return None
-    try: payload = upstream.json()
-    except ValueError: return None
-    if isinstance(payload, dict) and payload.get("error"): return None
-    svg = _svg_from_arcgis_features(payload, bbox)
-    if not svg:
-        return None
-    return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"})
+    try:
+        upstream = await _client_get(f"https://mygems.jmg.gov.my{feature_base}/{layer_id}/query", query)
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        upstream = None
+    if upstream is not None and upstream.status_code == 200:
+        try: payload = upstream.json()
+        except ValueError: payload = None
+        if isinstance(payload, dict) and payload.get("error"): payload = None
+        svg = _svg_from_arcgis_features(payload, bbox) if isinstance(payload, dict) else None
+        if svg:
+            return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "JMG-FeatureServer"})
+    return None
 
 
 @router.get("/map/wms", include_in_schema=False)
@@ -350,12 +347,9 @@ async def map_arcgis_proxy(request: Request) -> Response:
     parsed_path = parsed.path.rstrip("/"); is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
-    # Prefer the authoritative JMG FeatureServer geometry query for the
-    # Major Fault polyline layer; retain MapServer export as fallback.
     if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:
         fallback = await _jmg_feature_image_fallback(parsed_path, params)
         if fallback is not None: return fallback
-
     export_url = f"https://{match[0]}{parsed_path}/export"; last_detail = "no response"
     try:
         upstream = await _client_get(export_url, dict(params))
