@@ -12,8 +12,13 @@ from fastapi.responses import Response, StreamingResponse
 
 router = APIRouter()
 WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wms"
-WMTS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts"
+WMTS_UPSTREAMS = (
+    "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts",
+    "https://iplan.planmalaysia.gov.my/geoserver/service/wmts",
+)
+WMTS_UPSTREAM = WMTS_UPSTREAMS[0]
 ROOT_WMS_UPSTREAMS = (
+    "https://iplan.planmalaysia.gov.my/geoserver/service/wms",
     "https://iplan.planmalaysia.gov.my/geoserver/wms",
     "https://iplan.planmalaysia.gov.my/geoserver/ows",
 )
@@ -205,6 +210,17 @@ async def _tms_tile_fallback(layer: str, params: dict[str, str]) -> Response | N
     return None
 
 
+async def _wmts_get(params: dict[str, str]) -> httpx.Response | None:
+    for url in WMTS_UPSTREAMS:
+        try:
+            upstream = await _client_get(url, params)
+        except (httpx.HTTPError, asyncio.TimeoutError):
+            continue
+        if upstream.status_code == 200:
+            return upstream
+    return None
+
+
 async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | None:
     if layer not in WMTS_FALLBACK_LAYERS:
         return None
@@ -220,7 +236,7 @@ async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | N
                 "STYLE": style, "FORMAT": "image/png", "TILEMATRIXSET": "EPSG:900913",
                 "TILEMATRIX": matrix, "TILEROW": str(y), "TILECOL": str(x),
             }
-            try: upstream = await _client_get(WMTS_UPSTREAM, query)
+            try: upstream = await _wmts_get(query)
             except (httpx.HTTPError, asyncio.TimeoutError): continue
             if upstream.status_code != 200: continue
             content_type = upstream.headers.get("content-type", "")
