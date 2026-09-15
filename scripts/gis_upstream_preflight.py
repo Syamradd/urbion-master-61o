@@ -141,7 +141,7 @@ def main() -> None:
         import subprocess
         import sys
         failures = []
-        max_workers = min(14, len(LAYERS))
+        max_workers = min(4, len(LAYERS))
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures = {
                 pool.submit(
