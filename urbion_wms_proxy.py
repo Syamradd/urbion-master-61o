@@ -82,7 +82,7 @@ HEADERS = {
 _LIMITS = httpx.Limits(max_connections=8, max_keepalive_connections=4)
 _JMG_LIMITS = httpx.Limits(max_connections=4, max_keepalive_connections=0)
 _TIMEOUT = httpx.Timeout(connect=6.0, read=12.0, write=6.0, pool=6.0)
-_JMG_TIMEOUT = httpx.Timeout(connect=6.0, read=8.0, write=6.0, pool=6.0)
+_JMG_TIMEOUT = httpx.Timeout(connect=6.0, read=12.0, write=6.0, pool=6.0)
 _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEADERS, limits=_LIMITS)
 _JMG_CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_JMG_TIMEOUT, headers=HEADERS, limits=_JMG_LIMITS)
 _UPSTREAM_SEMAPHORE = asyncio.Semaphore(6)
@@ -311,7 +311,6 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         query = {
             **base_query, "geometry": f"{qxmin},{qymin},{qxmax},{qymax}",
             "geometryType": "esriGeometryEnvelope", "inSR": "3857", "spatialRel": "esriSpatialRelIntersects",
-            "resultType": "tile", "returnExceededLimitFeatures": "true", "maxAllowableOffset": f"{pixel_offset:.3f}",
         }
         query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
         try: upstream = await _client_get(query_url, query)
@@ -407,6 +406,13 @@ async def map_arcgis_proxy(request: Request) -> Response:
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
     last_detail = "no response"
+
+    if is_jmg and parsed_path == "/server/rest/services/GeologiAsas/Major_Fault/MapServer":
+        fallback = await _jmg_feature_image_fallback(parsed_path, params)
+        if fallback is not None:
+            return fallback
+        last_detail = "JMG FeatureServer fallback unavailable; trying MapServer export"
+
     export_url = f"https://{match[0]}{parsed_path}/export"
     export_params = dict(params)
     if is_jmg: export_params["format"] = "png32"
