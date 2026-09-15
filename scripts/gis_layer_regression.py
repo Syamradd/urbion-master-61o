@@ -103,6 +103,7 @@ def main():
         expect(page.locator("#layers")).to_have_class("layers open")
         expect(page.locator("#layerList")).to_be_visible(timeout=15000)
         wait_until(lambda: hydrated_ui_ids(page) == EXPECTED_UI_LAYER_IDS, timeout=25.0)
+        wait_until(lambda: page.locator("#layerList [data-layer-state]").count() == 25, timeout=10.0)
         ids = hydrated_ui_ids(page)
         assert ids == EXPECTED_UI_LAYER_IDS, f"curated UI layer mismatch: missing={EXPECTED_UI_LAYER_IDS-ids}, unexpected={ids-EXPECTED_UI_LAYER_IDS}"
         assert page.locator("#layerList [data-urbion-layer]").count() == 25
