@@ -57,4 +57,4 @@
 - [x] No duplicate frontend/engine
 - [x] No weakened assertions solely to obtain green CI
 
-<!-- Final validation trigger: JMG targeted render repair 7b2d7395ffad06d31f4a76f55a35c388c6869919 -->
+<!-- Final validation trigger: clean-head d4e427d6d269b0fbe54812a0b470b7775653dc0b -->
