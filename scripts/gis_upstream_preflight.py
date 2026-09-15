@@ -121,6 +121,18 @@ def tms_urls(layer: str, zoom: int, x: int, y_xyz: int):
     return tuple(f"{base}/{encoded_layer}@EPSG:900913@png/{zoom}/{x}/{y_tms}.png" for base in TMS_UPSTREAMS)
 
 
+def wmts_rest_urls(layer: str, zoom: int, x: int, y: int):
+    encoded_layer = quote(layer, safe=":")
+    for base in (
+        "https://iplan.planmalaysia.gov.my/geoserver/gwc/service/wmts/rest",
+        "https://iplan.planmalaysia.gov.my/geoserver/service/wmts/rest",
+    ):
+        for style in ("default", ""):
+            for matrix in (f"EPSG:900913:{zoom}", str(zoom)):
+                for row, col in ((y, x), (x, y)):
+                    yield f"{base}/{encoded_layer}/{style or 'default'}/EPSG:900913/{matrix}/{row}/{col}?format=image/png"
+
+
 def main() -> None:
     selected = os.getenv("URBION_PREFLIGHT_LAYER")
     if selected:
@@ -131,7 +143,7 @@ def main() -> None:
         import subprocess
         import sys
         failures = []
-        max_workers = min(6, len(LAYERS))
+        max_workers = min(14, len(LAYERS))
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures = {
                 pool.submit(
@@ -179,6 +191,17 @@ def main() -> None:
             ok = status == 200 and ct.lower().startswith("image/") and size > 100
             print(f"GWC {'PASS' if ok else 'FAIL'} · {layer} · HTTP={status} · CT={ct or '-'} · bytes={size} · {elapsed:.2f}s · {detail}")
             if not ok:
+                if layer in TMS_FALLBACK_LAYERS:
+                    wmts_rest_ok = False
+                    for wmts_rest_url in wmts_rest_urls(layer, 13, tile_x, tile_y):
+                        r_status, r_ct, r_size, r_elapsed, r_detail = probe(client, wmts_rest_url, {})
+                        r_ok = r_status == 200 and r_ct.lower().startswith("image/") and r_size > 100
+                        print(f"GWC WMTS REST FALLBACK {'PASS' if r_ok else 'FAIL'} · {layer} · HTTP={r_status} · CT={r_ct or '-'} · bytes={r_size} · {r_elapsed:.2f}s · {r_detail}")
+                        if r_ok:
+                            wmts_rest_ok = True
+                            break
+                    if wmts_rest_ok:
+                        continue
                 if layer in TMS_FALLBACK_LAYERS:
                     wmts_ok = False
                     for wmts_url in WMTS_UPSTREAMS:
