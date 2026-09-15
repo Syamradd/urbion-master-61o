@@ -145,39 +145,43 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         if len(bbox) != 4: return None
     except (TypeError, ValueError): return None
 
-    # Query the authoritative feature layer without a spatial filter. The JMG
-    # service advertises query support, but some tiles intermittently reject
-    # envelope queries. The full feature set is still authoritative; SVG
-    # viewport clipping keeps only geometry visible in the requested tile.
-    queries = [
-        f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query",
-        f"https://mygems.jmg.gov.my{parsed_path}/{layer_id}/query",
-    ]
+    # Use one authoritative, spatially bounded FeatureServer query per tile.
+    # The JMG layer advertises query-with-result-type support, so resultType=tile
+    # avoids downloading the full fault dataset while preserving live geometry.
+    query_url = f"https://mygems.jmg.gov.my{feature_path}/{layer_id}/query"
     query = {
-        "where": "1=1", "outFields": "OBJECTID,Line_code,Type,Name",
-        "returnGeometry": "true", "outSR": "3857", "resultRecordCount": "2000", "f": "json",
+        "where": "1=1",
+        "geometry": bbox_raw,
+        "geometryType": "esriGeometryEnvelope",
+        "inSR": "3857",
+        "spatialRel": "esriSpatialRelIntersects",
+        "resultType": "tile",
+        "returnExceededLimitFeatures": "true",
+        "outFields": "OBJECTID,Line_code,Type,Name",
+        "returnGeometry": "true",
+        "outSR": "3857",
+        "resultRecordCount": "2000",
+        "f": "json",
     }
-    for query_url in queries:
-        try:
-            upstream = await _client_get(query_url, query)
-        except (httpx.HTTPError, asyncio.TimeoutError):
-            continue
-        if upstream.status_code != 200:
-            continue
-        content_type = upstream.headers.get("content-type", "")
-        if not content_type.lower().startswith("application/json"):
-            continue
-        try:
-            payload = upstream.json()
-        except ValueError:
-            continue
-        if isinstance(payload, dict) and payload.get("error"):
-            continue
-        svg = _svg_from_arcgis_features(payload, bbox)
-        if not svg:
-            svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
-        return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback":"JMG-FeatureServer"})
-    return None
+    try:
+        upstream = await _client_get(query_url, query)
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    if upstream.status_code != 200:
+        return None
+    content_type = upstream.headers.get("content-type", "")
+    if not content_type.lower().startswith("application/json"):
+        return None
+    try:
+        payload = upstream.json()
+    except ValueError:
+        return None
+    if isinstance(payload, dict) and payload.get("error"):
+        return None
+    svg = _svg_from_arcgis_features(payload, bbox)
+    if not svg:
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"></svg>'
+    return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback":"JMG-FeatureServer"})
 
 @router.get("/map/wms", include_in_schema=False)
 async def map_wms_proxy(request: Request) -> Response:
@@ -217,9 +221,8 @@ async def map_arcgis_proxy(request: Request) -> Response:
     export_url = f"https://{match[0]}{parsed_path}/export"
 
     # JMG MapServer export endpoints can be slow or terminate the HTTP body.
-    # Do not spend several sequential 6-second reads on one tile: there is an
-    # authoritative FeatureServer fallback for the two problematic JMG layers.
-    # i-Plan/SCHARMS retains the existing retry-free single export behaviour.
+    # Keep one bounded authoritative export attempt, then use the
+    # FeatureServer fallback for the two known JMG layers.
     attempts = [dict(params)]
     last_detail = "no response"
     for attempt in attempts:
