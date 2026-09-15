@@ -177,24 +177,53 @@ def _wmts_xyz(params: dict[str, str]) -> tuple[int, int, int] | None:
     return z, x, y
 
 
-async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | None:
-    if layer not in WMTS_FALLBACK_LAYERS: return None
+async def _tms_tile_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    """Use GWC's authoritative TMS tile endpoint for layers whose WMS path is broken."""
+    if layer not in TMS_FALLBACK_LAYERS:
+        return None
     xyz = _wmts_xyz(params)
-    if xyz is None: return None
+    if xyz is None:
+        return None
+    z, x, y = xyz
+    encoded_layer = quote(layer, safe="")
+    for base in TMS_UPSTREAMS:
+        for gridset in ("EPSG:900913", "EPSG:4326"):
+            for ext in ("png", "jpeg"):
+                url = f"{base}/{encoded_layer}@{gridset}@{ext}/{z}/{x}/{y}.{ext}"
+                try:
+                    upstream = await _client_get(url, {})
+                except (httpx.HTTPError, asyncio.TimeoutError):
+                    continue
+                if upstream.status_code != 200:
+                    continue
+                content_type = upstream.headers.get("content-type", "")
+                if not content_type.lower().startswith("image/"):
+                    continue
+                return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or f"image/{ext}", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-TMS"})
+    return None
+
+
+async def _wmts_kvp_fallback(layer: str, params: dict[str, str]) -> Response | None:
+    if layer not in WMTS_FALLBACK_LAYERS:
+        return None
+    xyz = _wmts_xyz(params)
+    if xyz is None:
+        return None
     z, x, y = xyz
     variants = (f"EPSG:900913:{z}", str(z))
     for matrix in variants:
-        query = {
-            "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0", "LAYER": layer,
-            "STYLE": "", "FORMAT": "image/png", "TILEMATRIXSET": "EPSG:900913",
-            "TILEMATRIX": matrix, "TILEROW": str(y), "TILECOL": str(x),
-        }
-        try: upstream = await _client_get(WMTS_UPSTREAM, query)
-        except (httpx.HTTPError, asyncio.TimeoutError): continue
-        if upstream.status_code != 200: continue
-        content_type = upstream.headers.get("content-type", "")
-        if not content_type.lower().startswith("image/"): continue
-        return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-WMTS"})
+        for style in ("", "default"):
+            query = {
+                "SERVICE": "WMTS", "REQUEST": "GetTile", "VERSION": "1.0.0", "LAYER": layer,
+                "STYLE": style, "FORMAT": "image/png", "TILEMATRIXSET": "EPSG:900913",
+                "TILEMATRIX": matrix, "TILEROW": str(y), "TILECOL": str(x),
+            }
+            try: upstream = await _client_get(WMTS_UPSTREAM, query)
+            except (httpx.HTTPError, asyncio.TimeoutError): continue
+            if upstream.status_code != 200: continue
+            content_type = upstream.headers.get("content-type", "")
+            if not content_type.lower().startswith("image/"): continue
+            return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-GWC-WMTS"})
     return None
 
 
@@ -269,6 +298,8 @@ async def map_wms_proxy(request: Request) -> Response:
         content_type = upstream.headers.get("content-type", "")
         if upstream.status_code == 200 and content_type.lower().startswith("image/"):
             return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers=_cache_headers())
+    fallback = await _tms_tile_fallback(layers, params)
+    if fallback is not None: return fallback
     fallback = await _wmts_kvp_fallback(layers, params)
     if fallback is not None: return fallback
     fallback = await _arcgis_wms_fallback(layers, params)
