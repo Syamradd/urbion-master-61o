@@ -38,9 +38,6 @@ WMS_ARCGIS_FALLBACKS = {
         "https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 5,
     ),
 }
-# These layers exist in the authoritative i-Plan GeoServer namespace but do
-# not currently have a verified public ArcGIS equivalent. Try the official
-# non-GWC WMS before reporting the layer unavailable; never substitute data.
 DIRECT_WMS_FALLBACKS = {
     "iplan:gunatanah_komited_04",
     "iplan:rsn",
@@ -49,9 +46,6 @@ DIRECT_WMS_FALLBACKS = {
     "iplan:rumah_mampu_milik",
     "iplan:topo",
 }
-# JMG MapServer services expose multiple child layers. Rendering the exact
-# canonical layer instead of relying on service defaults materially reduces
-# export work and prevents unrelated child layers from blocking a tile.
 JMG_DEFAULT_LAYERS = {
     "/server/rest/services/GeologiAsas/Major_Fault/MapServer": "show:5",
     "/server/rest/services/LombongKuari/Lombong_Kuari_Awam/MapServer": "show:0",
@@ -76,11 +70,12 @@ HEADERS = {
 }
 _LIMITS = httpx.Limits(max_connections=8, max_keepalive_connections=4)
 _JMG_LIMITS = httpx.Limits(max_connections=4, max_keepalive_connections=0)
-_TIMEOUT = httpx.Timeout(connect=10.0, read=25.0, write=10.0, pool=10.0)
+_TIMEOUT = httpx.Timeout(connect=6.0, read=12.0, write=6.0, pool=6.0)
+_JMG_TIMEOUT = httpx.Timeout(connect=5.0, read=10.0, write=5.0, pool=5.0)
 _CLIENT = httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=HEADERS, limits=_LIMITS)
 _JMG_CLIENT = httpx.AsyncClient(
     follow_redirects=True,
-    timeout=_TIMEOUT,
+    timeout=_JMG_TIMEOUT,
     headers={**HEADERS, "Connection": "close"},
     limits=_JMG_LIMITS,
 )
@@ -219,16 +214,15 @@ async def map_arcgis_proxy(request: Request) -> Response:
     params.setdefault("format", "png32")
     params.setdefault("transparent", "true")
     parsed_path = parsed.path.rstrip("/")
-    if parsed.hostname.lower() == "mygems.jmg.gov.my":
+    is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
+    if is_jmg:
         params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
-    is_jmg_fault = parsed.hostname.lower() == "mygems.jmg.gov.my" and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer")
+    is_jmg_fault = is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer")
     if is_jmg_fault:
         params["layers"] = "show:5"
     export_url = f"https://{match[0]}{parsed_path}/export"
     attempts = [dict(params)]
     if is_jmg_fault:
-        # Major Fault is a single authoritative child layer. Keep one exact
-        # export request plus a minimal fallback without explicit layers.
         attempts.append({k: v for k, v in params.items() if k != "layers"})
         attempts.append({k: v for k, v in attempts[-1].items() if k not in {"format", "transparent"}} | {"format": "png", "transparent": "true"})
     last_detail = "no response"
