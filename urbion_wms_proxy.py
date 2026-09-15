@@ -261,7 +261,6 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
                 "geometryType": "esriGeometryEnvelope",
                 "inSR": "3857",
                 "spatialRel": "esriSpatialRelIntersects",
-                "resultType": "tile",
                 "returnExceededLimitFeatures": "true",
             },
         ),
@@ -278,7 +277,7 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         if upstream.status_code != 200:
             continue
         content_type = upstream.headers.get("content-type", "")
-        if not content_type.lower().startswith("application/json"):
+        if "json" not in content_type.lower():
             continue
         try:
             payload = upstream.json()
@@ -369,6 +368,12 @@ async def map_arcgis_proxy(request: Request) -> Response:
         params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"):
         params["layers"] = "show:5"
+
+    if is_jmg and parsed_path in JMG_FEATURE_FALLBACKS:
+        fallback = await _jmg_feature_image_fallback(parsed_path, params)
+        if fallback is not None:
+            return fallback
+
     export_url = f"https://{match[0]}{parsed_path}/export"
     attempts = [dict(params)]
     last_detail = "no response"
