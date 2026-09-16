@@ -1,0 +1,75 @@
+name: URBION Surgical GIS Patch
+
+on:
+  push:
+    branches:
+      - feature/canonical-workspace-v2
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: !startsWith(github.event.head_commit.message, 'chore(ci): apply surgical GIS blocker patch')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: feature/canonical-workspace-v2
+
+      - name: Apply surgical GIS fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          proxy = Path('urbion_wms_proxy.py')
+          text = proxy.read_text(encoding='utf-8')
+
+          old_fallbacks = '''    "iplan:topo": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 19),\n}'''
+          new_fallbacks = '''    "iplan:topo": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 19),\n    "iplan:hutan": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 5),\n    "iplan:risiko_bencana": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 12),\n}'''
+          if old_fallbacks not in text:
+              raise SystemExit('WMS_ARCGIS_FALLBACKS anchor not found')
+          text = text.replace(old_fallbacks, new_fallbacks, 1)
+
+          route_anchor = '@router.get("/map/wms", include_in_schema=False)\nasync def map_wms_proxy(request: Request) -> Response:'
+          legend_route = '''@router.get("/map/legend", include_in_schema=False)\nasync def map_legend_proxy(request: Request) -> Response:\n    layer = str(request.query_params.get("layer", "")).strip()\n    if not layer.startswith("iplan:"):\n        return Response("Legend layer is not in the allow-listed i-Plan namespace.", status_code=400, media_type="text/plain")\n    params = {\n        "REQUEST": "GetLegendGraphic",\n        "VERSION": str(request.query_params.get("version", "1.1.1")),\n        "FORMAT": "image/png",\n        "LAYER": layer,\n        "STYLE": str(request.query_params.get("style", "")),\n        "LEGEND_OPTIONS": str(request.query_params.get("legend_options", "forceLabels:on;fontAntiAliasing:true")),\n    }\n    try:\n        upstream = await _client_get(DIRECT_WMS_UPSTREAM, params)\n    except (httpx.HTTPError, asyncio.TimeoutError) as exc:\n        return _proxy_failure("i-Plan legend upstream unavailable", str(exc))\n    content_type = upstream.headers.get("content-type", "")\n    if upstream.status_code == 200 and content_type.lower().startswith("image/") and len(upstream.content) > 32:\n        return Response(upstream.content, status_code=200, media_type=content_type.split(";", 1)[0].strip() or "image/png", headers={**_cache_headers(), "X-URBION-GIS-Fallback": "PLANMalaysia-WMS-LEGEND"})\n    detail = f"HTTP={upstream.status_code} CT={content_type or '-'}"\n    return _proxy_failure("i-Plan legend upstream render failed", detail)\n\n\n'''
+          if route_anchor not in text:
+              raise SystemExit('map/wms route anchor not found')
+          if 'async def map_legend_proxy' not in text:
+              text = text.replace(route_anchor, legend_route + route_anchor, 1)
+          proxy.write_text(text, encoding='utf-8')
+
+          ui = Path('urbion_workspace_station_map_owner.js')
+          text = ui.read_text(encoding='utf-8')
+          text2 = re.sub(
+              r"function legendUrl\(state\)\{.*?\}",
+              "function legendUrl(state){return `/map/legend?layer=${encodeURIComponent(CURRENT_LAYER)}&version=1.1.1&legend_options=${encodeURIComponent('forceLabels:on;fontAntiAliasing:true')}`}",
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if text2 == text:
+              raise SystemExit('legendUrl function anchor not found')
+          ui.write_text(text2, encoding='utf-8')
+
+          reg = Path('scripts/gis_layer_regression.py')
+          text = reg.read_text(encoding='utf-8')
+          old = '''            cb.check(force=True)\n            if lid == "iplan-cadastral":'''
+          new = '''            # Re-mount pre-enabled/default layers after the response listener is attached.\n            # This keeps the strict image assertion deterministic without weakening it.\n            if cb.is_checked():\n                cb.uncheck(force=True)\n                page.wait_for_timeout(180)\n            cb.check(force=True)\n            if lid == "iplan-cadastral":'''
+          if old not in text:
+              raise SystemExit('GIS regression remount anchor not found')
+          text = text.replace(old, new, 1)
+          reg.write_text(text, encoding='utf-8')
+
+          Path('.github/workflows/urbion-surgical-patch.yml').unlink()
+
+      - name: Commit surgical patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add urbion_wms_proxy.py urbion_workspace_station_map_owner.js scripts/gis_layer_regression.py .github/workflows/urbion-surgical-patch.yml
+          git commit -m "chore(ci): apply surgical GIS blocker patch"
+          git push origin HEAD:feature/canonical-workspace-v2
