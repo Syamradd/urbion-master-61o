@@ -6,26 +6,35 @@ This module intentionally contains no second FastAPI app, planning engine, or
 frontend owner. It exposes the canonical About raster asset, the canonical
 Development Impact UI asset, the narrative/demo workspace layer, normalizes
 legacy UI payloads, routes critical Melaka i-Plan map requests to the proven
-ArcGIS service, and serves the bundled release-hardening asset used by the same
-V5 workspace.
+ArcGIS service, serves the bundled release-hardening asset used by the same
+V5 workspace, and reconnects visible planning inputs to the canonical evidence
+packet at the presentation boundary.
 """
 import json
 from pathlib import Path
 from urllib.parse import urlencode
 from fastapi import Request
-from fastapi.responses import FileResponse, RedirectResponse, Response
-from landing_server import app
+from fastapi.responses import FileResponse, RedirectResponse, Response, JSONResponse
+from landing_server import app, _development_impact, _canonical_packet
 
 _BASE_DIR=Path(__file__).resolve().parent
 _ABOUT_MASTER=_BASE_DIR/"about_master.png"
 _HARDENING_ASSET=_BASE_DIR/"urbion_workspace_release_hardening_v6.js"
 _DEVELOPMENT_IMPACT_ASSET=_BASE_DIR/"urbion_workspace_development_impact_owner_v4.js"
 _DEMO_COMMAND_ASSET=_BASE_DIR/"urbion_workspace_demo_command_layer.js"
+_CONTRACT_SURFACE_ASSET=_BASE_DIR/"urbion_workspace_contract_surface_v1.js"
 _LEGACY_BOOLEAN_FIELDS={"perimeter_planting","landscaped_pedestrian_walkway"}
 _CRITICAL_IPLAN_ARCGIS={
  "iplan:gunatanah_semasa_04":"https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTsemasa_04/MapServer",
  "iplan:gunatanah_zoning_04":"https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTzoning_04/MapServer",
 }
+
+VISIBLE_CONTRACT_FIELDS=(
+ "project","project_ref","mukim","landuse1","landuse2","landuse3",
+ "site_area_ha","commercial_gfa_m2","jobs","population","daily_trips",
+ "road_distance_m","flood_exposure","nearby_facilities","environment_note",
+ "infra_note","constraint_note","source_note","analysis_focus","units","gfa"
+)
 
 def _normalise_legacy_inputs(payload:object)->object:
  if not isinstance(payload,dict): return payload
@@ -43,6 +52,50 @@ def _normalise_legacy_inputs(payload:object)->object:
   out=dict(payload);out["assessment"]=target;return out
  return target
 
+
+def _visible_contract_from_request(raw_payload:object)->dict:
+ if not isinstance(raw_payload,dict):return {}
+ source=raw_payload.get("assessment") if isinstance(raw_payload.get("assessment"),dict) else raw_payload
+ out={}
+ for key in VISIBLE_CONTRACT_FIELDS:
+  if key in source and source.get(key) is not None:
+   value=source.get(key)
+   if isinstance(value,str):
+    value=value.strip()
+    if value=="":continue
+   out[key]=value
+ for key in ("shop_frontage_verified","shop_office_verified"):
+  if key in source:out[key]=bool(source.get(key))
+ return out
+
+
+def _enrich_workspace_response(payload:object,raw_payload:object)->object:
+ if not isinstance(payload,dict):return payload
+ assessment=payload.get("assessment")
+ if not isinstance(assessment,dict):return payload
+ visible=_visible_contract_from_request(raw_payload)
+ if not visible:return payload
+ proposal=dict(assessment.get("proposal") or {})
+ for key,value in visible.items():proposal[key]=value
+ assessment["proposal"]=proposal
+ assessment["user_input_contract"]={"fields":visible,"source":"CANONICAL_WORKSPACE_VISIBLE_INPUTS","note":"Visible planning inputs are preserved for evidence/impact presentation. Missing values remain review-required."}
+ assessment.pop("development_impact",None)
+ try:
+  impact=_development_impact(assessment)
+  assessment["development_impact"]=impact
+  packet=_canonical_packet(assessment)
+  payload["development_impact"]=packet.get("evidence",{}).get("development_impact",{})
+  payload["canonical_evidence_packet"]=packet
+  payload["user_input_contract"]=assessment["user_input_contract"]
+  if isinstance(payload.get("decision_center"),dict):
+   payload["decision_center"]["development_impact"]=payload["development_impact"]
+   payload["decision_center"]["canonical_evidence_packet"]=packet
+   payload["decision_center"]["review_gaps"]=list(packet.get("review_gaps",[]))
+   payload["decision_center"]["review_required"]=bool(packet.get("review_gaps",[]))
+ except Exception:
+  pass
+ return payload
+
 async def _read_response_body(response:Response)->bytes:
  if getattr(response,"body",None) is not None:return response.body
  chunks=[]
@@ -51,11 +104,12 @@ async def _read_response_body(response:Response)->bytes:
 
 @app.middleware("http")
 async def _urbion_v4_compatibility(request:Request,call_next):
+ raw_contract_payload=None
  if request.method=="POST" and request.url.path in {"/assess","/workstation/analysis"}:
   raw=await request.body()
   if raw:
    try:
-    payload=json.loads(raw.decode("utf-8"));normalised=_normalise_legacy_inputs(payload)
+    payload=json.loads(raw.decode("utf-8"));raw_contract_payload=payload;normalised=_normalise_legacy_inputs(payload)
     if normalised!=payload:request._body=json.dumps(normalised,separators=(",",":")).encode("utf-8")
    except (UnicodeDecodeError,json.JSONDecodeError):pass
  if request.method=="GET" and request.url.path=="/map/wms":
@@ -64,7 +118,17 @@ async def _urbion_v4_compatibility(request:Request,call_next):
    params={k:v for k,v in request.query_params.multi_items()};params.pop("layers",None);params["service"]=service;params.setdefault("f","image");params.setdefault("format","png32");params.setdefault("transparent","true");params["layers"]="show:0"
    return RedirectResponse(url="/map/arcgis?"+urlencode(params),status_code=307)
  response=await call_next(request)
- if request.method=="GET" and request.url.path=="/workspace" and (_HARDENING_ASSET.is_file() or _DEMO_COMMAND_ASSET.is_file()):
+ if request.method=="POST" and request.url.path=="/workstation/analysis" and raw_contract_payload is not None:
+  try:
+   body=await _read_response_body(response)
+   payload=json.loads(body.decode("utf-8")) if body else None
+   if isinstance(payload,dict):
+    payload=_enrich_workspace_response(payload,raw_contract_payload)
+    headers={k:v for k,v in dict(response.headers).items() if k.lower() not in {"content-length","content-type","transfer-encoding"}}
+    return JSONResponse(payload,status_code=response.status_code,headers=headers)
+  except Exception:
+   return response
+ if request.method=="GET" and request.url.path=="/workspace" and (_HARDENING_ASSET.is_file() or _DEMO_COMMAND_ASSET.is_file() or _CONTRACT_SURFACE_ASSET.is_file()):
   try:
    body=await _read_response_body(response)
    scripts=b''
@@ -72,6 +136,8 @@ async def _urbion_v4_compatibility(request:Request,call_next):
     scripts+=b'<script src="/urbion_workspace_release_hardening_v6.js"></script>'
    if _DEMO_COMMAND_ASSET.is_file() and b"urbion_workspace_demo_command_layer.js" not in body:
     scripts+=b'<script src="/urbion_workspace_demo_command_layer.js"></script>'
+   if _CONTRACT_SURFACE_ASSET.is_file() and b"urbion_workspace_contract_surface_v1.js" not in body:
+    scripts+=b'<script src="/urbion_workspace_contract_surface_v1.js"></script>'
    if scripts and b"</body>" in body:body=body.replace(b"</body>",scripts+b"</body>",1)
    headers={k:v for k,v in dict(response.headers).items() if k.lower() not in {"content-length","content-type","transfer-encoding"}}
    headers["Cache-Control"]="no-store, max-age=0, must-revalidate"
@@ -93,6 +159,11 @@ def development_impact_ui_asset():
 def demo_command_asset():
  if not _DEMO_COMMAND_ASSET.is_file():return Response("URBION HORIZON demo command layer missing.",status_code=500,media_type="text/plain; charset=utf-8")
  return Response(_DEMO_COMMAND_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
+
+@app.get("/urbion_workspace_contract_surface_v1.js",include_in_schema=False)
+def contract_surface_asset():
+ if not _CONTRACT_SURFACE_ASSET.is_file():return Response("URBION HORIZON contract surface asset missing.",status_code=500,media_type="text/plain; charset=utf-8")
+ return Response(_CONTRACT_SURFACE_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
 
 @app.get("/about_master.png",include_in_schema=False)
 def about_master():
