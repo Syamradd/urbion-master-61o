@@ -157,6 +157,7 @@ def main():
             for kind in ["street","sat","hybrid"]: page.locator(f"[data-base='{kind}']").click(); page.wait_for_timeout(150); check(page.locator(f"[data-base='{kind}']").evaluate("e=>e.classList.contains('active')"),f"{kind} base active"); check(page.evaluate("k=>typeof baseLayers!=='undefined' && map.hasLayer(baseLayers[k])",kind),f"{kind} layer mounted")
             check(page.evaluate("typeof baseLayers!=='undefined' && map.hasLayer(baseLayers.hybrid) && !map.hasLayer(baseLayers.sat) && !map.hasLayer(baseLayers.street)"),"basemap switching removes prior base")
             page.locator("#layerBtn").click(); page.wait_for_timeout(300); check(page.locator("#layers").evaluate("e=>e.classList.contains('open')"),"layers opens")
+            page.wait_for_function("() => Array.isArray(window.__URBION_LAYER_CATALOG__) && window.__URBION_LAYER_CATALOG__.length >= 20", timeout=12000)
             rows=page.locator("#layerList [data-urbion-layer]"); count=rows.count(); check(count>=20,f"authoritative live layer catalogue populated ({count})")
             layer_ids=[x for x in rows.evaluate_all("els=>els.map(e=>e.getAttribute('data-urbion-layer')).filter(Boolean)")]
             layer_results=[]
