@@ -1,15 +1,14 @@
 /* URBION HORIZON — action-level concurrency/stale-click guard. */
 (()=>{
 'use strict';
-if(window.__URBION_CONCURRENCY_GUARD_V2__)return;
-window.__URBION_CONCURRENCY_GUARD_V2__=true;
+if(window.__URBION_CONCURRENCY_GUARD_V3__)return;
+window.__URBION_CONCURRENCY_GUARD_V3__=true;
 const locks=new Map();
 const LIMIT=15000;
 const config=[
   {key:'analysis',selector:'#run',release:['urbion-analysis-captured','urbion-analysis-error','urbion:analysis-ready']},
   {key:'ai',selector:'#ulcpBuild',release:['urbion:analysis-ready']},
   {key:'station',selector:'#urbionStationToggle',release:['urbion:mobility-ready']},
-  {key:'judge',selector:'#urbionPresentBtn',release:[]},
   {key:'whatif',selector:'[data-udc="whatif"]',release:[]},
 ];
 const lock=(key)=>{if(locks.has(key))return false;const t=setTimeout(()=>locks.delete(key),LIMIT);locks.set(key,t);return true};
@@ -17,7 +16,7 @@ const unlock=key=>{const t=locks.get(key);if(t)clearTimeout(t);locks.delete(key)
 function observeResult(key,selector){const box=document.querySelector(selector);if(!box)return false;const start=String(box.textContent||'');const obs=new MutationObserver(()=>{const now=String(box.textContent||'');if(now!==start&&!/Running |Reading |Loading |Preparing |Building /.test(now)){unlock(key);obs.disconnect()}});obs.observe(box,{subtree:true,childList:true,characterData:true});setTimeout(()=>{obs.disconnect();unlock(key)},LIMIT);return true}
 config.forEach(({key,release})=>release.forEach(ev=>window.addEventListener(ev,()=>unlock(key),{capture:true})));
 document.addEventListener('click',event=>{
-  const target=event.target?.closest?.('#run,#ulcpBuild,#urbionStationToggle,#urbionPresentBtn,[data-udc="whatif"]');
+  const target=event.target?.closest?.('#run,#ulcpBuild,#urbionStationToggle,[data-udc="whatif"]');
   if(!target)return;
   const rule=config.find(x=>target.matches(x.selector));
   if(!rule)return;
