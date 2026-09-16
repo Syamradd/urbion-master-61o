@@ -53,9 +53,6 @@ def expand_layer_group(page, layer_id):
     checkbox = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
     group = checkbox.locator("xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]")
     if group.count():
-        # Always normalize every ancestor group to open. Deferred layers can
-        # leave the previous group in a closed state while the next group has
-        # not yet been interacted with, so relying on a single click is brittle.
         group.evaluate("el=>el.classList.remove('closed')")
         for _ in range(10):
             try:
@@ -97,7 +94,6 @@ def add_cache_buster(url: str) -> str:
 
 
 def set_layer_checkbox(page, layer_id: str, desired: bool, timeout=12.0):
-    """Use the product's real checkbox event path, preferring its associated label."""
     locator = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
 
     def state():
@@ -156,12 +152,18 @@ def main():
 
         failures = []
         responses_by_layer = defaultdict(list)
+        all_arcgis_responses = []
+
         def on_response(response):
             if "/map/wms" not in response.url and "/map/arcgis" not in response.url:
                 return
             lid = response_layer_id(response.url, catalog_by_id)
+            item = {"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url}
+            if "/map/arcgis" in response.url and len(all_arcgis_responses) < 30:
+                all_arcgis_responses.append(item)
             if lid and len(responses_by_layer[lid]) < 8:
-                responses_by_layer[lid].append({"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url})
+                responses_by_layer[lid].append(item)
+
         page.on("response", on_response)
 
         def cache_bust_route(route):
@@ -210,7 +212,15 @@ def main():
                     state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
                     successful = [r for r in responses_by_layer[lid] if r["status"] == 200 and r["content_type"].lower().startswith("image/")]
                     return state_text == "ON · RENDERED" and bool(successful)
-                wait_until(render_ready, timeout=35.0, interval=0.15)
+                try:
+                    wait_until(render_ready, timeout=35.0, interval=0.15)
+                except AssertionError:
+                    if lid == "iplan-cadastral":
+                        state_now = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip()
+                        print(f"GIS CADASTRAL DIAG: state={state_now}; mapped_responses={responses_by_layer[lid]}")
+                        print(f"GIS CADASTRAL ARC-GIS RESPONSES: {all_arcgis_responses}")
+                        print(f"GIS CADASTRAL IMAGE SOURCES: {page.locator('#map img.leaflet-tile').evaluate_all(\"els=>els.map(e=>e.src).filter(s=>s.includes('/map/arcgis')).slice(-20)\")}")
+                    raise
                 state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
                 successful = [r for r in responses_by_layer[lid] if r["status"] == 200 and r["content_type"].lower().startswith("image/")]
                 if state_text != "ON · RENDERED" or not successful:
