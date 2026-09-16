@@ -3,10 +3,10 @@
 Render keeps the historical module-level start command for this service, but the
 actual application is the single canonical public wrapper in ``landing_server``.
 This module intentionally contains no second FastAPI app, planning engine, or
-frontend owner. It exposes the canonical About raster asset, normalizes legacy
-UI payloads, routes critical Melaka i-Plan map requests to the proven ArcGIS
-service, and serves the bundled release-hardening asset used by the same V5
-workspace.
+frontend owner. It exposes the canonical About raster asset, the canonical
+Development Impact UI asset, normalizes legacy UI payloads, routes critical
+Melaka i-Plan map requests to the proven ArcGIS service, and serves the bundled
+release-hardening asset used by the same V5 workspace.
 """
 import json
 from pathlib import Path
@@ -18,6 +18,7 @@ from landing_server import app
 _BASE_DIR=Path(__file__).resolve().parent
 _ABOUT_MASTER=_BASE_DIR/"about_master.png"
 _HARDENING_ASSET=_BASE_DIR/"urbion_workspace_release_hardening_v6.js"
+_DEVELOPMENT_IMPACT_ASSET=_BASE_DIR/"urbion_workspace_development_impact_owner_v4.js"
 _LEGACY_BOOLEAN_FIELDS={"perimeter_planting","landscaped_pedestrian_walkway"}
 _CRITICAL_IPLAN_ARCGIS={
  "iplan:gunatanah_semasa_04":"https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTsemasa_04/MapServer",
@@ -76,6 +77,11 @@ async def _urbion_v4_compatibility(request:Request,call_next):
 def release_hardening_asset():
  if not _HARDENING_ASSET.is_file():return Response("URBION workspace release hardening asset missing.",status_code=500,media_type="text/plain; charset=utf-8")
  return Response(_HARDENING_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
+
+@app.get("/urbion_workspace_development_impact_owner_v4.js",include_in_schema=False)
+def development_impact_ui_asset():
+ if not _DEVELOPMENT_IMPACT_ASSET.is_file():return Response("URBION HORIZON development impact UI asset missing.",status_code=500,media_type="text/plain; charset=utf-8")
+ return Response(_DEVELOPMENT_IMPACT_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
 
 @app.get("/about_master.png",include_in_schema=False)
 def about_master():
