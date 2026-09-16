@@ -1,0 +1,40 @@
+name: URBION JMG Major Fault Smoke
+
+on:
+  push:
+    branches:
+      - feature/canonical-workspace-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jmg-major-fault:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Run focused unit test
+        env:
+          PYTHONPATH: .
+        run: pytest -q tests/test_jmg_major_fault_fallback.py
+      - name: Start canonical presentation server
+        run: |
+          nohup uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-jmg-smoke.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/health >/dev/null
+      - name: Run exact Major Fault proxy smoke
+        env:
+          URBION_BASE_URL: http://127.0.0.1:8000
+        run: python scripts/jmg_major_fault_smoke.py
