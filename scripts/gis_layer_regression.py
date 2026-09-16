@@ -18,9 +18,6 @@ EXPECTED_UI_LAYER_IDS = {
     "mygems-seismic", "mygems-mineral", "iplan-cadastral",
 }
 EXPECTED_API_CORE_IDS = EXPECTED_UI_LAYER_IDS - {"iplan-cadastral"}
-# These sources are explicitly deferred by the authoritative GIS preflight.
-# Keep them visible in the catalogue but do not silently convert an upstream
-# verification gap into a product failure or a fake successful render.
 EXPLICIT_UPSTREAM_DEFERRED = {"iplan-rsn", "iplan-affordable-housing"}
 
 
@@ -130,9 +127,6 @@ def main():
                 responses_by_layer[lid].append({"status": response.status, "content_type": response.headers.get("content-type", ""), "url": response.url})
         page.on("response", on_response)
 
-        # The strict regression must observe a fresh network transaction for
-        # each toggle. Cache-bust only inside this test; product runtime remains
-        # untouched and continues to use its normal caching behaviour.
         def cache_bust_route(route):
             try:
                 route.continue_(url=add_cache_buster(route.request.url))
@@ -150,17 +144,12 @@ def main():
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             if lid in EXPLICIT_UPSTREAM_DEFERRED:
                 if not cb.is_disabled():
-                    # Product UI may still expose the row for transparency; do
-                    # not force an unverified upstream source during strict CI.
                     state = page.locator(f"[data-layer-state='{lid}']")
                     text = state.inner_text().strip().upper()
                     if text == "UNVERIFIED · UPSTREAM":
                         deferred += 1
                         print(f"GIS DEFERRED: {lid}: {text}")
                         continue
-                    # If the UI has not yet materialised the explicit marker,
-                    # leave the row untouched and record the known preflight
-                    # boundary instead of manufacturing a render pass.
                     deferred += 1
                     print(f"GIS DEFERRED: {lid}: upstream source explicitly unverified by preflight")
                     continue
@@ -172,8 +161,6 @@ def main():
             if cb.is_checked():
                 cb.uncheck(force=True)
                 page.wait_for_timeout(180)
-            # Ensure no stale thematic state can win a race between the
-            # uncheck and the fresh strict capture.
             page.evaluate("""id=>{const m=(typeof map!=='undefined'&&map)||window.__URBION_MAP__||null;const store=window.__URBION_LIVE_LAYERS__||{};const l=store[id];if(l&&m&&m.hasLayer(l))m.removeLayer(l);if(store[id])delete store[id];}""", lid)
             cb.check(force=True)
             if lid == "iplan-cadastral":
@@ -184,7 +171,11 @@ def main():
                 source = catalog_by_id[lid].get('source') or catalog_by_id[lid].get('url', '')
             print(f"GIS TEST: {lid} type={expected_type} source={source}")
             try:
-                wait_until(lambda: page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=35.0)
+                def render_ready():
+                    state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
+                    successful = [r for r in responses_by_layer[lid] if r["status"] == 200 and r["content_type"].lower().startswith("image/")]
+                    return state_text == "ON · RENDERED" and bool(successful)
+                wait_until(render_ready, timeout=35.0, interval=0.15)
                 state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
                 successful = [r for r in responses_by_layer[lid] if r["status"] == 200 and r["content_type"].lower().startswith("image/")]
                 if state_text != "ON · RENDERED" or not successful:
