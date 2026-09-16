@@ -98,8 +98,6 @@ try:
                 raise error
             raise httpx.ConnectError("GIS upstream request failed")
 
-        # GWC can currently answer 400 for these otherwise configured layers.
-        # A non-image response is not a usable render, regardless of status code.
         original_ok = (
             response is not None
             and response.status_code == 200
@@ -107,6 +105,23 @@ try:
         )
         if original_ok:
             return response
+
+        # Some i-Plan GWC layers are exposed on EPSG:900913 even when the
+        # browser asks for EPSG:3857. Retry the authoritative tile endpoint
+        # with the alternate gridset before falling back to untiled WMS.
+        if layer == "iplan:rsn" and isinstance(params, dict):
+            spatial = str(params.get("srs") or params.get("crs") or "")
+            if spatial.upper() == "EPSG:3857":
+                alt = dict(params)
+                alt["srs"] = "EPSG:900913"
+                alt.pop("crs", None)
+                try:
+                    gwc_alt = await _original_get(self, url, params=alt)
+                except (httpx.HTTPError, asyncio.TimeoutError):
+                    gwc_alt = None
+                if gwc_alt is not None and gwc_alt.status_code == 200 and gwc_alt.headers.get("content-type", "").lower().startswith("image/"):
+                    gwc_alt.headers["X-URBION-GIS-Fallback"] = "PLANMalaysia-GWC-EPSG900913"
+                    return gwc_alt
 
         # First try the direct i-Plan WMS with both 3857 and 900913 variants.
         for direct_params in _direct_wms_variants(params):
