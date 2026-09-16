@@ -33,6 +33,48 @@ try:
     }
     _GIS_GWC_PATH = "/geoserver/gwc/service/wms"
     _GIS_DIRECT_WMS = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
+    _GIS_ARCGIS_FALLBACKS = {
+        "iplan:hutan": (
+            "https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer",
+            5,
+        ),
+        "iplan:risiko_bencana": (
+            "https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer",
+            12,
+        ),
+    }
+
+    def _direct_wms_variants(params):
+        base = dict(params or {})
+        base.pop("tiled", None)
+        base.pop("tilesorigin", None)
+        base.setdefault("format", "image/png")
+        base.setdefault("version", "1.1.1")
+        base.setdefault("request", "GetMap")
+        base.setdefault("service", "WMS")
+        variants = [base]
+        spatial = str(base.get("srs") or base.get("crs") or "")
+        if spatial.upper() == "EPSG:3857":
+            alt = dict(base)
+            alt["srs"] = "EPSG:900913"
+            alt.pop("crs", None)
+            variants.append(alt)
+        return variants
+
+    def _arcgis_image_params(params, layer_id):
+        spatial_ref = str(params.get("srs") or params.get("crs") or "EPSG:3857").upper()
+        wkid = "4326" if spatial_ref.endswith(":4326") else "3857"
+        return {
+            "bbox": str(params.get("bbox", "")),
+            "bboxSR": wkid,
+            "imageSR": wkid,
+            "size": f"{params.get('width', '256')},{params.get('height', '256')}",
+            "dpi": "96",
+            "format": "png32",
+            "transparent": str(params.get("transparent", "true")),
+            "f": "image",
+            "layers": f"show:{layer_id}",
+        }
 
     async def _get_with_authoritative_retry(self, url, *args, **kwargs):
         response = None
@@ -56,32 +98,52 @@ try:
                 raise error
             raise httpx.ConnectError("GIS upstream request failed")
 
-        if response is not None and response.status_code < 500:
+        # GWC can currently answer 400 for these otherwise configured layers.
+        # A non-image response is not a usable render, regardless of status code.
+        original_ok = (
+            response is not None
+            and response.status_code == 200
+            and response.headers.get("content-type", "").lower().startswith("image/")
+        )
+        if original_ok:
             return response
 
-        direct_params = dict(params or {})
-        direct_params.pop("tiled", None)
-        direct_params.pop("tilesorigin", None)
-        direct_params.setdefault("format", "image/png")
-        direct_params.setdefault("version", "1.1.1")
-        direct_params.setdefault("request", "GetMap")
-        direct_params.setdefault("service", "WMS")
-        direct = None
-        try:
-            direct = await _original_request(self, "GET", _GIS_DIRECT_WMS, params=direct_params)
-        except (httpx.HTTPError, asyncio.TimeoutError):
-            direct = None
-        if direct is not None and direct.status_code == 200 and direct.headers.get("content-type", "").lower().startswith("image/"):
-            direct.headers["X-URBION-GIS-Fallback"] = "PLANMalaysia-WMS-DIRECT-RETRY"
-            return direct
+        # First try the direct i-Plan WMS with both 3857 and 900913 variants.
+        for direct_params in _direct_wms_variants(params):
+            try:
+                direct = await _original_request(self, "GET", _GIS_DIRECT_WMS, params=direct_params)
+            except (httpx.HTTPError, asyncio.TimeoutError):
+                continue
+            if direct.status_code == 200 and direct.headers.get("content-type", "").lower().startswith("image/"):
+                direct.headers["X-URBION-GIS-Fallback"] = "PLANMalaysia-WMS-DIRECT-RETRY"
+                return direct
+
+        # HUTAN and RISIKO have verified current official PLANMalaysia GISDev
+        # MapServer layers with exact semantic matches (IDs 5 and 12).
+        arcgis_target = _GIS_ARCGIS_FALLBACKS.get(layer)
+        if arcgis_target:
+            service_url, layer_id = arcgis_target
+            try:
+                arcgis = await _original_request(
+                    self,
+                    "GET",
+                    service_url + "/export",
+                    params=_arcgis_image_params(params, layer_id),
+                )
+            except (httpx.HTTPError, asyncio.TimeoutError):
+                arcgis = None
+            if arcgis is not None and arcgis.status_code == 200 and arcgis.headers.get("content-type", "").lower().startswith("image/"):
+                arcgis.headers["X-URBION-GIS-Fallback"] = "PLANMalaysia-GISDev-ArcGIS-RFN4"
+                return arcgis
+
         if response is not None:
             return response
         if error is not None:
             raise error
-        raise httpx.ConnectError("GIS GWC and direct WMS upstreams failed")
+        raise httpx.ConnectError("GIS GWC and authoritative render fallbacks failed")
 
-    if not getattr(httpx.AsyncClient.get, "__urbion_authoritative_retry__", False):
-        _get_with_authoritative_retry.__urbion_authoritative_retry__ = True
+    if not getattr(httpx.AsyncClient.get, "__urbion_authoritative_retry_v2__", False):
+        _get_with_authoritative_retry.__urbion_authoritative_retry_v2__ = True
         httpx.AsyncClient.get = _get_with_authoritative_retry
 except Exception:
     pass
