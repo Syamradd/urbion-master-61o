@@ -1,6 +1,6 @@
 # URBION HORIZON — Master Release Checklist
 
-Status: `PRE-RENDER DEEP REPAIR / DEPLOYMENT LOCKED`
+Status: `CURRENT-CANDIDATE REPAIR / RELEASE LOCKED`
 
 This is the single release-control checklist for the current canonical release. The only active release branch is `feature/canonical-workspace-v2`. Historical, parallel, temporary, forensic and legacy branches are retained as reference only and must not be deployed over the canonical release.
 
@@ -40,7 +40,7 @@ This is the single release-control checklist for the current canonical release. 
 - [x] Existing Welcome page preserved
 - [x] Canonical About Us page preserved
 
-## 3. Deep pre-render repair pass
+## 3. Deep repair pass — recovered from the laptop-night branch history
 
 ### Analysis / data contract
 
@@ -48,6 +48,7 @@ This is the single release-control checklist for the current canonical release. 
 - [x] Workstation development inputs are propagated into the canonical proposal/evidence packet.
 - [x] GFA + plot ratio can produce a transparent calculated site-area input when explicit site area is absent.
 - [x] Development Impact reads explicit units/GFA/jobs/population/trips/road/flood/facility inputs and preserves `REVIEW_REQUIRED` where evidence is missing.
+- [x] Development Impact UI is registered in the canonical workspace and now served by the production compatibility wrapper without importing the FastAPI app into the computational engine.
 - [ ] Fresh end-to-end browser proof that `RUN SITE ANALYSIS` completes on the canonical case.
 
 ### GIS / map rendering
@@ -61,6 +62,7 @@ This is the single release-control checklist for the current canonical release. 
 - [x] Per-layer opacity sliders added to the visible GIS controls.
 - [x] GIS layer states remain explicit: loading / rendered / source-connected / error.
 - [x] Critical Current Land Use + Zoning can be auto-enabled for the initial planning view.
+- [x] JMG Major Fault rendering has an authoritative MapServer + FeatureServer fallback path and bounded upstream timeouts.
 - [ ] Fresh browser proof for each required 25-layer toggle + actual map imagery.
 - [ ] Fresh GIS end-to-end audit of layer render success/failure states.
 
@@ -79,6 +81,7 @@ This is the single release-control checklist for the current canonical release. 
 - [x] Decision Story / Live Evidence Story / Review Gaps presentation owners retained.
 - [x] Right rail spacing compacted for usable single-screen scanning.
 - [x] Map controls retain Map / Satellite / Hybrid / Layers.
+- [x] Canonical About raster master is served by production and remains the immutable visual source.
 - [ ] Fresh visual regression after the complete repair pass.
 
 ## 4. Duplicate / overlap audit
@@ -91,6 +94,7 @@ This is the single release-control checklist for the current canonical release. 
 - [x] `workspace_v4_server.py` is a compatibility launcher only.
 - [x] New GIS visual hardening runs inside the existing workspace runtime compatibility path; no second planning engine is introduced.
 - [x] Historical frontends remain isolated from `/workspace`.
+- [x] Development Impact computation no longer imports `server.app`, removing the app import cycle; the UI asset is exposed only by the canonical compatibility wrapper.
 
 ### Render
 
@@ -112,9 +116,46 @@ Target service: `urbion-horizon-workspace-v4` (`srv-dahm749594qs73fk2tag`)
 - start: `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`
 - auto deploy: `off`
 
-Current branch is intentionally **not being rendered by this checklist pass**. Live state must not be treated as proof of the new repairs until controlled deployment + smoke is explicitly performed.
+## 6. Laptop-night recovery trace (15 September 2026)
 
-## 6. Known non-blocking product gaps
+The branch history preserves the requested repair sequence from the laptop session. The recovered work, in order, was:
+
+1. `01db...` — `fix(workspace): tolerate legacy Yes No analysis inputs`
+2. `dfeb...` — `fix(workspace): normalize legacy boolean analysis inputs`
+3. `995...` — `fix(ui): compact development impact panel`
+4. `c718...` — `fix(analysis): enrich canonical assessment inputs for impact and evidence`
+5. `20d1...` — `fix(ui): compact development impact presentation`
+6. `cf239...` — `fix(workspace): harden defaults and critical map visibility`
+7. `c3bfe390...` — `fix(gis): harden critical i-Plan land use proxy fallback`
+8. `073...` — `fix(workspace): stabilize canonical defaults after taxonomy boot`
+9. `700...` — `fix(analysis): expose canonical spatial context to evidence packet`
+10. `5eb...` — `fix(workspace): harden map layers and road intelligence UI`
+11. `f413...` — `fix(workspace): bootstrap GIS visual hardening layer`
+12. `c420...` — `fix(road): harden live hierarchy source and retain map coordinates`
+13. `68ab...` — `docs(release): record deep pre-render hardening pass`
+14. `e5d60...` — `fix(workspace): serve bundled GIS visual hardening asset`
+15. `fbf408...` — `fix(workspace): load bundled GIS hardening locally`
+16. `ca55...` — `fix(workspace): harden canonical runtime presentation fallbacks`
+17. `67d07...` — `fix(road): resolve canonical site coordinates in road UI`
+18. `bfb596...` — `fix(road): expose canonical road action to runtime`
+19. `f9897741...` — `fix(workspace): preserve canonical road action after hardening load`
+20. `c997c7d...` — `fix(impact): register canonical development impact UI asset`
+21. `fa62fa5...` — `fix(road): bound Overpass discovery latency and preserve live context`
+22. `b25e01c...` — `fix(impact): remove app import cycle from planning engine`
+
+Immediately after the laptop-night sequence, the About production asset repair was committed as `d29eb491...` (`fix(about): serve canonical About visual master`). The current-day recovery then added `78ce14c...` (`fix(ui): serve canonical development impact asset from production wrapper`) so the `b25e01...` import-cycle repair did not strand the canonical Development Impact UI asset.
+
+## 7. Current candidate / CI truth
+
+- [x] Current branch head is `78ce14c32780c4f9fe4588b48b74cd5ea87a80ef`.
+- [x] Workspace Source Gate for current head: PASS (`35047772743`).
+- [ ] Workspace Browser Gate for current head is still running (`35047772810`).
+- [ ] Canonical Release Audit for current head is still running (`35047772883`).
+- [x] Previous Browser Gate failure was isolated to `mygems-faults` in the strict 25-layer regression; other browser/dashboard stages passed.
+- [x] Previous Canonical Release Audit completed its runtime topology / About / deep-browser stages; release remained blocked by GIS end-to-end/preflight evidence.
+- [ ] Fresh current-head GIS proof is still required; do not mark green until the live regression proves the actual layer state.
+
+## 8. Known non-blocking product gaps
 
 These remain deliberately outside certification scope:
 
@@ -126,14 +167,17 @@ These remain deliberately outside certification scope:
 - advanced environmental simulation
 - enterprise GIS/BIM connectors
 
-## 7. Final certification sequence
+## 9. Final certification sequence
 
 - [x] Preserve pre-convergence canonical snapshot
 - [x] Keep `feature/canonical-workspace-v2` as the sole active release branch
 - [x] Reconcile release documentation to canonical branch
 - [x] Integrate WMS proxy + GIS render truth repair
 - [x] Integrate browser/GIS audit into canonical release workflow
-- [x] Complete deep pre-render repair pass across analysis, GIS, road and visual surfaces
+- [x] Complete deep repair pass across analysis, GIS, road and visual surfaces
+- [x] Recover and record the laptop-night repair sequence
+- [x] Repair About visual asset serving in production
+- [x] Repair Development Impact UI asset serving in production without reintroducing the app import cycle
 - [ ] Fresh required CI on final candidate
 - [ ] Fresh full functional workspace audit
 - [ ] Fresh 25-layer GIS end-to-end audit
@@ -147,4 +191,4 @@ These remain deliberately outside certification scope:
 
 `RENDER = LOCKED`
 
-The application is not declared production-ready until fresh current-head gates prove the complete repaired canonical workspace and controlled live smoke proves the exact deployed SHA.
+The application is not declared production-ready until fresh current-head gates prove the complete repaired canonical workspace and controlled live smoke proves the exact deployed SHA. The currently LIVE Render revision remains the earlier About-repair deployment (`d29eb491...`) until a final candidate is deliberately deployed and verified.
