@@ -126,6 +126,11 @@ def main():
             expand_layer_group(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             assert not cb.is_disabled(), f"{lid}: final canonical GIS layer must be enabled"
+            # Force a fresh render after the response listener is attached. This matters for
+            # auto-enabled/default layers such as Current Land Use and keeps capture deterministic.
+            if cb.is_checked():
+                cb.uncheck(force=True)
+                page.wait_for_timeout(180)
             cb.check(force=True)
             if lid == "iplan-cadastral":
                 expected_type = "ARCGIS_MAP"
