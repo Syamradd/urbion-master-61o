@@ -36,14 +36,19 @@ source = source.replace(
     "            state.select_option(label=\"Melaka\")\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 3\", arg=district, timeout=10000)\n            check(len(usable_options(district)) >= 3, \"State reset refreshes District options\")\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length === 4\", arg=pbt, timeout=10000)\n            check(len(usable_options(pbt)) == 4, \"State reset refreshes Melaka PBT catalogue\")\n",
     "            state.select_option(label=\"Melaka\")\n            deadline = 10000\n            while deadline > 0 and len(usable_options(district)) < 3:\n                page.wait_for_timeout(200)\n                deadline -= 200\n            check(len(usable_options(district)) >= 3, \"State reset refreshes District options\")\n            deadline = 10000\n            while deadline > 0 and len(usable_options(pbt)) != 4:\n                page.wait_for_timeout(200)\n                deadline -= 200\n            check(len(usable_options(pbt)) == 4, \"State reset refreshes Melaka PBT catalogue\")\n",
 )
-# The product smoke occasionally re-renders the layer drawer after a group
-# toggle. Replace the fragile locator scroll with DOM-native scrolling, then
-# let the original fresh locator perform the actual interaction.
 source = source.replace(
     '                row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)',
     '                selector = f"#layerList [data-urbion-layer=\'{layer_id}\']"\n                for _ in range(8):\n                    try:\n                        page.locator(selector).evaluate("el=>el.scrollIntoView({block:\'center\',inline:\'nearest\'})")\n                        break\n                    except Exception:\n                        page.wait_for_timeout(120)\n                row = page.locator(selector)\n                row.check(force=True); page.wait_for_timeout(250)',
 )
 source = re.sub(r"\nif __name__ == [\"']__main__[\"']:\n\s*main\(\)\s*\Z", "\n", source)
+# The layer manager hydrates asynchronously after its Leaflet dependency and
+# backend catalogue are ready. Preserve the strict DOM assertion, but wait for
+# the product-owned catalogue to appear before asserting its size.
+source = source.replace(
+    '            rows=page.locator("#layerList [data-urbion-layer]"); count=rows.count(); check(count>=20,f"authoritative live layer catalogue populated ({count})")',
+    '            page.wait_for_function("document.querySelectorAll(\'#layerList [data-urbion-layer]\').length >= 20", timeout=15000)\n            rows=page.locator("#layerList [data-urbion-layer]"); count=rows.count(); check(count>=20,f"authoritative live layer catalogue populated ({count})")',
+    1,
+)
 code = compile(source, str(TARGET), "exec")
 globals_dict = {"__name__": "workspace_browser_smoke_ci", "__file__": str(TARGET)}
 exec(code, globals_dict)
