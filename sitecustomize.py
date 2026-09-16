@@ -20,6 +20,69 @@ _ALLOWED = {
 _BASE = Path(__file__).resolve().parent
 
 try:
+    import asyncio
+    import httpx
+
+    _original_get = httpx.AsyncClient.get
+    _original_request = httpx.AsyncClient.request
+    _GIS_DIRECT_RETRY_LAYERS = {
+        "iplan:rsn",
+        "iplan:risiko_bencana",
+        "iplan:hutan",
+        "iplan:rumah_mampu_milik",
+    }
+    _GIS_GWC_PATH = "/geoserver/gwc/service/wms"
+    _GIS_DIRECT_WMS = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
+
+    async def _get_with_authoritative_retry(self, url, *args, **kwargs):
+        response = None
+        try:
+            response = await _original_get(self, url, *args, **kwargs)
+        except (httpx.HTTPError, asyncio.TimeoutError):
+            response = None
+
+        parsed_url = str(url)
+        params = kwargs.get("params")
+        layer = None
+        if isinstance(params, dict):
+            layer = str(params.get("layers") or "")
+        should_retry = (
+            _GIS_GWC_PATH in parsed_url
+            and layer in _GIS_DIRECT_RETRY_LAYERS
+        )
+        if not should_retry:
+            if response is not None:
+                return response
+            raise httpx.ConnectError("GIS upstream request failed")
+
+        if response is not None and response.status_code < 500:
+            return response
+
+        direct_params = dict(params or {})
+        direct_params.pop("tiled", None)
+        direct_params.pop("tilesorigin", None)
+        direct_params.setdefault("format", "image/png")
+        direct_params.setdefault("version", "1.1.1")
+        direct_params.setdefault("request", "GetMap")
+        direct_params.setdefault("service", "WMS")
+        try:
+            direct = await _original_request(self, "GET", _GIS_DIRECT_WMS, params=direct_params)
+        except (httpx.HTTPError, asyncio.TimeoutError):
+            direct = None
+        if direct is not None and direct.status_code == 200 and direct.headers.get("content-type", "").lower().startswith("image/"):
+            direct.headers["X-URBION-GIS-Fallback"] = "PLANMalaysia-WMS-DIRECT-RETRY"
+            return direct
+        if response is not None:
+            return response
+        raise httpx.ConnectError("GIS GWC and direct WMS upstreams failed")
+
+    if not getattr(httpx.AsyncClient.get, "__urbion_authoritative_retry__", False):
+        _get_with_authoritative_retry.__urbion_authoritative_retry__ = True
+        httpx.AsyncClient.get = _get_with_authoritative_retry
+except Exception:
+    pass
+
+try:
     from fastapi import FastAPI
     _original_init = FastAPI.__init__
     _original_add_api_route = FastAPI.add_api_route
@@ -69,7 +132,7 @@ try:
                 body = body.replace('</body>', '<script src="/urbion_horizon_visual_overhaul.js"></script></body>', 1)
             if 'urbion_championship_visual_system_v2.js' not in body and '</body>' in body:
                 body = body.replace('</body>', '<script src="/urbion_championship_visual_system_v2.js"></script></body>', 1)
-        return HTMLResponse(body, media_type='text/html; charset=utf-8', headers={'Cache-Control': 'no-store, max-age=0'})
+        return HTMLResponse(body, media_type='text/html; charset=utf-8', headers={'Cache-Control': 'no-store', 'max-age': '0'})
 
     def _asset(asset: str):
         filename = asset + '.js'
@@ -78,7 +141,7 @@ try:
         target = (_BASE / filename).resolve()
         if target.parent != _BASE or not target.is_file():
             raise HTTPException(status_code=404, detail='Frontend asset not found')
-        return FileResponse(target, media_type='application/javascript', headers={'Cache-Control': 'no-store, max-age=0'})
+        return FileResponse(target, media_type='application/javascript', headers={'Cache-Control': 'no-store', 'max-age': '0'})
 
     def _init_with_assets(self, *args, **kwargs):
         _original_init(self, *args, **kwargs)
