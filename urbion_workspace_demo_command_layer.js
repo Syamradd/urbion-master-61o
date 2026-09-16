@@ -45,7 +45,6 @@ function toast(message,ok=true){const t=$('toast');if(!t)return;t.textContent=me
 
 function setValue(id,value){
  const el=$(id);if(!el)return false;
- if(el.value===String(value))return true;
  el.value=String(value);
  el.dispatchEvent(new Event('input',{bubbles:true}));
  el.dispatchEvent(new Event('change',{bubbles:true}));
@@ -63,40 +62,40 @@ async function waitForOption(id,value,tries=50){
 
 async function loadDemoCase(){
  toast('Loading canonical demo case…');
- setValue('project',DEMO_CASE.project);
- setValue('state',DEMO_CASE.state);
+ const okProject=setValue('project',DEMO_CASE.project);
+ const okState=setValue('state',DEMO_CASE.state);
  await sleep(120);
- await waitForOption('district',DEMO_CASE.district,40);
- setValue('district',DEMO_CASE.district);
+ const okDistrictOption=await waitForOption('district',DEMO_CASE.district,40);
+ const okDistrict=okDistrictOption&&setValue('district',DEMO_CASE.district);
  await sleep(120);
- await waitForOption('pbt',DEMO_CASE.pbt,40);
- setValue('pbt',DEMO_CASE.pbt);
- setValue('lot_no',DEMO_CASE.lot_no);
- setValue('project_ref',DEMO_CASE.project_ref);
- setValue('development_type',DEMO_CASE.development_type);
- setValue('development_class',DEMO_CASE.development_class);
- await waitForOption('landuse1',DEMO_CASE.landuse1,40);
- setValue('landuse1',DEMO_CASE.landuse1);
+ const okPbtOption=await waitForOption('pbt',DEMO_CASE.pbt,40);
+ const okPbt=okPbtOption&&setValue('pbt',DEMO_CASE.pbt);
+ const okLot=setValue('lot_no',DEMO_CASE.lot_no);
+ const okRef=setValue('project_ref',DEMO_CASE.project_ref);
+ const okDev=setValue('development_type',DEMO_CASE.development_type);
+ const okClass=setValue('development_class',DEMO_CASE.development_class);
+ const okL1Option=await waitForOption('landuse1',DEMO_CASE.landuse1,40);
+ const okL1=okL1Option&&setValue('landuse1',DEMO_CASE.landuse1);
  await sleep(80);
- await waitForOption('landuse2',DEMO_CASE.landuse2,40);
- setValue('landuse2',DEMO_CASE.landuse2);
+ const okL2Option=await waitForOption('landuse2',DEMO_CASE.landuse2,40);
+ const okL2=okL2Option&&setValue('landuse2',DEMO_CASE.landuse2);
  await sleep(80);
- await waitForOption('landuse3',DEMO_CASE.landuse3,40);
- setValue('landuse3',DEMO_CASE.landuse3);
+ const okL3Option=await waitForOption('landuse3',DEMO_CASE.landuse3,40);
+ const okL3=okL3Option&&setValue('landuse3',DEMO_CASE.landuse3);
  ['site_lat','site_lon','tod_lat','tod_lon'].forEach(id=>$(id)?.dispatchEvent(new Event('input',{bubbles:true})));
- updateLoadedState();
- toast('Demo case loaded · ready for analysis');
+ const ready=[okProject,okState,okDistrict,okPbt,okLot,okRef,okDev,okClass,okL1,okL2,okL3].every(Boolean);
+ if(ready){updateLoadedState();toast('Demo case loaded · ready for analysis');return true}
+ toast('Demo case could not fully hydrate; complete the highlighted case fields before analysis',false);
+ return false;
 }
 
 function updateLoadedState(){
- const b=$('udcDemoState');
- if(b)b.textContent='DEMO INPUTS LOADED';
  const caseBox=$('udcDemoCase');
  if(caseBox)caseBox.innerHTML='<strong>LIVE DEMO CASE ·</strong> Lot 11213 · Padang Semabok · Melaka Tengah · Melaka · ~1.145 ha · Commercial planning case.<span class="udc-status" id="udcDemoState">DEMO INPUTS LOADED</span><small>Map point remains demo context only; URBION does not claim authoritative parcel geometry here. Planning inputs can be traced through the evidence packet after analysis.</small>';
 }
 
 function clickCore(kind){
- if(kind==='load')return void loadDemoCase();
+ if(kind==='load'){void loadDemoCase();return true;}
  if(kind==='analysis'){
   const b=$('run');
   if(b){b.click();return true}
