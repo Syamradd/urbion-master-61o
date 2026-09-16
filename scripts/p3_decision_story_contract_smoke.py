@@ -27,17 +27,19 @@ PACKET={
     "what_if":{"ranked_scenarios":[{"id":"SCENARIO-A","name":"Option A","status":"COMPLY","decision_delta":"+1"}],"best_candidate":"SCENARIO-A"},
 }
 
+
 def main():
+    expected=('RULE → VALUE → RESULT → WHY','BASELINE → OPTIONS','LIVE EVIDENCE','REVIEW REQUIRED','NOT_CLAIMED','RT-MBMB-2035-COM-01')
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
         page=browser.new_page(viewport={"width":1440,"height":900})
         page.goto(BASE+"/workspace",wait_until="domcontentloaded",timeout=30000)
         page.wait_for_function("window.__URBION_DECISION_STORY_OWNER_V1__===true",timeout=15000)
         page.evaluate("packet=>{window.URBION_LAST={canonical_evidence_packet:packet};window.dispatchEvent(new CustomEvent('urbion:analysis-ready'));}",PACKET)
-        page.wait_for_function("document.querySelector('#urbionDecisionStoryCard')?.innerText.includes('DECISION STORY')",timeout=10000)
+        page.wait_for_function("expected=>{const el=document.querySelector('#urbionDecisionStoryCard');const text=(el?.innerText||'').toUpperCase();return expected.every(x=>text.includes(x))}",[x.upper() for x in expected],timeout=15000)
         text=page.locator('#urbionDecisionStoryCard').inner_text().upper()
-        for expected in ('RULE → VALUE → RESULT → WHY','BASELINE → OPTIONS','LIVE EVIDENCE','REVIEW REQUIRED','NOT_CLAIMED','RT-MBMB-2035-COM-01'):
-            assert expected in text,f"missing P3 story state: {expected}"
+        for item in expected:
+            assert item in text,f"missing P3 story state: {item}"
         browser.close()
     print('P3 DECISION STORY CONTRACT PASS')
 
