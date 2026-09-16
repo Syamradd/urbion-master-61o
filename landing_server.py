@@ -36,6 +36,9 @@ WORKSPACE_RATIO_OWNER = BASE_DIR / "urbion_workspace_ratio_owner.js"
 WORKSPACE_ROAD_INTELLIGENCE = BASE_DIR / "urbion_workspace_road_intelligence_owner.js"
 WORKSPACE_ANALYSIS_SUMMARY = BASE_DIR / "urbion_workspace_analysis_summary_owner.js"
 WORKSPACE_STATION_MAP = BASE_DIR / "urbion_workspace_station_map_owner.js"
+WORKSPACE_LIFECYCLE = BASE_DIR / "urbion_workspace_lifecycle_hardening.js"
+WORKSPACE_CONCURRENCY = BASE_DIR / "urbion_workspace_concurrency_guard.js"
+WORKSPACE_LCP_READINESS = BASE_DIR / "urbion_workspace_lcp_readiness_owner.js"
 
 app.include_router(urbion_wms_router)
 app.include_router(urbion_environment_router)
@@ -53,13 +56,16 @@ def _workspace() -> HTMLResponse:
                 WORKSPACE_CANONICAL_UI, WORKSPACE_MODAL_OWNER, WORKSPACE_PBT_CATALOG,
                 WORKSPACE_UTILITY_OWNER, WORKSPACE_REVIEW_GAPS, WORKSPACE_ENVIRONMENT,
                 WORKSPACE_MOBILITY, WORKSPACE_DEVELOPMENT_IMPACT_V4, WORKSPACE_RATIO_OWNER,
-                WORKSPACE_ROAD_INTELLIGENCE, WORKSPACE_ANALYSIS_SUMMARY, WORKSPACE_STATION_MAP)
+                WORKSPACE_ROAD_INTELLIGENCE, WORKSPACE_ANALYSIS_SUMMARY, WORKSPACE_STATION_MAP,
+                WORKSPACE_LIFECYCLE, WORKSPACE_CONCURRENCY, WORKSPACE_LCP_READINESS)
     for path in required:
         if not path.is_file():
             return HTMLResponse(f"URBION HORIZON workspace asset missing: {path.name}", status_code=500)
     html = WORKSPACE_FILE.read_text(encoding="utf-8")
     scripts = ('<script src="/urbion_workspace_bridge.js"></script>'
                '<script src="/urbion_workspace_runtime.js"></script>'
+               '<script src="/urbion_workspace_lifecycle_hardening.js"></script>'
+               '<script src="/urbion_workspace_concurrency_guard.js"></script>'
                '<script src="/urbion_layer_runtime_fix.js"></script>'
                '<script src="/urbion_workspace_canonical_ui.js"></script>'
                '<script src="/urbion_workspace_modal_owner.js"></script>'
@@ -72,7 +78,8 @@ def _workspace() -> HTMLResponse:
                '<script src="/urbion_workspace_ratio_owner.js"></script>'
                '<script src="/urbion_workspace_road_intelligence_owner.js"></script>'
                '<script src="/urbion_workspace_analysis_summary_owner.js"></script>'
-               '<script src="/urbion_workspace_station_map_owner.js"></script>')
+               '<script src="/urbion_workspace_station_map_owner.js"></script>'
+               '<script src="/urbion_workspace_lcp_readiness_owner.js"></script>')
     if "</body>" in html:
         html = html.replace("</body>", scripts + "</body>", 1)
     return HTMLResponse(html, media_type="text/html", headers={"Cache-Control":"no-store, max-age=0", "X-URBION-UI":"CANONICAL-V5-ISOLATED"})
@@ -257,6 +264,8 @@ async def _urbion_canonical_presentation(request: Request, call_next):
     assets = {
         "/urbion_workspace_bridge.js": (WORKSPACE_BRIDGE,"URBION HORIZON workspace bridge missing."),
         "/urbion_workspace_runtime.js": (WORKSPACE_RUNTIME,"URBION HORIZON runtime layer missing."),
+        "/urbion_workspace_lifecycle_hardening.js": (WORKSPACE_LIFECYCLE,"URBION HORIZON lifecycle guard missing."),
+        "/urbion_workspace_concurrency_guard.js": (WORKSPACE_CONCURRENCY,"URBION HORIZON concurrency guard missing."),
         "/urbion_layer_runtime_fix.js": (WORKSPACE_LAYER,"URBION HORIZON live layer renderer missing."),
         "/urbion_workspace_canonical_ui.js": (WORKSPACE_CANONICAL_UI,"URBION HORIZON canonical UI owner missing."),
         "/urbion_workspace_modal_owner.js": (WORKSPACE_MODAL_OWNER,"URBION HORIZON modal owner missing."),
@@ -270,6 +279,7 @@ async def _urbion_canonical_presentation(request: Request, call_next):
         "/urbion_workspace_road_intelligence_owner.js": (WORKSPACE_ROAD_INTELLIGENCE,"URBION HORIZON road intelligence owner missing."),
         "/urbion_workspace_analysis_summary_owner.js": (WORKSPACE_ANALYSIS_SUMMARY,"URBION HORIZON site analysis summary owner missing."),
         "/urbion_workspace_station_map_owner.js": (WORKSPACE_STATION_MAP,"URBION HORIZON station map owner missing."),
+        "/urbion_workspace_lcp_readiness_owner.js": (WORKSPACE_LCP_READINESS,"URBION HORIZON LCP readiness owner missing."),
     }
     if path in assets:
         target, message = assets[path]
