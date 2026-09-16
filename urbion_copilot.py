@@ -19,6 +19,70 @@ from urbion_network_intelligence import network_distance_m
 from urbion_canonical_evidence import build_canonical_evidence_packet
 
 
+def _lcp_data_readiness(*, assessment: dict, canonical_packet: dict, spatial: dict, knowledge: dict, impact: dict, evidence_ledger: dict) -> dict:
+    """Build a deterministic, non-statutory LCP-oriented data acquisition plan."""
+    proposal = assessment.get("proposal") or {}
+    site = assessment.get("site") or {}
+    evidence = canonical_packet.get("evidence") or {}
+    site_analysis = assessment.get("site_analysis") or {}
+    rules = assessment.get("retrieved_rules") or []
+    review_gaps = list(canonical_packet.get("review_gaps", []) or [])
+    ledger_items = evidence_ledger.get("items") or evidence_ledger.get("evidence") or []
+
+    def present(label: str, value, source: str, verification: str = "REVIEW_REQUIRED", note: str = "") -> dict:
+        has_value = value not in (None, "", [], {})
+        return {
+            "id": label.lower().replace(" ", "_"),
+            "label": label,
+            "status": "AVAILABLE" if has_value else "MISSING",
+            "value": value if has_value else None,
+            "source_target": source,
+            "verification": verification,
+            "note": note or ("Evidence is present in the canonical packet." if has_value else "Not available from the current canonical packet; obtain or verify before use."),
+        }
+
+    spatial_value = spatial.get("metrics") or evidence.get("spatial") or site_analysis
+    environment_value = evidence.get("environment") or {}
+    station_value = evidence.get("stations") or {}
+    impact_value = impact or evidence.get("development_impact") or {}
+    access_value = spatial.get("network_access") or spatial.get("road_distance_m") or (site_analysis.get("road_distance_m") if isinstance(site_analysis, dict) else None)
+    zoning_value = knowledge.get("policy_graph") or knowledge.get("guidelines") or assessment.get("policy_coverage")
+    cadastral_value = canonical_packet.get("cadastral_identity") or {}
+    source_registry = evidence.get("source_registry") or []
+
+    fields = [
+        present("Site / project identity", {k: site.get(k) for k in ("project_name", "state", "district", "pbt", "lot_no", "latitude", "longitude") if site.get(k) not in (None, "")}, "Project input + authoritative cadastral/i-Plan verification", "VERIFICATION_REQUIRED", "Confirm parcel identity and project reference against the authoritative parcel source."),
+        present("Existing land use", spatial_value, "PLANMalaysia i-Plan / local planning source", "SOURCE_REVIEW_REQUIRED", "Use the thematic current-land-use source and preserve its legend/source context."),
+        present("Zoning / planning designation", zoning_value, "Applicable local plan / PLANMalaysia planning source", "SOURCE_REVIEW_REQUIRED", "Confirm the current statutory planning designation and applicability."),
+        present("Development proposal parameters", {k: proposal.get(k) for k in ("development_type", "units", "site_area_ha", "commercial_gfa_m2", "population", "jobs", "daily_trips", "ratio") if proposal.get(k) not in (None, "")}, "User/project input + calculation model", "USER_REVIEW_REQUIRED", "Enter missing proposal quantities explicitly; calculated values must retain their CALCULATED state."),
+        present("Site suitability / spatial screening", site_analysis, "URBION deterministic spatial assessment", "CALCULATED", "Screening evidence is not statutory approval and should be retained as decision-support context."),
+        present("Cadastral / parcel evidence", cadastral_value, "JUPEM / PTD / authoritative parcel source", "VERIFICATION_REQUIRED", "Cadastral identity is deliberately kept separate from statutory verification."),
+        present("Road access / mobility context", access_value, "Authoritative road/network source + site verification", "VERIFICATION_REQUIRED", "Verify access, hierarchy and any required traffic/access study inputs."),
+        present("Flood / environmental constraints", environment_value, "JPS / JAS / PLANMalaysia environmental datasets", "SOURCE_REVIEW_REQUIRED", "Use live/source-context observations only within their stated evidence boundary."),
+        present("Nearest live monitoring stations", station_value, "JPS Public Infobanjir / JAS MyEQMS / configured APIMS source", "SOURCE_CONTEXT", "Live station observations support context; they do not by themselves establish statutory compliance."),
+        present("Development impact screening", impact_value, "URBION impact model + authoritative technical inputs", "CALCULATED", "Validate all missing assumptions and replace screening assumptions with project evidence where required."),
+        present("Planning rules / controls", rules, "Applicable local plan, guideline and authority source", "SOURCE_REVIEW_REQUIRED", "Each rule should retain a source locator/page/clause/table before being relied upon."),
+        present("Agency / technical coordination evidence", assessment.get("agency_comments") or assessment.get("technical_reviews") or {}, "Relevant technical agencies / OSC coordination", "VERIFICATION_REQUIRED", "Collect current agency requirements and retain correspondence/comment references."),
+        present("Evidence register / traceability", {"item_count": len(ledger_items), "source_count": len(source_registry), "review_gap_count": len(review_gaps)}, "URBION canonical evidence ledger", "CALCULATED", "Use the evidence ledger to trace each substantive planning statement back to a source or calculation."),
+    ]
+    available = [x for x in fields if x["status"] == "AVAILABLE"]
+    missing = [x for x in fields if x["status"] == "MISSING"]
+    actions = [{"field": x["label"], "action": f"Obtain or verify {x['label'].lower()}.", "source_target": x["source_target"], "verification": x["verification"]} for x in missing]
+    for gap in review_gaps[:8]:
+        actions.append({"field": "Review gap", "action": str(gap), "source_target": "See canonical evidence trace", "verification": "REVIEW_REQUIRED"})
+    return {
+        "status": "READY" if not missing else "PARTIAL",
+        "scope": "LCP_ORIENTED_DATA_READINESS",
+        "disclaimer": "This checklist supports LCP preparation and evidence collection; it is not a legal declaration of all statutory LCP requirements.",
+        "available_fields": available,
+        "missing_fields": missing,
+        "acquisition_actions": actions[:20],
+        "available_count": len(available),
+        "missing_count": len(missing),
+        "review_gap_count": len(review_gaps),
+    }
+
+
 def _enrich_canonical_packet(packet: dict, *, spatial: dict, knowledge: dict, impact: dict, scenarios: dict, decision: dict, evidence_ledger: dict, evidence_quality: dict) -> dict:
     """Attach deterministic downstream intelligence to the one canonical packet."""
     packet = dict(packet or {})
@@ -86,11 +150,14 @@ def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constrai
     evidence_ledger = build_evidence_ledger(assessment=assessment, spatial=spatial, knowledge=knowledge, impact=impact, scenarios=scenario_intelligence, decision=decision)
     evidence_quality = build_evidence_quality(evidence_ledger)
     canonical_packet = _enrich_canonical_packet(canonical_packet, spatial=spatial, knowledge=knowledge, impact=impact, scenarios=scenario_intelligence, decision=decision, evidence_ledger=evidence_ledger, evidence_quality=evidence_quality)
+    lcp_data_readiness = _lcp_data_readiness(assessment=assessment, canonical_packet=canonical_packet, spatial=spatial, knowledge=knowledge, impact=impact, evidence_ledger=evidence_ledger)
     next_actions = [
         "Review retrieved policy evidence and source traceability.",
         "Validate spatial and environmental context against authoritative sources.",
         "Review impact gaps before relying on any planning recommendation.",
     ]
+    if lcp_data_readiness["missing_count"]:
+        next_actions.insert(0, f"Collect or verify {lcp_data_readiness['missing_count']} LCP-oriented data area(s) listed in lcp_data_readiness before finalising the LCP evidence base.")
     if preferred:
         next_actions.insert(0, f"Review ranked scenario {preferred} and verify its evidence before advancing.")
     else:
@@ -101,13 +168,14 @@ def build_copilot_packet(inputs: dict, variants=None, radii=(400, 800), constrai
         "review_gaps": list(canonical_packet.get("review_gaps", [])),
         "statutory_verification": canonical_packet.get("statutory_verification", "NOT_CLAIMED"),
         "instruction": "Explain only what is present in the canonical evidence packet; do not invent rules, approvals, scores, or verified status.",
+        "lcp_data_readiness": lcp_data_readiness,
     }
     return {
         "mode": "BOUNDED_PLANNER_COPILOT", "assessment": assessment, "spatial": spatial, "knowledge": knowledge,
         "impact": impact, "scenario_intelligence": scenario_intelligence, "preferred_scenario": preferred,
         "agents": agent_packet, "decision": decision, "evidence_ledger": evidence_ledger,
-        "evidence_quality": evidence_quality, "canonical_evidence_packet": canonical_packet,
+        "evidence_quality": evidence_quality, "lcp_data_readiness": lcp_data_readiness, "canonical_evidence_packet": canonical_packet,
         "explanation": explanation,
-        "next_actions": next_actions[:5], "decision_authority": "NONE", "statutory_verification": "NOT_CLAIMED",
+        "next_actions": next_actions[:7], "decision_authority": "NONE", "statutory_verification": "NOT_CLAIMED",
         "generation_boundary": "CANONICAL_PACKET_ONLY; DETERMINISTIC_CONTEXT_ONLY; FUTURE_GENERATION_MUST_PRESERVE_TRACEABILITY",
     }
