@@ -19,7 +19,7 @@ WMTS_UPSTREAMS = (
 WMTS_UPSTREAM = WMTS_UPSTREAMS[0]
 ROOT_WMS_UPSTREAMS = (
     "https://iplan.planmalaysia.gov.my/geoserver/service/wms",
-    "https://iplan.planmalaysia.gov/geoserver/wms",
+    "https://iplan.planmalaysia.gov.my/geoserver/wms",
     "https://iplan.planmalaysia.gov.my/geoserver/ows",
 )
 DIRECT_WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
@@ -34,6 +34,7 @@ TMS_FALLBACK_LAYERS = {
 WMTS_FALLBACK_LAYERS = set(TMS_FALLBACK_LAYERS)
 ARCGIS_ALLOWLIST = (
     ("scharms.planmalaysia.gov.my", "/arcgis/rest/services/"),
+    ("gisdev.planmalaysia.gov.my", "/server/rest/services/"),
     ("mygems.jmg.gov.my", "/server/rest/services/"),
 )
 WMS_ARCGIS_FALLBACKS = {
@@ -43,6 +44,9 @@ WMS_ARCGIS_FALLBACKS = {
     "iplan:ksas": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer", 2),
     "iplan:hakisan_pantai": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 5),
     "iplan:banjir": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 2),
+    "iplan:gunatanah_komited_04": ("https://gisdev.planmalaysia.gov.my/server/rest/services/Hosted/MERGE_KOMITED/MapServer", 0),
+    "iplan:warisan": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_SOSIAL/MapServer", 1),
+    "iplan:topo": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 19),
 }
 DIRECT_WMS_FALLBACKS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:banjir", "iplan:warisan",
@@ -302,7 +306,6 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
     except (TypeError, ValueError): return None
     xmin, ymin, xmax, ymax = bbox
     width = max(int(params.get("width", "256")), 1)
-    pixel_offset = max((xmax - xmin) / width, 1.0)
     base_query = {
         "where": "1=1", "outFields": "OBJECTID", "returnGeometry": "true", "outSR": "3857",
         "resultRecordCount": "500", "f": "json",
@@ -323,22 +326,13 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
         except ValueError: return None
         if isinstance(payload, dict) and payload.get("error"): return None
         return payload if isinstance(payload, dict) else None
-
-    async def render_box(query_bbox: tuple[float, float, float, float]) -> dict | None:
-        return await run_query(query_bbox)
-
-    primary = await render_box((xmin, ymin, xmax, ymax))
+    primary = await run_query((xmin, ymin, xmax, ymax))
     results = [primary] if isinstance(primary, dict) else []
     if isinstance(primary, dict) and primary.get("exceededTransferLimit"):
-        xmid = (xmin + xmax) / 2.0
-        ymid = (ymin + ymax) / 2.0
-        boxes = (
-            (xmin, ymin, xmid, ymid), (xmid, ymin, xmax, ymid),
-            (xmin, ymid, xmid, ymax), (xmid, ymid, xmax, ymax),
-        )
-        results = await asyncio.gather(*(render_box(box) for box in boxes), return_exceptions=True)
-    features = []
-    seen_ids = set()
+        xmid = (xmin + xmax) / 2.0; ymid = (ymin + ymax) / 2.0
+        boxes = ((xmin, ymin, xmid, ymid), (xmid, ymin, xmax, ymid), (xmin, ymid, xmid, ymax), (xmid, ymid, xmax, ymax))
+        results = await asyncio.gather(*(run_query(box) for box in boxes), return_exceptions=True)
+    features = []; seen_ids = set()
     for result in results:
         if not isinstance(result, dict): continue
         for feature in result.get("features") or []:
@@ -407,13 +401,10 @@ async def map_arcgis_proxy(request: Request) -> Response:
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
     last_detail = "no response"
-
     if is_jmg and parsed_path == "/server/rest/services/GeologiAsas/Major_Fault/MapServer":
         fallback = await _jmg_feature_image_fallback(parsed_path, params)
-        if fallback is not None:
-            return fallback
+        if fallback is not None: return fallback
         last_detail = "JMG FeatureServer fallback unavailable; trying MapServer export"
-
     export_url = f"https://{match[0]}{parsed_path}/export"
     export_params = dict(params)
     if is_jmg: export_params["format"] = "png32"
