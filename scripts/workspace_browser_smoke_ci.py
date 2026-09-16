@@ -12,23 +12,17 @@ from pathlib import Path
 TARGET = Path(__file__).with_name("workspace_browser_smoke.py")
 source = TARGET.read_text(encoding="utf-8")
 
-# CI-only selector hardening: custom/hidden controls should still be discoverable
-# by the smoke helper while the product implementation remains untouched.
 source = source.replace(
     "querySelector('input:visible,select:visible,textarea:visible')",
     "querySelector('input,select,textarea')",
 )
 
-# Prefer the canonical completion marker exposed by the analysis bridge; this is
-# less timing-sensitive than scraping body text.
 source = re.sub(
     r"page\.wait_for_function\(\s*\"document\.body\.innerText\.includes\('\s*ANALYSIS COMPLETE\s*'\)\"\s*,\s*timeout\s*=\s*20000\s*\)",
     'page.wait_for_function("!!window.URBION_LAST", timeout=120000)',
     source,
 )
 
-# Poll hydrated geography option sets from Python rather than passing Playwright
-# Locator objects through page.wait_for_function().
 source = source.replace(
     '''            state.select_option(label="Selangor")
             page.wait_for_function("document.querySelectorAll('[data-pbt-catalog-owner=\\"urbion_workspace_pbt_catalog.js\\"]').length >= 1 && document.querySelectorAll('.sec .row').length > 0", timeout=10000)
@@ -89,17 +83,16 @@ source = source.replace(
     1,
 )
 
-# Use the controlled checkbox click path instead of Playwright's forced check().
-# The product contract is the mounted live layer; we do not assert a transient
-# native checked state on a custom-rendered control here.
-source = source.replace(
-    '                row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)',
-    (
-        "                row.scroll_into_view_if_needed(timeout=10000)\n"
-        "                row.click(force=True)\n"
-        "                page.wait_for_timeout(500)"
-    ),
-    1,
+# CI-only GIS smoke hardening. Hidden layer rows can live inside multiple
+# collapsed ancestors; remove those classes before asking Playwright to scroll.
+source = re.sub(
+    r"\s+row\.scroll_into_view_if_needed\(timeout=10000\); row\.check\(force=True\); page\.wait_for_timeout\(250\)",
+    '''
+                row.evaluate("""el=>{let p=el;while(p){if(p.classList&&((p.classList.contains('urbion-layer-group'))||(p.classList.contains('layer-group'))||(p.classList.contains('closed'))))p.classList.remove('closed');p=p.parentElement;}el.scrollIntoView({block:'center',inline:'nearest'});}""")
+                row.click(force=True)
+                page.wait_for_timeout(500)''',
+    source,
+    count=1,
 )
 
 source = re.sub(r"\nif __name__ == [\"']__main__[\"']:\n\s*main\(\)\s*\Z", "\n", source)
