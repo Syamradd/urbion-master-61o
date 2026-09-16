@@ -51,18 +51,11 @@ def wait_for_layer_dom(page, layer_id: str, timeout=12.0):
 
 def expand_layer_group(page, layer_id):
     checkbox = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
-    group = checkbox.locator("xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]")
-    if group.count():
-        group.evaluate("el=>el.classList.remove('closed')")
-        for _ in range(10):
-            try:
-                if checkbox.is_visible():
-                    break
-            except Exception:
-                pass
-            page.wait_for_timeout(60)
     checkbox.evaluate("el=>{let p=el.parentElement;while(p){if(p.classList&&p.classList.contains('urbion-layer-group'))p.classList.remove('closed');p=p.parentElement}}")
-    checkbox.evaluate("el=>el.scrollIntoView({block:'center',inline:'nearest'})")
+    try:
+        checkbox.scroll_into_view_if_needed()
+    except Exception:
+        checkbox.evaluate("el=>el.scrollIntoView({block:'center',inline:'nearest'})")
     wait_until(lambda: checkbox.is_visible(), timeout=3.0, interval=0.1)
 
 
@@ -95,31 +88,14 @@ def add_cache_buster(url: str) -> str:
 
 def set_layer_checkbox(page, layer_id: str, desired: bool, timeout=12.0):
     locator = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
-
-    def state():
-        try:
-            return locator.is_checked()
-        except Exception:
-            return None
-
-    current = state()
-    if current is True and desired:
+    state = locator.is_checked()
+    if state is desired:
         return
-    if current is False and not desired:
-        return
-
-    element_id = locator.get_attribute("id")
-    label = page.locator(f"label[for='{element_id}']") if element_id else None
-    try:
-        if label is not None and label.count():
-            label.click(force=True)
-        else:
-            locator.click(force=True)
-        wait_until(lambda: state() is desired, timeout=1.5, interval=0.1)
-        return
-    except AssertionError:
-        locator.evaluate("(el)=>el.click()")
-        wait_until(lambda: state() is desired, timeout=timeout, interval=0.15)
+    if desired:
+        locator.check(force=True)
+    else:
+        locator.uncheck(force=True)
+    wait_until(lambda: locator.is_checked() is desired, timeout=timeout, interval=0.1)
 
 
 def main():
@@ -181,24 +157,15 @@ def main():
             wait_for_layer_dom(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             if lid in EXPLICIT_UPSTREAM_DEFERRED:
-                if not cb.is_disabled():
-                    state = page.locator(f"[data-layer-state='{lid}']")
-                    text = state.inner_text().strip().upper()
-                    if text == "UNVERIFIED · UPSTREAM":
-                        deferred += 1
-                        print(f"GIS DEFERRED: {lid}: {text}")
-                        continue
-                    deferred += 1
-                    print(f"GIS DEFERRED: {lid}: upstream source explicitly unverified by preflight")
-                    continue
                 deferred += 1
-                print(f"GIS DEFERRED: {lid}: disabled by canonical upstream verification state")
+                state = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
+                print(f"GIS DEFERRED: {lid}: {state}")
                 continue
             expand_layer_group(page, lid)
             assert not cb.is_disabled(), f"{lid}: final canonical GIS layer must be enabled"
             page.evaluate("""id=>{const m=(typeof map!=='undefined'&&map)||window.__URBION_MAP__||null;const store=window.__URBION_LIVE_LAYERS__||{};const l=store[id];if(l&&m&&m.hasLayer(l))m.removeLayer(l);if(store[id])delete store[id];}""", lid)
             set_layer_checkbox(page, lid, False)
-            page.evaluate("""id=>{const m=(typeof map!=='undefined'&&map)||window.__URBION_MAP__||null;const store=window.__URBION_LIVE_LAYERS__||{};const l=store[id];if(l&&m&&m.hasLayer(l))m.removeLayer(l);if(store[id])delete store[id];}""", lid)
+            page.wait_for_timeout(100)
             set_layer_checkbox(page, lid, True, timeout=20.0)
             if lid == "iplan-cadastral":
                 expected_type = "ARCGIS_MAP"
@@ -215,12 +182,10 @@ def main():
                 try:
                     wait_until(render_ready, timeout=35.0, interval=0.15)
                 except AssertionError:
-                    if lid == "iplan-cadastral":
-                        state_now = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip()
-                        image_sources = page.locator("#map img.leaflet-tile").evaluate_all("els=>els.map(e=>e.src).filter(s=>s.includes('/map/arcgis')).slice(-20)")
-                        print(f"GIS CADASTRAL DIAG: state={state_now}; mapped_responses={responses_by_layer[lid]}")
-                        print(f"GIS CADASTRAL ARC-GIS RESPONSES: {all_arcgis_responses}")
-                        print(f"GIS CADASTRAL IMAGE SOURCES: {image_sources}")
+                    state_now = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip()
+                    live_store = page.evaluate("id=>{const s=window.__URBION_LIVE_LAYERS__||{};const l=s[id];const m=(typeof map!=='undefined'&&map)||window.__URBION_MAP__||null;return {stored:!!l,hasLayer:!!(l&&m&&m.hasLayer(l)),className:l?.constructor?.name||null};}", lid)
+                    map_requests = page.evaluate("""()=>performance.getEntriesByType('resource').map(x=>x.name).filter(x=>x.includes('/map/wms')||x.includes('/map/arcgis')).slice(-20)""")
+                    print(f"GIS DIAG: {lid}: state={state_now}; live_store={live_store}; mapped_responses={responses_by_layer[lid]}; map_requests={map_requests}; arcgis={all_arcgis_responses[-10:]}")
                     raise
                 state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
                 successful = [r for r in responses_by_layer[lid] if r["status"] == 200 and r["content_type"].lower().startswith("image/")]
