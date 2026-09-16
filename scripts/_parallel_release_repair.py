@@ -13,8 +13,8 @@ wms.write_text(text, encoding="utf-8")
 
 bridge = ROOT / "urbion_workspace_bridge.js"
 text = bridge.read_text(encoding="utf-8")
-needle = '''          canonicalLast=null;\n          canonicalAnalysisError=null;\n          try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }\n'''
-replacement = '''          canonicalLast=null;\n          canonicalAnalysisError=null;\n          try{window.dispatchEvent(new CustomEvent('urbion:analysis-start',{detail:{startedAt:Date.now()}}));}catch(_){ }\n          try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }\n'''
+needle = """          canonicalLast=null;\n          canonicalAnalysisError=null;\n          try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }\n"""
+replacement = """          canonicalLast=null;\n          canonicalAnalysisError=null;\n          try{window.dispatchEvent(new CustomEvent('urbion:analysis-start',{detail:{startedAt:Date.now()}}));}catch(_){ }\n          try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }\n"""
 if needle not in text:
     raise SystemExit("analysis reset anchor not found")
 text = text.replace(needle, replacement, 1)
@@ -46,9 +46,17 @@ lifecycle.write_text(r'''/* URBION HORIZON — final analysis lifecycle guard. *
 })();
 ''', encoding="utf-8")
 
-# Make the lifecycle guard available through the canonical bridge's existing owner loader.
-needle = '''  function loadOwners(){\n    loadOwner('/urbion_workspace_lcp_readiness_owner.js','__URBION_LCP_READINESS_OWNER_V1__');\n    loadOwner('/urbion_workspace_concurrency_guard.js','__URBION_CONCURRENCY_GUARD_V1__');\n  }\n'''
-replacement = '''  function loadOwners(){\n    loadOwner('/urbion_workspace_lcp_readiness_owner.js','__URBION_LCP_READINESS_OWNER_V1__');\n    loadOwner('/urbion_workspace_concurrency_guard.js','__URBION_CONCURRENCY_GUARD_V1__');\n    loadOwner('/urbion_workspace_lifecycle_hardening.js','__URBION_LIFECYCLE_HARDENING_V1__');\n  }\n'''
+needle = """  function loadOwners(){
+    loadOwner('/urbion_workspace_lcp_readiness_owner.js','__URBION_LCP_READINESS_OWNER_V1__');
+    loadOwner('/urbion_workspace_concurrency_guard.js','__URBION_CONCURRENCY_GUARD_V1__');
+  }
+"""
+replacement = """  function loadOwners(){
+    loadOwner('/urbion_workspace_lcp_readiness_owner.js','__URBION_LCP_READINESS_OWNER_V1__');
+    loadOwner('/urbion_workspace_concurrency_guard.js','__URBION_CONCURRENCY_GUARD_V1__');
+    loadOwner('/urbion_workspace_lifecycle_hardening.js','__URBION_LIFECYCLE_HARDENING_V1__');
+  }
+"""
 text = bridge.read_text(encoding="utf-8")
 if needle not in text:
     raise SystemExit("owner-loader anchor not found")
