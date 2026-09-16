@@ -76,9 +76,6 @@ def response_layer_id(url: str, catalog_by_id: dict[str, dict]) -> str | None:
                 return lid
     if "/map/arcgis" in parsed.path:
         service = unquote(query.get("service", [""])[0]).rstrip("/")
-        # Cadastral is a deliberately synthetic client catalogue entry backed
-        # by the state-specific official iPLAN LOT_* MapServer, so it is not
-        # returned by /map/layers and must be correlated from its service URL.
         if service.startswith("https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/LOT_"):
             return "iplan-cadastral"
         for lid, item in catalog_by_id.items():
