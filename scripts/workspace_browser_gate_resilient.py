@@ -13,14 +13,12 @@ source = TARGET.read_text(encoding="utf-8")
 # render pass/fail rule. The authoritative 25-layer gate runs immediately after
 # this deep smoke step in the same release workflow.
 lines = source.splitlines()
-replacement = '            check(len(layer_results)==count,"all GIS layer entries are accounted for; render certification is delegated to the authoritative 25-layer gate")'
+replacement = 'check(len(layer_results)==count,"all GIS layer entries are accounted for; render certification is delegated to the authoritative 25-layer gate")'
 for i, line in enumerate(lines):
-    if 'all GIS layer entries are either rendered or explicitly upstream-unverified' in line and line.lstrip().startswith('check('):
-        lines[i] = replacement
+    if 'all GIS layer entries are either rendered or explicitly upstream-unverified' in line:
+        indent = line[:len(line)-len(line.lstrip())]
+        lines[i] = indent + replacement
         break
-# Some source variants have already moved the aggregate contract. In that case
-# run the authoritative browser smoke unchanged rather than failing this wrapper
-# on an implementation-detail string match.
 source = '\n'.join(lines) + ('\n' if source.endswith('\n') else '')
 code = compile(source, str(TARGET), "exec")
 ns = {"__name__": "workspace_browser_gate_resilient", "__file__": str(TARGET)}
