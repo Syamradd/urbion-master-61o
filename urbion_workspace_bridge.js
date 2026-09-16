@@ -14,6 +14,7 @@
     canonicalAnalysisError=null;
     try{window.URBION_LAST=data;}catch(_){ }
     try{window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:data.__http_status||200,data}}));}catch(_){ }
+    try{window.dispatchEvent(new CustomEvent('urbion:analysis-ready',{detail:data}));}catch(_){ }
   };
   const publishError=(error,status=0)=>{
     const message=String(error?.message||error||'Analysis request failed');
@@ -76,6 +77,15 @@
       return originalSend.apply(this,arguments);
     };
   }
+  function loadLcpOwner(){
+    if(window.__URBION_LCP_READINESS_OWNER_V1__||document.querySelector('script[data-urbion-lcp-owner]'))return;
+    const s=document.createElement('script');
+    s.src='/urbion_workspace_lcp_readiness_owner.js';
+    s.dataset.urbionLcpOwner='1';
+    s.async=false;
+    s.onerror=()=>console.warn('URBION LCP readiness owner unavailable; canonical analysis remains intact');
+    (document.head||document.documentElement).appendChild(s);
+  }
   async function waitFor(pred,tries=180,delay=100){for(let i=0;i<tries;i++){try{if(pred())return true}catch(_){}await sleep(delay)}return false}
   async function waitForCore(){
     for(let i=0;i<160;i++){
@@ -85,7 +95,7 @@
             configurable:true,
             enumerable:true,
             get:()=>canonicalLast ?? (typeof lastResult!=='undefined'?lastResult:null),
-            set:value=>{canonicalLast=value;canonicalAnalysisError=null;try{window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:value?.__http_status||200,data:value}}));}catch(_){ }}
+            set:value=>{canonicalLast=value;canonicalAnalysisError=null;try{window.dispatchEvent(new CustomEvent('urbion-analysis-captured',{detail:{status:value?.__http_status||200,data:value}}));}catch(_){ }try{window.dispatchEvent(new CustomEvent('urbion:analysis-ready',{detail:value}));}catch(_){ }}
           });
         }catch(_){
           try{if(typeof lastResult!=='undefined' && lastResult)window.URBION_LAST=lastResult;}catch(__){}
@@ -117,6 +127,7 @@
           loadLayers:loadLayers,
           refreshMap:()=>{try{if(typeof map!=='undefined'&&map)map.invalidateSize(true)}catch(_){} }
         };
+        loadLcpOwner();
         return;
       }
       await sleep(50);
