@@ -47,6 +47,8 @@ WMS_ARCGIS_FALLBACKS = {
     "iplan:gunatanah_komited_04": ("https://gisdev.planmalaysia.gov.my/server/rest/services/Hosted/MERGE_KOMITED/MapServer", 0),
     "iplan:warisan": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_SOSIAL/MapServer", 1),
     "iplan:topo": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 19),
+    "iplan:hutan": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 5),
+    "iplan:risiko_bencana": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 12),
 }
 DIRECT_WMS_FALLBACKS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:banjir", "iplan:warisan",
