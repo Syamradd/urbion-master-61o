@@ -24,7 +24,7 @@ source = source.replace(
 # Keep the deep smoke aligned with that contract: verify the explicit state
 # and skip render assertions for those rows rather than forcing a click.
 source = source.replace(
-    '                row=page.locator(f"#layerList [data-urbion-layer={layer_id}]")\n                row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)',
+    '                row=page.locator(f"#layerList [data-urbion-layer={layer_id}]")\n                row.scroll_into_view_if_needed(timeout=10000); row.click(force=True); page.wait_for_timeout(350)\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
     '''                row=page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
                 if row.is_disabled():
                     state = page.locator(f"[data-layer-state='{layer_id}']")
@@ -33,8 +33,9 @@ source = source.replace(
                     check(not row.is_checked(), f"layer {layer_id} remains unavailable")
                     continue
                 row.scroll_into_view_if_needed(timeout=10000)
-                label = page.locator(f"label[for='{row.get_attribute('id')}']")
-                if label.count():
+                element_id = row.get_attribute("id")
+                label = page.locator(f"label[for='{element_id}']") if element_id else None
+                if label is not None and label.count():
                     label.click(force=True)
                 else:
                     row.evaluate("(el)=>el.click()")
@@ -43,7 +44,7 @@ source = source.replace(
     1,
 )
 # GetLegendGraphic and its same-origin canonical proxy are part of the
-# authoritative GIS presentation path, not non-GIS application failures.
+authoritative GIS presentation path, not non-GIS application failures.
 source = source.replace(
     '(gis_optional if "/map/wms" in request.url or "/map/arcgis" in request.url else failed).append(item)',
     '(gis_optional if "/map/wms" in request.url or "/map/arcgis" in request.url or "/map/legend" in request.url or "GetLegendGraphic" in request.url else failed).append(item)',
