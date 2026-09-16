@@ -3,7 +3,7 @@ name: URBION Render Parity Gate
 on:
   push:
     branches:
-      - feature/championship-convergence-v1
+      - feature/canonical-workspace-v2
   pull_request:
     branches:
       - main
@@ -23,7 +23,7 @@ jobs:
         run: pip install -r requirements.txt
       - name: Start Render-equivalent app
         run: |
-          nohup uvicorn landing_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-render-parity.log 2>&1 &
+          nohup uvicorn workspace_v4_server:app --host 127.0.0.1 --port 8000 > /tmp/urbion-render-parity.log 2>&1 &
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8000/health >/dev/null && break
             sleep 1
