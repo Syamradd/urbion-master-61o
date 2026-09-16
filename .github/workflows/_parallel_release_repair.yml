@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   repair:
-    if: github.event.after == '9f67842261e99f2ce4ff4164e80f69e2019c8c9e'
+    if: hashFiles('scripts/_parallel_release_repair.py') != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
