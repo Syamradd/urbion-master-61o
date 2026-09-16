@@ -5,8 +5,8 @@ business/API routes intact while enforcing the intended public entry flow:
 landing page -> /championship.html workspace, plus the dedicated visual assets.
 """
 from pathlib import Path
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi import HTTPException
+from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi import HTTPException, Request
 
 _ALLOWED = {
     'urbion_ui.js', 'urbion_championship_ui.js', 'urbion_championship_upgrade.js',
@@ -169,6 +169,34 @@ try:
     _original_add_api_route = FastAPI.add_api_route
     _original_middleware = FastAPI.middleware
 
+    async def _legend_proxy(request: Request):
+        layer = str(request.query_params.get("layer", "")).strip()
+        if not layer.startswith("iplan:"):
+            raise HTTPException(status_code=400, detail="Legend layer is not in the allow-listed i-Plan namespace")
+        upstream_params = {
+            "REQUEST": "GetLegendGraphic",
+            "VERSION": str(request.query_params.get("version", "1.1.1")),
+            "FORMAT": "image/png",
+            "LAYER": layer,
+            "STYLE": str(request.query_params.get("style", "")),
+            "LEGEND_OPTIONS": str(request.query_params.get("legend_options", "forceLabels:on;fontAntiAliasing:true")),
+        }
+        try:
+            async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+                upstream = await client.get(_GIS_DIRECT_WMS, params=upstream_params, headers={"Accept": "image/png,image/*;q=0.9"})
+        except (httpx.HTTPError, asyncio.TimeoutError) as exc:
+            raise HTTPException(status_code=502, detail=f"i-Plan legend upstream unavailable: {exc}")
+        content_type = upstream.headers.get("content-type", "")
+        if upstream.status_code == 200 and content_type.lower().startswith("image/") and len(upstream.content) > 32:
+            media_type = content_type.split(";", 1)[0].strip() or "image/png"
+            return Response(
+                content=upstream.content,
+                status_code=200,
+                media_type=media_type,
+                headers={"Cache-Control": "no-store, max-age=0", "X-URBION-GIS-Fallback": "PLANMalaysia-WMS-LEGEND"},
+            )
+        raise HTTPException(status_code=502, detail=f"i-Plan legend upstream render failed: HTTP={upstream.status_code} CT={content_type or '-'}")
+
     def _landing():
         target = (_BASE / 'urbion_horizon_landing.html').resolve()
         if target.parent != _BASE or not target.is_file():
@@ -205,14 +233,51 @@ try:
         response = _frontend_root()
         body = response.body.decode('utf-8')
         marker = '<script src="/urbion_championship_horizon_ui.js"></script>'
-        inject = marker + '\n  <script src="/urbion_championship_visual_system_v1.js"></script>\n  <script src="/urbion_horizon_visual_overhaul.js"></script>\n  <script src="/urbion_championship_visual_system_v2.js"></script>'
-        if marker in body and 'urbion_championship_visual_system_v2.js' not in body:
+        legend_guard = r'''<script>
+(()=>{
+  const normalize=(value)=>{
+    try{
+      const raw=String(value||'');
+      if(!raw.includes('GetLegendGraphic'))return value;
+      const u=new URL(raw,location.href);
+      if(!u.hostname.includes('iplan.planmalaysia.gov.my'))return value;
+      const layer=u.searchParams.get('LAYER')||u.searchParams.get('layer')||'';
+      if(!layer.startsWith('iplan:'))return value;
+      const q=new URLSearchParams();
+      q.set('layer',layer); q.set('version',u.searchParams.get('VERSION')||u.searchParams.get('version')||'1.1.1');
+      q.set('style',u.searchParams.get('STYLE')||u.searchParams.get('style')||'');
+      q.set('legend_options',u.searchParams.get('LEGEND_OPTIONS')||u.searchParams.get('legend_options')||'forceLabels:on;fontAntiAliasing:true');
+      return '/map/legend?'+q.toString();
+    }catch(_){return value}
+  };
+  const desc=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');
+  if(desc&&desc.set&&!desc.set.__urbionLegendProxy){
+    const setter=desc.set;
+    const wrapped=function(v){return setter.call(this,normalize(v))};
+    Object.defineProperty(wrapped,'__urbionLegendProxy',{value:true});
+    Object.defineProperty(HTMLImageElement.prototype,'src',{...desc,set:wrapped});
+  }
+  const setAttr=Element.prototype.setAttribute;
+  if(!setAttr.__urbionLegendProxy){
+    const wrapped=function(name,value){return setAttr.call(this,String(name).toLowerCase()==='src'?normalize(value):value)};
+    Object.defineProperty(wrapped,'__urbionLegendProxy',{value:true});
+    Element.prototype.setAttribute=wrapped;
+  }
+  const fix=()=>document.querySelectorAll('img[src*="GetLegendGraphic"],img[src*="getlegendgraphic"]').forEach(img=>{const next=normalize(img.src);if(next&&next!==img.src)img.src=next});
+  new MutationObserver(fix).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});
+  fix();
+})();
+</script>'''
+        inject = marker + '\n  <script src="/urbion_championship_visual_system_v1.js"></script>\n  <script src="/urbion_horizon_visual_overhaul.js"></script>\n  <script src="/urbion_championship_visual_system_v2.js"></script>\n  ' + legend_guard
+        if marker in body and 'GetLegendGraphic' not in body:
             body = body.replace(marker, inject, 1)
         else:
             if 'urbion_horizon_visual_overhaul.js' not in body and '</body>' in body:
                 body = body.replace('</body>', '<script src="/urbion_horizon_visual_overhaul.js"></script></body>', 1)
             if 'urbion_championship_visual_system_v2.js' not in body and '</body>' in body:
                 body = body.replace('</body>', '<script src="/urbion_championship_visual_system_v2.js"></script></body>', 1)
+            if 'GetLegendGraphic' not in body and '</body>' in body:
+                body = body.replace('</body>', legend_guard + '</body>', 1)
         return HTMLResponse(body, media_type='text/html; charset=utf-8', headers={'Cache-Control': 'no-store, max-age=0'})
 
     def _asset(asset: str):
@@ -227,6 +292,7 @@ try:
     def _init_with_assets(self, *args, **kwargs):
         _original_init(self, *args, **kwargs)
         self.add_api_route('/{asset}.js', _asset, methods=['GET'], include_in_schema=False)
+        self.add_api_route('/map/legend', _legend_proxy, methods=['GET'], include_in_schema=False)
         self.add_api_route('/', _landing, methods=['GET'], include_in_schema=False)
 
     def _add_api_route(self, path, endpoint, *args, **kwargs):
