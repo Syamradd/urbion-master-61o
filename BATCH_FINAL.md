@@ -1,1 +1,1 @@
-x
+URBION GIS layer-manager hardening: unresolved authoritative upstream layers are explicit UNVERIFIED; no fabricated render state.
