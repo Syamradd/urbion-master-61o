@@ -76,6 +76,11 @@ def response_layer_id(url: str, catalog_by_id: dict[str, dict]) -> str | None:
                 return lid
     if "/map/arcgis" in parsed.path:
         service = unquote(query.get("service", [""])[0]).rstrip("/")
+        # Cadastral is a deliberately synthetic client catalogue entry backed
+        # by the state-specific official iPLAN LOT_* MapServer, so it is not
+        # returned by /map/layers and must be correlated from its service URL.
+        if service.startswith("https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/LOT_"):
+            return "iplan-cadastral"
         for lid, item in catalog_by_id.items():
             if item.get("type") in {"ARCGIS_MAP", "INFO_SCREENING"} and str(item.get("url", "")).rstrip("/") == service:
                 return lid
@@ -123,7 +128,6 @@ def main():
         layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)") if x]
         verified = 0
         deferred = 0
-        deferred_network_before = len([u for u in responses_by_layer.values()])
         for lid in layer_ids:
             wait_for_layer_dom(page, lid)
             if lid in DEFERRED_UI_LAYER_IDS:
@@ -132,20 +136,25 @@ def main():
                 assert cb.is_disabled(), f"{lid}: deferred layer checkbox must be disabled"
                 assert st.inner_text().strip().upper() == "UNVERIFIED · UPSTREAM", f"{lid}: expected explicit upstream state"
                 assert st.get_attribute("data-state") == "unverified", f"{lid}: expected unverified state marker"
-                before = dict(responses_by_layer)
+                before = set(responses_by_layer.keys())
                 cb.click(force=True)
                 page.wait_for_timeout(300)
                 assert cb.is_checked() is False, f"{lid}: deferred checkbox became checked"
                 assert st.inner_text().strip().upper() == "UNVERIFIED · UPSTREAM", f"{lid}: deferred state changed after click"
-                assert responses_by_layer.keys() == before.keys(), f"{lid}: deferred click generated GIS request"
+                assert set(responses_by_layer.keys()) == before, f"{lid}: deferred click generated GIS request"
                 print(f"GIS DEFERRED PASS: {lid} -> {DEFERRED_UI_LAYER_IDS[lid]}")
                 deferred += 1
                 continue
             expand_layer_group(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             cb.check(force=True)
-            expected_types = {str(catalog_by_id[lid].get('type') or '').upper()}
-            print(f"GIS TEST: {lid} type={next(iter(expected_types))} source={catalog_by_id[lid].get('source') or catalog_by_id[lid].get('url','')}")
+            if lid == "iplan-cadastral":
+                expected_type = "ARCGIS_MAP"
+                source = "synthetic client catalogue -> official iPLAN LOT_* MapServer"
+            else:
+                expected_type = str(catalog_by_id[lid].get('type') or '').upper()
+                source = catalog_by_id[lid].get('source') or catalog_by_id[lid].get('url', '')
+            print(f"GIS TEST: {lid} type={expected_type} source={source}")
             try:
                 wait_until(lambda: page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper() in {"ON · RENDERED", "ERROR · TILE", "ERROR · ARCGIS", "ERROR · TIMEOUT"}, timeout=35.0)
                 state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
