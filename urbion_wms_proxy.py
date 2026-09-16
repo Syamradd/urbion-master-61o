@@ -349,6 +349,62 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
     return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": fallback_name})
 
 
+async def _scharms_cadastral_feature_image_fallback(parsed_path: str, params: dict[str, str]) -> Response | None:
+    """Render authoritative iPLAN cadastral lots through MapServer layer-0 query."""
+    if parsed_path != "/arcgis/rest/services/iPLAN/LOT_04/MapServer":
+        return None
+    bbox_raw = str(params.get("bbox", ""))
+    try:
+        bbox = tuple(float(x) for x in bbox_raw.split(","))
+        if len(bbox) != 4: return None
+    except (TypeError, ValueError): return None
+    width = max(int(params.get("size", "256,256").split(",", 1)[0]), 1)
+    height = max(int(params.get("size", "256,256").split(",", 2)[1]), 1)
+    bbox_text = ",".join(str(v) for v in bbox)
+    query_url = "https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/LOT_04/MapServer/0/query"
+    query = {
+        "where": "1=1",
+        "outFields": "OBJECTID,LOT,UPI",
+        "returnGeometry": "true",
+        "geometry": bbox_text,
+        "geometryType": "esriGeometryEnvelope",
+        "inSR": "3857",
+        "outSR": "3857",
+        "spatialRel": "esriSpatialRelIntersects",
+        "resultRecordCount": "500",
+        "f": "json",
+    }
+    try:
+        upstream = await _client_get(query_url, query)
+    except (httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    if upstream.status_code != 200:
+        return None
+    content_type = upstream.headers.get("content-type", "")
+    if "json" not in content_type.lower():
+        return None
+    try:
+        payload = upstream.json()
+    except ValueError:
+        return None
+    if not isinstance(payload, dict) or payload.get("error"):
+        return None
+    svg = _svg_from_arcgis_features(payload, bbox, width, height)
+    if not svg:
+        return None
+    feature_count = len(payload.get("features") or [])
+    return Response(
+        svg.encode("utf-8"),
+        status_code=200,
+        media_type="image/svg+xml",
+        headers={
+            **_cache_headers(),
+            "X-URBION-GIS-Fallback": "PLANMalaysia-iPLAN-LOT-04-Query",
+            "X-URBION-GIS-Feature-Count": str(feature_count),
+        },
+    )
+
+
 @router.get("/map/wms", include_in_schema=False)
 async def map_wms_proxy(request: Request) -> Response:
     params = {key.lower(): value for key, value in request.query_params.multi_items() if key.lower() in ALLOWED_WMS_PARAMS}
@@ -402,6 +458,9 @@ async def map_arcgis_proxy(request: Request) -> Response:
     parsed_path = parsed.path.rstrip("/"); is_jmg = parsed.hostname.lower() == "mygems.jmg.gov.my"
     if is_jmg: params.setdefault("layers", JMG_DEFAULT_LAYERS.get(parsed_path, ""))
     if is_jmg and parsed_path.endswith("/GeologiAsas/Major_Fault/MapServer"): params["layers"] = "show:5"
+    if parsed.hostname.lower() == "scharms.planmalaysia.gov.my":
+        fallback = await _scharms_cadastral_feature_image_fallback(parsed_path, params)
+        if fallback is not None: return fallback
     last_detail = "no response"
     if is_jmg and parsed_path == "/server/rest/services/GeologiAsas/Major_Fault/MapServer":
         fallback = await _jmg_feature_image_fallback(parsed_path, params)
