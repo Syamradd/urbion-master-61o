@@ -134,11 +134,11 @@ def main():
                 assert st.inner_text().strip().upper() == "UNVERIFIED · UPSTREAM", f"{lid}: expected explicit upstream state"
                 assert st.get_attribute("data-state") == "unverified", f"{lid}: expected unverified state marker"
                 before = set(responses_by_layer.keys())
-                cb.click(force=True)
+                page.dispatch_event(f"#layerList input[data-urbion-layer='{lid}']", "change")
                 page.wait_for_timeout(300)
                 assert cb.is_checked() is False, f"{lid}: deferred checkbox became checked"
-                assert st.inner_text().strip().upper() == "UNVERIFIED · UPSTREAM", f"{lid}: deferred state changed after click"
-                assert set(responses_by_layer.keys()) == before, f"{lid}: deferred click generated GIS request"
+                assert st.inner_text().strip().upper() == "UNVERIFIED · UPSTREAM", f"{lid}: deferred state changed after change event"
+                assert set(responses_by_layer.keys()) == before, f"{lid}: deferred change generated GIS request"
                 print(f"GIS DEFERRED PASS: {lid} -> {DEFERRED_UI_LAYER_IDS[lid]}")
                 deferred += 1
                 continue
