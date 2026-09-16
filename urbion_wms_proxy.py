@@ -29,7 +29,7 @@ TMS_UPSTREAMS = (
 )
 TMS_FALLBACK_LAYERS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:warisan",
-    "iplan:rumah_mampu_milik", "iplan:topo",
+    "iplan:rumah_mampu_milik", "iplan:topo", "iplan:hutan", "iplan:risiko_bencana",
 }
 WMTS_FALLBACK_LAYERS = set(TMS_FALLBACK_LAYERS)
 ARCGIS_ALLOWLIST = (
