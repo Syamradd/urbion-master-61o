@@ -77,14 +77,13 @@
       return originalSend.apply(this,arguments);
     };
   }
-  function loadLcpOwner(){
-    if(window.__URBION_LCP_READINESS_OWNER_V1__||document.querySelector('script[data-urbion-lcp-owner]'))return;
-    const s=document.createElement('script');
-    s.src='/urbion_workspace_lcp_readiness_owner.js';
-    s.dataset.urbionLcpOwner='1';
-    s.async=false;
-    s.onerror=()=>console.warn('URBION LCP readiness owner unavailable; canonical analysis remains intact');
-    (document.head||document.documentElement).appendChild(s);
+  function loadOwner(src,guard){
+    if(window[guard]||document.querySelector(`script[data-urbion-owner="${src}"]`))return;
+    const s=document.createElement('script');s.src=src;s.dataset.urbionOwner=src;s.async=false;s.onerror=()=>console.warn(`URBION owner unavailable: ${src}`);(document.head||document.documentElement).appendChild(s);
+  }
+  function loadOwners(){
+    loadOwner('/urbion_workspace_lcp_readiness_owner.js','__URBION_LCP_READINESS_OWNER_V1__');
+    loadOwner('/urbion_workspace_concurrency_guard.js','__URBION_CONCURRENCY_GUARD_V1__');
   }
   async function waitFor(pred,tries=180,delay=100){for(let i=0;i<tries;i++){try{if(pred())return true}catch(_){}await sleep(delay)}return false}
   async function waitForCore(){
@@ -127,7 +126,7 @@
           loadLayers:loadLayers,
           refreshMap:()=>{try{if(typeof map!=='undefined'&&map)map.invalidateSize(true)}catch(_){} }
         };
-        loadLcpOwner();
+        loadOwners();
         return;
       }
       await sleep(50);
