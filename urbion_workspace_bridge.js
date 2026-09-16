@@ -84,6 +84,7 @@
   function loadOwners(){
     loadOwner('/urbion_workspace_lcp_readiness_owner.js','__URBION_LCP_READINESS_OWNER_V1__');
     loadOwner('/urbion_workspace_concurrency_guard.js','__URBION_CONCURRENCY_GUARD_V1__');
+    loadOwner('/urbion_workspace_lifecycle_hardening.js','__URBION_LIFECYCLE_HARDENING_V1__');
   }
   async function waitFor(pred,tries=180,delay=100){for(let i=0;i<tries;i++){try{if(pred())return true}catch(_){}await sleep(delay)}return false}
   async function waitForCore(){
@@ -102,6 +103,7 @@
         const canonicalAnalyse=async()=>{
           canonicalLast=null;
           canonicalAnalysisError=null;
+          try{window.dispatchEvent(new CustomEvent('urbion:analysis-start',{detail:{startedAt:Date.now()}}));}catch(_){ }
           try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }
           try{
             await runAnalysis();

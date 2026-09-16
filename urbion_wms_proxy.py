@@ -414,6 +414,13 @@ async def map_wms_proxy(request: Request) -> Response:
     if str(params.get("request", "GetMap")).upper() != "GETMAP":
         return Response("Only WMS GetMap requests are exposed by this proxy.", status_code=400, media_type="text/plain")
     params.setdefault("service", "WMS"); params.setdefault("request", "GetMap"); params.setdefault("format", "image/png"); params.setdefault("transparent", "true"); params.setdefault("version", "1.1.1")
+    # Prefer an authoritative ArcGIS fallback that has already passed preflight
+    # over slow GWC/WMTS/TMS paths for known-problematic i-Plan layers. This is
+    # a routing optimization, not a data substitution: the fallback remains an
+    # official PLANMalaysia GIS service.
+    if layers in WMS_ARCGIS_FALLBACKS:
+        fallback = await _arcgis_wms_fallback(layers, params)
+        if fallback is not None: return fallback
     if layers in WMTS_FALLBACK_LAYERS:
         fallback = await _wmts_rest_fallback(layers, params)
         if fallback is not None: return fallback
