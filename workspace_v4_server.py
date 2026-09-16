@@ -101,6 +101,22 @@ STATIC_IMPACT_SURFACE='''<section id="urbionImpactInputs" class="sec"><div class
 
 @app.middleware("http")
 async def _urbion_v4_compatibility(request:Request,call_next):
+ # These presentation assets are also registered as routes below, but the
+ # canonical landing middleware/catch-all can consume the request before those
+ # routes are considered. Serve the exact compatibility assets at this outer
+ # boundary so the browser always receives the same files that /workspace names.
+ asset_map={
+  "/urbion_workspace_release_hardening_v6.js":(_HARDENING_ASSET,"application/javascript; charset=utf-8"),
+  "/urbion_workspace_development_impact_owner_v4.js":(_DEVELOPMENT_IMPACT_ASSET,"application/javascript; charset=utf-8"),
+  "/urbion_workspace_demo_command_layer.js":(_DEMO_COMMAND_ASSET,"application/javascript; charset=utf-8"),
+  "/urbion_workspace_contract_surface_v1.js":(_CONTRACT_SURFACE_ASSET,"application/javascript; charset=utf-8"),
+  "/urbion_workspace_demo_enrichment_v1.js":(_DEMO_ENRICHMENT_ASSET,"application/javascript; charset=utf-8"),
+  "/about_master.png":(_ABOUT_MASTER,"image/png"),
+ }
+ if request.method=="GET":
+  target=asset_map.get(request.url.path)
+  if target and target[0].is_file():
+   return Response(target[0].read_bytes(),media_type=target[1],headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
  raw_contract_payload=None
  if request.method=="POST" and request.url.path in {"/assess","/workstation/analysis"}:
   raw=await request.body()
@@ -155,12 +171,12 @@ def development_impact_ui_asset():
 
 @app.get("/urbion_workspace_demo_command_layer.js",include_in_schema=False)
 def demo_command_asset():
- if not _DEMO_COMMAND_ASSET.is_file():return Response("URBION HORIZON demo command layer missing.",status_code=500,media_type="text/plain; charset=utf-8")
+ if not _DEMO_COMMAND_ASSET.is_file():return Response("URBION HORIZON demo command layer missing.",status_code=500,media_type="application/javascript; charset=utf-8")
  return Response(_DEMO_COMMAND_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
 
 @app.get("/urbion_workspace_contract_surface_v1.js",include_in_schema=False)
 def contract_surface_asset():
- if not _CONTRACT_SURFACE_ASSET.is_file():return Response("URBION HORIZON contract surface asset missing.",status_code=500,media_type="text/plain; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
+ if not _CONTRACT_SURFACE_ASSET.is_file():return Response("URBION HORIZON contract surface asset missing.",status_code=500,media_type="text/plain; charset=utf-8")
  return Response(_CONTRACT_SURFACE_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
 
 @app.get("/urbion_workspace_demo_enrichment_v1.js",include_in_schema=False)
