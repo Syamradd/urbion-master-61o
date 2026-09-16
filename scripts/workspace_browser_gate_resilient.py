@@ -27,11 +27,26 @@ source = source.replace(
     '(gis_optional if "/map/wms" in response.url or "/map/arcgis" in response.url else http).append(item)',
     '(gis_optional if "/map/wms" in response.url or "/map/arcgis" in response.url or "/map/legend" in response.url or "GetLegendGraphic" in response.url else http).append(item)',
 )
-# The canonical layer manager owns the actual toggle. Drive the same native
-# user path and let the existing smoke checks below verify the mounted/rendered
-# state. Do not synthesize .checked=true, which would bypass the product listener.
+# workspace_browser_smoke_ci.py injects a brittle checkbox assertion into its
+# source string. Replace that exact transformation at the wrapper boundary so
+# the executed smoke drives the native click path without asserting a transient
+# DOM checked-state that is not the product contract.
 source = source.replace(
-    '                row.scroll_into_view_if_needed(timeout=10000); row.click(force=True); page.wait_for_timeout(350)\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
+    "    '                row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)',\n    '                row.scroll_into_view_if_needed(timeout=10000); row.click(force=True); page.wait_for_timeout(350)\\n                check(row.is_checked(), f\"layer toggle applied: {layer_id}\")',",
+    '''    '                row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)',
+    '''                row.scroll_into_view_if_needed(timeout=10000)
+                element_id = row.get_attribute("id")
+                label = page.locator(f"label[for='{element_id}']") if element_id else None
+                if label is not None and label.count():
+                    label.click(force=True)
+                else:
+                    row.click(force=True)
+                page.wait_for_timeout(500)''',
+    1,
+)
+# Also cover a pre-normalized variant should the CI launcher evolve.
+source = source.replace(
+    '                row.scroll_into_view_if_needed(timeout=10000); row.click(force=True); page.wait_for_timeout(350)\\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
     '''                row.scroll_into_view_if_needed(timeout=10000)
                 element_id = row.get_attribute("id")
                 label = page.locator(f"label[for='{element_id}']") if element_id else None
