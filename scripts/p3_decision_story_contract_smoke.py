@@ -36,7 +36,7 @@ def main():
         page.goto(BASE+"/workspace",wait_until="domcontentloaded",timeout=30000)
         page.wait_for_function("window.__URBION_DECISION_STORY_OWNER_V1__===true",timeout=15000)
         page.evaluate("packet=>{window.URBION_LAST={canonical_evidence_packet:packet};window.dispatchEvent(new CustomEvent('urbion:analysis-ready'));}",PACKET)
-        page.wait_for_function("expected=>{const el=document.querySelector('#urbionDecisionStoryCard');const text=(el?.innerText||'').toUpperCase();return expected.every(x=>text.includes(x))}",[x.upper() for x in expected],timeout=15000)
+        page.wait_for_function("expected=>{const el=document.querySelector('#urbionDecisionStoryCard');const text=(el?.innerText||'').toUpperCase();return expected.every(x=>text.includes(x))}",arg=[x.upper() for x in expected],timeout=15000)
         text=page.locator('#urbionDecisionStoryCard').inner_text().upper()
         for item in expected:
             assert item in text,f"missing P3 story state: {item}"
