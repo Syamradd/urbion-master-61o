@@ -36,9 +36,12 @@ source = source.replace(
     "            state.select_option(label=\"Melaka\")\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length >= 3\", arg=district, timeout=10000)\n            check(len(usable_options(district)) >= 3, \"State reset refreshes District options\")\n            page.wait_for_function(\"el=>[...el.options].filter(o=>o.textContent.trim() && !o.textContent.trim().toLowerCase().startsWith('select')).length === 4\", arg=pbt, timeout=10000)\n            check(len(usable_options(pbt)) == 4, \"State reset refreshes Melaka PBT catalogue\")\n",
     "            state.select_option(label=\"Melaka\")\n            deadline = 10000\n            while deadline > 0 and len(usable_options(district)) < 3:\n                page.wait_for_timeout(200)\n                deadline -= 200\n            check(len(usable_options(district)) >= 3, \"State reset refreshes District options\")\n            deadline = 10000\n            while deadline > 0 and len(usable_options(pbt)) != 4:\n                page.wait_for_timeout(200)\n                deadline -= 200\n            check(len(usable_options(pbt)) == 4, \"State reset refreshes Melaka PBT catalogue\")\n",
 )
+# The layer controller is a controlled checkbox: its click handler owns the
+# state mutation. Use the same native click path as a real user and explicitly
+# verify that the app-owned DOM state becomes checked.
 source = source.replace(
     '                row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)',
-    '                selector = f"#layerList [data-urbion-layer=\'{layer_id}\']"\n                for _ in range(8):\n                    try:\n                        page.locator(selector).evaluate("el=>el.scrollIntoView({block:\'center\',inline:\'nearest\'})")\n                        break\n                    except Exception:\n                        page.wait_for_timeout(120)\n                row = page.locator(selector)\n                row.check(force=True); page.wait_for_timeout(250)',
+    '                row.scroll_into_view_if_needed(timeout=10000); row.click(force=True); page.wait_for_timeout(350)\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
 )
 source = re.sub(r"\nif __name__ == [\"']__main__[\"']:\n\s*main\(\)\s*\Z", "\n", source)
 # The layer manager hydrates asynchronously after its Leaflet dependency and
