@@ -134,17 +134,24 @@ def wmts_rest_urls(layer: str, zoom: int, x: int, y: int):
             yield f"{base}/{encoded_layer}//EPSG:900913/{matrix}/{y}/{x}?format=image/png"
 
 
-def main() -> None:
-    selected = os.getenv("URBION_PREFLIGHT_LAYER")
+def _target_layers(selected: str | None) -> list[str]:
     if selected:
         if selected not in LAYERS:
             raise SystemExit(f"Unknown URBION_PREFLIGHT_LAYER: {selected}")
-    else:
+        return [selected]
+    return list(LAYERS)
+
+
+def main() -> None:
+    selected = os.getenv("URBION_PREFLIGHT_LAYER")
+    target_layers = _target_layers(selected)
+
+    if not selected:
         import concurrent.futures
         import subprocess
         import sys
         failures = []
-        max_workers = min(4, len(LAYERS))
+        max_workers = min(4, len(target_layers))
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures = {
                 pool.submit(
@@ -154,7 +161,7 @@ def main() -> None:
                     capture_output=True,
                     text=True,
                 ): layer
-                for layer in LAYERS
+                for layer in target_layers
             }
             ordered = {}
             for future, layer in [(future, futures[future]) for future in futures]:
@@ -162,7 +169,7 @@ def main() -> None:
                 ordered[layer] = result
                 if result.returncode != 0:
                     failures.append(layer)
-            for layer in ([selected] if selected else LAYERS):
+            for layer in target_layers:
                 result = ordered[layer]
                 print(f"\n===== PREFLIGHT LAYER {layer} =====")
                 if result.stdout:
@@ -171,7 +178,7 @@ def main() -> None:
                     print(result.stderr, end="", file=sys.stderr)
         if failures:
             raise SystemExit("Parallel GIS preflight failures: " + ", ".join(failures))
-        print(f"Parallel GIS authoritative + proxy preflight: PASS · {len(LAYERS)}/{len(LAYERS)} layers")
+        print(f"Parallel GIS authoritative + proxy preflight: PASS · {len(target_layers)}/{len(target_layers)} layers")
         return
 
     bbox, tile_x, tile_y = tile_bbox(102.196, 2.285, 13)
@@ -186,8 +193,8 @@ def main() -> None:
         "Referer": "https://iplan.planmalaysia.gov.my/geoserver/demo",
         "Accept": "image/png,image/*,*/*;q=0.8", "Accept-Encoding": "identity", "Connection": "close",
     }) as client:
-        print(f"GIS UPSTREAM PREFLIGHT · {len(LAYERS)} representative i-Plan layers · tile z13/{tile_x}/{tile_y} · EPSG:900913")
-        for layer in LAYERS:
+        print(f"GIS UPSTREAM PREFLIGHT · {len(target_layers)} representative i-Plan layers · tile z13/{tile_x}/{tile_y} · EPSG:900913")
+        for layer in target_layers:
             status, ct, size, elapsed, detail = probe(client, UPSTREAM, dict(base, layers=layer))
             ok = status == 200 and ct.lower().startswith("image/") and size > 100
             print(f"GWC {'PASS' if ok else 'FAIL'} · {layer} · HTTP={status} · CT={ct or '-'} · bytes={size} · {elapsed:.2f}s · {detail}")
@@ -265,7 +272,7 @@ def main() -> None:
                         continue
                 failures.append(f"UPSTREAM {layer}: GWC HTTP={status} CT={ct or '-'} bytes={size} detail={detail}")
         print(f"GIS PROXY PREFLIGHT · {BASE_URL}/map/wms")
-        for layer in LAYERS:
+        for layer in target_layers:
             status, ct, size, elapsed, detail = probe(client, f"{BASE_URL}/map/wms", dict(base, layers=layer))
             ok = status == 200 and ct.lower().startswith("image/") and size > 100
             print(f"PROXY {'PASS' if ok else 'FAIL'} · {layer} · HTTP={status} · CT={ct or '-'} · bytes={size} · {elapsed:.2f}s · {detail}")
