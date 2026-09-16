@@ -4,9 +4,10 @@ Render keeps the historical module-level start command for this service, but the
 actual application is the single canonical public wrapper in ``landing_server``.
 This module intentionally contains no second FastAPI app, planning engine, or
 frontend owner. It exposes the canonical About raster asset, the canonical
-Development Impact UI asset, normalizes legacy UI payloads, routes critical
-Melaka i-Plan map requests to the proven ArcGIS service, and serves the bundled
-release-hardening asset used by the same V5 workspace.
+Development Impact UI asset, the narrative/demo workspace layer, normalizes
+legacy UI payloads, routes critical Melaka i-Plan map requests to the proven
+ArcGIS service, and serves the bundled release-hardening asset used by the same
+V5 workspace.
 """
 import json
 from pathlib import Path
@@ -19,6 +20,7 @@ _BASE_DIR=Path(__file__).resolve().parent
 _ABOUT_MASTER=_BASE_DIR/"about_master.png"
 _HARDENING_ASSET=_BASE_DIR/"urbion_workspace_release_hardening_v6.js"
 _DEVELOPMENT_IMPACT_ASSET=_BASE_DIR/"urbion_workspace_development_impact_owner_v4.js"
+_DEMO_COMMAND_ASSET=_BASE_DIR/"urbion_workspace_demo_command_layer.js"
 _LEGACY_BOOLEAN_FIELDS={"perimeter_planting","landscaped_pedestrian_walkway"}
 _CRITICAL_IPLAN_ARCGIS={
  "iplan:gunatanah_semasa_04":"https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTsemasa_04/MapServer",
@@ -62,11 +64,15 @@ async def _urbion_v4_compatibility(request:Request,call_next):
    params={k:v for k,v in request.query_params.multi_items()};params.pop("layers",None);params["service"]=service;params.setdefault("f","image");params.setdefault("format","png32");params.setdefault("transparent","true");params["layers"]="show:0"
    return RedirectResponse(url="/map/arcgis?"+urlencode(params),status_code=307)
  response=await call_next(request)
- if request.method=="GET" and request.url.path=="/workspace" and _HARDENING_ASSET.is_file():
+ if request.method=="GET" and request.url.path=="/workspace" and (_HARDENING_ASSET.is_file() or _DEMO_COMMAND_ASSET.is_file()):
   try:
    body=await _read_response_body(response)
-   if b"urbion_workspace_release_hardening_v6.js" not in body and b"</body>" in body:
-    body=body.replace(b"</body>",b'<script src="/urbion_workspace_release_hardening_v6.js"></script></body>',1)
+   scripts=b''
+   if _HARDENING_ASSET.is_file() and b"urbion_workspace_release_hardening_v6.js" not in body:
+    scripts+=b'<script src="/urbion_workspace_release_hardening_v6.js"></script>'
+   if _DEMO_COMMAND_ASSET.is_file() and b"urbion_workspace_demo_command_layer.js" not in body:
+    scripts+=b'<script src="/urbion_workspace_demo_command_layer.js"></script>'
+   if scripts and b"</body>" in body:body=body.replace(b"</body>",scripts+b"</body>",1)
    headers={k:v for k,v in dict(response.headers).items() if k.lower() not in {"content-length","content-type","transfer-encoding"}}
    headers["Cache-Control"]="no-store, max-age=0, must-revalidate"
    return Response(content=body,status_code=response.status_code,headers=headers,media_type="text/html; charset=utf-8")
@@ -82,6 +88,11 @@ def release_hardening_asset():
 def development_impact_ui_asset():
  if not _DEVELOPMENT_IMPACT_ASSET.is_file():return Response("URBION HORIZON development impact UI asset missing.",status_code=500,media_type="text/plain; charset=utf-8")
  return Response(_DEVELOPMENT_IMPACT_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
+
+@app.get("/urbion_workspace_demo_command_layer.js",include_in_schema=False)
+def demo_command_asset():
+ if not _DEMO_COMMAND_ASSET.is_file():return Response("URBION HORIZON demo command layer missing.",status_code=500,media_type="text/plain; charset=utf-8")
+ return Response(_DEMO_COMMAND_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
 
 @app.get("/about_master.png",include_in_schema=False)
 def about_master():
