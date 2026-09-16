@@ -89,6 +89,25 @@ def add_cache_buster(url: str) -> str:
     return urlunparse((p.scheme, p.netloc, p.path, p.params, urlencode(q, doseq=True), p.fragment))
 
 
+def set_layer_checkbox(page, layer_id: str, desired: bool, timeout=12.0):
+    """Use the product's real click path for controlled checkboxes, then assert state."""
+    locator = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
+
+    def state():
+        try:
+            return locator.is_checked()
+        except Exception:
+            return None
+
+    current = state()
+    if current is True and desired:
+        return
+    if current is False and not desired:
+        return
+    locator.click(force=True)
+    wait_until(lambda: state() is desired, timeout=timeout, interval=0.15)
+
+
 def main():
     assert len(EXPECTED_UI_LAYER_IDS) == 25
     assert len(EXPECTED_API_CORE_IDS) == 24
@@ -158,11 +177,9 @@ def main():
                 continue
             assert not cb.is_disabled(), f"{lid}: final canonical GIS layer must be enabled"
             page.evaluate("""id=>{const m=(typeof map!=='undefined'&&map)||window.__URBION_MAP__||null;const store=window.__URBION_LIVE_LAYERS__||{};const l=store[id];if(l&&m&&m.hasLayer(l))m.removeLayer(l);if(store[id])delete store[id];}""", lid)
-            if cb.is_checked():
-                cb.uncheck(force=True)
-                page.wait_for_timeout(180)
+            set_layer_checkbox(page, lid, False)
             page.evaluate("""id=>{const m=(typeof map!=='undefined'&&map)||window.__URBION_MAP__||null;const store=window.__URBION_LIVE_LAYERS__||{};const l=store[id];if(l&&m&&m.hasLayer(l))m.removeLayer(l);if(store[id])delete store[id];}""", lid)
-            cb.check(force=True)
+            set_layer_checkbox(page, lid, True, timeout=20.0)
             if lid == "iplan-cadastral":
                 expected_type = "ARCGIS_MAP"
                 source = "synthetic client catalogue -> official iPLAN LOT_* MapServer"
@@ -186,7 +203,7 @@ def main():
                     print(f"GIS RENDER PASS: {lid}: images={len(successful)}")
             finally:
                 if cb.count() and cb.is_checked():
-                    cb.uncheck(force=True)
+                    set_layer_checkbox(page, lid, False)
                 page.wait_for_timeout(120)
 
         if failures:
