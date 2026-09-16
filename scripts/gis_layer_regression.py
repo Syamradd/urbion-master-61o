@@ -87,15 +87,21 @@ def add_cache_buster(url: str) -> str:
 
 
 def set_layer_checkbox(page, layer_id: str, desired: bool, timeout=12.0):
+    """Exercise the same native click path used by judges/browser smoke, then verify state."""
     locator = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
     state = locator.is_checked()
     if state is desired:
         return
-    if desired:
-        locator.check(force=True)
-    else:
-        locator.uncheck(force=True)
-    wait_until(lambda: locator.is_checked() is desired, timeout=timeout, interval=0.1)
+    locator.scroll_into_view_if_needed(timeout=5000)
+    locator.click(force=True)
+    try:
+        wait_until(lambda: locator.is_checked() is desired, timeout=1.5, interval=0.1)
+        return
+    except AssertionError:
+        # Retry only when the browser click did not produce the expected native
+        # control state. This is a diagnostic-safe retry, not direct property mutation.
+        locator.evaluate("el=>el.click()")
+        wait_until(lambda: locator.is_checked() is desired, timeout=timeout, interval=0.1)
 
 
 def main():
