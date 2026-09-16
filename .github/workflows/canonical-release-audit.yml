@@ -63,7 +63,7 @@ jobs:
           URBION_BASE_URL: http://127.0.0.1:8765
         run: |
           set -o pipefail
-          python scripts/gis_upstream_preflight.py 2>&1 | tee /tmp/urbion-gis-preflight.log
+          python scripts/gis_upstream_release_gate.py 2>&1 | tee /tmp/urbion-gis-preflight.log
 
       - name: Upload GIS preflight diagnostics
         if: always()
