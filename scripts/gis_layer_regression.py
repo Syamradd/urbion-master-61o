@@ -18,7 +18,7 @@ EXPECTED_UI_LAYER_IDS = {
     "mygems-seismic", "mygems-mineral", "iplan-cadastral",
 }
 EXPECTED_API_CORE_IDS = EXPECTED_UI_LAYER_IDS - {"iplan-cadastral"}
-EXPLICIT_UPSTREAM_DEFERRED = {"iplan-rfn", "iplan-rsn", "iplan-affordable-housing"}
+EXPLICIT_UPSTREAM_DEFERRED = {"iplan-rfn", "iplan-rsn", "iplan-flood", "iplan-ksas", "iplan-affordable-housing", "iplan-coastal-erosion"}
 
 
 def wait_until(predicate, timeout=15.0, interval=0.2):
