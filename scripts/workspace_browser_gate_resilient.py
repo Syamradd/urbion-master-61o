@@ -44,7 +44,7 @@ source = source.replace(
     1,
 )
 # GetLegendGraphic and its same-origin canonical proxy are part of the
-authoritative GIS presentation path, not non-GIS application failures.
+# authoritative GIS presentation path, not non-GIS application failures.
 source = source.replace(
     '(gis_optional if "/map/wms" in request.url or "/map/arcgis" in request.url else failed).append(item)',
     '(gis_optional if "/map/wms" in request.url or "/map/arcgis" in request.url or "/map/legend" in request.url or "GetLegendGraphic" in request.url else failed).append(item)',
