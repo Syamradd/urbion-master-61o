@@ -89,6 +89,13 @@ jobs:
           URBION_BASE_URL: http://127.0.0.1:8765
         run: python scripts/about_functional_smoke.py
 
+      - name: Rendered workspace surface audit
+        if: always()
+        env:
+          PYTHONPATH: .
+          URBION_BASE_URL: http://127.0.0.1:8765
+        run: python scripts/workspace_surface_audit.py
+
       - name: Deep browser functional smoke
         if: always()
         env:
