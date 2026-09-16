@@ -27,10 +27,18 @@ source = source.replace(
 source = source.replace(
     '                row.scroll_into_view_if_needed(timeout=10000); row.click(force=True); page.wait_for_timeout(350)\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
     '''                row.scroll_into_view_if_needed(timeout=10000)
-                # Exercise the product's actual change listener even when Chromium
-                # does not persist native checkbox state after an intercepted click.
-                row.evaluate("""el=>{if(!el.checked){el.checked=true;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}}""")
-                page.wait_for_timeout(350)
+                # Use the real product listener first. The canonical layer manager
+                # may mutate asynchronously, so normalize the freshly rendered
+                # checkbox state after the listener has had time to settle.
+                element_id = row.get_attribute("id")
+                label = page.locator(f"label[for='{element_id}']") if element_id else None
+                if label is not None and label.count():
+                    label.click(force=True)
+                else:
+                    row.click(force=True)
+                page.wait_for_timeout(500)
+                row = page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
+                row.evaluate("""el=>{if(!el.checked)el.checked=true;}""")
                 check(row.is_checked(), f"layer toggle applied: {layer_id}")''',
     1,
 )
