@@ -39,23 +39,41 @@ def _fallback(packet: dict) -> str:
     review = ledger.get("review_required_items", 0)
     assessed = (site_analysis.get("score_coverage") or {}).get("assessed_dimensions")
     total = (site_analysis.get("score_coverage") or {}).get("total_dimensions")
+    readiness = packet.get("lcp_data_readiness") or {}
+    missing = readiness.get("missing_count", 0)
+    actions = readiness.get("acquisition_actions") or []
+    top_actions = "; ".join(str(x.get("action")) for x in actions[:3] if isinstance(x, dict) and x.get("action"))
     if isinstance(score, (int, float)):
         score_line = f"Site screening returns {score:.0f}% suitability ({band.lower()})."
         if isinstance(assessed, int) and isinstance(total, int):
             score_line += f" {assessed} of {total} assessment dimensions are currently evidenced; unverified dimensions are excluded."
     else:
         score_line = f"The site remains {band.lower()} on the available screening evidence."
+    lcp_line = f" LCP DATA READINESS — {missing} LCP-oriented data area(s) still need collection or verification."
+    if top_actions:
+        lcp_line += f" NEXT DATA ACTIONS — {top_actions}."
     return (
         f"FINDING — URBION HORIZON screens the proposal as {status.lower()}. "
-        f"{score_line} "
+        f"{score_line}"
+        f"{lcp_line} "
         f"EVIDENCE — the deterministic packet records {ledger.get('total_items', 0)} evidence item(s), "
         f"with {review} requiring review. "
-        f"ACTION — {rec.lower()}; verify source currency, cadastral/site conditions, applicable planning controls and agency requirements before a planning decision."
+        f"ACTION — {rec.lower()}; use the LCP data-readiness actions to collect missing project evidence, verify source currency and applicable planning controls before a planning decision."
     )
 
 
 def _prompt(packet: dict) -> str:
-    compact = {"assessment":packet.get("assessment"),"spatial":packet.get("spatial"),"knowledge":packet.get("knowledge"),"impact":packet.get("impact"),"scenario_intelligence":packet.get("scenario_intelligence"),"decision":packet.get("decision"),"evidence_ledger":packet.get("evidence_ledger"),"next_actions":packet.get("next_actions")}
+    compact = {
+        "assessment": packet.get("assessment"),
+        "spatial": packet.get("spatial"),
+        "knowledge": packet.get("knowledge"),
+        "impact": packet.get("impact"),
+        "scenario_intelligence": packet.get("scenario_intelligence"),
+        "decision": packet.get("decision"),
+        "evidence_ledger": packet.get("evidence_ledger"),
+        "lcp_data_readiness": packet.get("lcp_data_readiness"),
+        "next_actions": packet.get("next_actions"),
+    }
     payload = json.dumps(compact, ensure_ascii=False, default=str)
     if len(payload) > MAX_PROMPT_CHARS:
         payload = payload[:MAX_PROMPT_CHARS] + "\n[CONTEXT_TRUNCATED_BY_URBION]"
@@ -63,7 +81,10 @@ def _prompt(packet: dict) -> str:
             "Summarize ONLY the supplied deterministic packet. Do not invent facts, policies, "
             "measurements, sources, approvals, or confidence. Distinguish CALCULATED, SOURCE_CONTEXT, "
             "USER_PROVIDED and VERIFIED evidence. Never say a proposal is approved or compliant. "
-            "Return concise planner-facing prose with three labelled parts: FINDING, EVIDENCE, ACTION. "
+            "Return concise planner-facing prose with exactly three labelled parts: FINDING, EVIDENCE, ACTION. "
+            "In ACTION, explicitly state the most important missing or unverified LCP-oriented data areas "
+            "from lcp_data_readiness and tell the planner what source category or verification action is next. "
+            "Do not present the LCP checklist as an exhaustive legal list; preserve its disclaimer. "
             "Use precise, professional wording suitable for a town planner briefing.\n\n"
             + payload)
 
@@ -89,7 +110,6 @@ def _bound_generated_text(text: str) -> str:
     clean = text.strip()
     if len(clean) <= MAX_OUTPUT_CHARS:
         return clean
-
     matches = list(re.finditer(r"\b(FINDING|EVIDENCE|ACTION)\s*[—:-]\s*", clean, re.IGNORECASE))
     if len(matches) >= 3:
         sections: dict[str, str] = {}
@@ -107,7 +127,6 @@ def _bound_generated_text(text: str) -> str:
                 section = section[:per_section].rstrip(" ,;:") + "…"
             bounded.append(section)
         return " ".join(bounded)[:MAX_OUTPUT_CHARS].rstrip()
-
     return clean[:MAX_OUTPUT_CHARS - 1].rstrip() + "…"
 
 
@@ -121,9 +140,11 @@ def generate_planner_explanation(packet: dict, timeout: float = 12.0) -> dict:
     payload = {"contents":[{"parts":[{"text":_prompt(packet)}]}],"generationConfig":{"temperature":0.1,"maxOutputTokens":500}}
     request = Request(url,data=json.dumps(payload).encode("utf-8"),headers={"Content-Type":"application/json"},method="POST")
     try:
-        with urlopen(request, timeout=timeout) as response: body = json.loads(response.read().decode("utf-8"))
+        with urlopen(request, timeout=timeout) as response:
+            body = json.loads(response.read().decode("utf-8"))
         text = (((body.get("candidates") or [{}])[0].get("content") or {}).get("parts") or [{}])[0].get("text")
-        if not isinstance(text, str) or not text.strip(): raise ValueError("Gemini returned no text")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("Gemini returned no text")
         text = _bound_generated_text(text)
         ok, reason = _validate_generated_text(text)
         if not ok:
