@@ -96,6 +96,13 @@ def main():
         page.wait_for_timeout(1400)
         check(page.locator('script[src$="/urbion_workspace_contract_surface_v1.js"]').count()==1,"contract surface asset is loaded by production-compatible workspace")
         check(page.locator('script[src$="/urbion_workspace_demo_enrichment_v1.js"]').count()==1,"demo enrichment asset is loaded by production-compatible workspace")
+        # Asset presence is not enough: wait for the actual rendered contract surface
+        # to exist before checking its exact controls.
+        page.wait_for_function(
+            """()=>document.querySelector('#urbionImpactInputs') &&
+                [...document.querySelectorAll('#urbionImpactInputs input, #urbionImpactInputs select')].length >= 10""",
+            timeout=10000,
+        )
         for ident in ("site_area_ha","commercial_gfa_m2","jobs","population","daily_trips","road_distance_m","flood_exposure","nearby_facilities","shop_frontage_verified","shop_office_verified"):
             check(page.locator(f"#{ident}").count()==1 and page.locator(f"#{ident}").is_visible(),f"visible impact input: {ident}")
         keys=page.evaluate("""()=>{const x=window.getInputs?.()||{};return ['project','mukim','project_ref','site_area_ha','commercial_gfa_m2','jobs','population','daily_trips','road_distance_m','flood_exposure','nearby_facilities','analysis_focus','perimeter_planting','landscaped_pedestrian_walkway','shop_frontage_verified','shop_office_verified'].filter(k=>Object.prototype.hasOwnProperty.call(x,k))}""")
