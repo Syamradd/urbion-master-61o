@@ -57,7 +57,10 @@ def expand_layer_group(page, layer_id):
         if head.count():
             head.click(force=True)
             page.wait_for_timeout(120)
-    checkbox.scroll_into_view_if_needed(timeout=10000)
+    # The layer body can be inside an independently scrollable drawer. Native
+    # Playwright scrolling can report an invisible checkbox while the drawer is
+    # still settling, so use the DOM scroll primitive before the final check.
+    checkbox.evaluate("el=>el.scrollIntoView({block:'center',inline:'nearest'})")
     if not checkbox.is_visible():
         raise AssertionError("GIS layer checkbox remained hidden after expanding its group")
 
@@ -170,7 +173,6 @@ def main():
         deferred = 0
         for lid in layer_ids:
             wait_for_layer_dom(page, lid)
-            expand_layer_group(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             if lid in EXPLICIT_UPSTREAM_DEFERRED:
                 if not cb.is_disabled():
@@ -186,6 +188,7 @@ def main():
                 deferred += 1
                 print(f"GIS DEFERRED: {lid}: disabled by canonical upstream verification state")
                 continue
+            expand_layer_group(page, lid)
             assert not cb.is_disabled(), f"{lid}: final canonical GIS layer must be enabled"
             page.evaluate("""id=>{const m=(typeof map!=='undefined'&&map)||window.__URBION_MAP__||null;const store=window.__URBION_LIVE_LAYERS__||{};const l=store[id];if(l&&m&&m.hasLayer(l))m.removeLayer(l);if(store[id])delete store[id];}""", lid)
             set_layer_checkbox(page, lid, False)
