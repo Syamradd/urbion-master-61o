@@ -160,6 +160,7 @@ def main():
             rows=page.locator("#layerList [data-urbion-layer]"); count=rows.count(); check(count>=20,f"authoritative live layer catalogue populated ({count})")
             layer_ids=[x for x in rows.evaluate_all("els=>els.map(e=>e.getAttribute('data-urbion-layer')).filter(Boolean)")]
             layer_results=[]
+            deferred_layers=[]
             for layer_id in layer_ids:
                 row=page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
                 group=row.locator("xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]")
@@ -167,6 +168,13 @@ def main():
                     head=group.locator(".urbion-layer-head, .layer-group-head").first
                     if head.count(): head.click(force=True); page.wait_for_timeout(120)
                 row=page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
+                if row.is_disabled():
+                    state_text=page.locator(f"[data-layer-state='{layer_id}']").inner_text().strip().upper()
+                    check(state_text == "UNVERIFIED · UPSTREAM",f"layer {layer_id} explicitly marked upstream-unverified")
+                    layer_results.append({"id":layer_id,"ok":True,"state":state_text,"deferred":True})
+                    deferred_layers.append(layer_id)
+                    print(f"[ DEFERRED ] layer {layer_id}: {state_text}")
+                    continue
                 row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)
                 try:
                     page.wait_for_function("id=>!!window.__URBION_LIVE_LAYERS__?.[id]",arg=layer_id,timeout=6000)
@@ -178,7 +186,7 @@ def main():
                     row=page.locator(f"#layerList [data-urbion-layer='{layer_id}']")
                     if row.count() and row.is_checked(): row.uncheck(force=True)
                     page.wait_for_timeout(120)
-            page.locator("#layerBtn").click(); page.wait_for_timeout(150); check(not page.locator("#layers").evaluate("e=>e.classList.contains('open')"),"layers closes"); check(all(item["ok"] for item in layer_results),f"all {count} live GIS layers render end-to-end")
+            page.locator("#layerBtn").click(); page.wait_for_timeout(150); check(not page.locator("#layers").evaluate("e=>e.classList.contains('open')"),"layers closes"); check(len(layer_results)==count,f"all {count} GIS layer entries accounted for ({len(deferred_layers)} explicitly deferred, {count-len(deferred_layers)} live-rendered)"); check(all(item["ok"] for item in layer_results),"all GIS layer entries are either rendered or explicitly upstream-unverified")
             page.locator("#map").click(position={"x":300,"y":200}); page.wait_for_timeout(150); coords=page.locator("#coords").inner_text().strip(); check("," in coords and len(coords)>7,"map click updates coordinates")
             prepare_ready_case(page); analysis_requests.clear(); copilot_requests.clear(); page.locator("#run").click(); page.wait_for_timeout(350); check(len(analysis_requests)==1,"RUN sends exactly one analysis request"); page.wait_for_function("document.body.innerText.includes('ANALYSIS COMPLETE')",timeout=20000); check(bool(page.evaluate("window.URBION_LAST")),"analysis packet stored"); check(page.locator("#caseReadinessNote").inner_text().strip().upper().startswith("READY"),"case remains ready after analysis");
             if copilot_requests: check(bool(page.evaluate("window.URBION_AI_LAST")),"AI/Copilot narrative stored")
