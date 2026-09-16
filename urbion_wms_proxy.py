@@ -19,7 +19,7 @@ WMTS_UPSTREAMS = (
 WMTS_UPSTREAM = WMTS_UPSTREAMS[0]
 ROOT_WMS_UPSTREAMS = (
     "https://iplan.planmalaysia.gov.my/geoserver/service/wms",
-    "https://iplan.planmalaysia.gov.my/geoserver/wms",
+    "https://iplan.planmalaysia.gov/geoserver/wms",
     "https://iplan.planmalaysia.gov.my/geoserver/ows",
 )
 DIRECT_WMS_UPSTREAM = "https://iplan.planmalaysia.gov.my/geoserver/iplan/wms"
@@ -286,8 +286,9 @@ def _svg_from_arcgis_features(payload: dict, bbox: tuple[float, float, float, fl
                     parts.append(f'<path d="{d}" fill="rgba(29,224,255,0.16)" stroke="#1de0ff" stroke-width="1.2" vector-effect="non-scaling-stroke"/>')
         elif geom.get("x") is not None and geom.get("y") is not None:
             px, py = xy(geom["x"], geom["y"]); parts.append(f'<circle cx="{px:.2f}" cy="{py:.2f}" r="3" fill="#1de0ff" stroke="#06212b" stroke-width="1"/>')
-    if not parts: return None
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">' + "".join(parts) + '</svg>'
+    if not parts:
+        return f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}"></svg>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">' + "".join(parts) + '</svg>'
 
 
 async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) -> Response | None:
@@ -348,7 +349,7 @@ async def _jmg_feature_image_fallback(parsed_path: str, params: dict[str, str]) 
             features.append(feature)
     svg = _svg_from_arcgis_features({"features": features}, bbox, width, int(params.get("height", "256")))
     if not svg: return None
-    fallback_name = "JMG-FeatureServer-Split" if isinstance(primary, dict) and primary.get("exceededTransferLimit") else "JMG-FeatureServer"
+    fallback_name = "JMG-FeatureServer-Split" if isinstance(primary, dict) and primary.get("exceededTransferLimit") else ("JMG-FeatureServer-EmptyTile" if not features else "JMG-FeatureServer")
     return Response(svg.encode("utf-8"), status_code=200, media_type="image/svg+xml", headers={**_cache_headers(), "X-URBION-GIS-Fallback": fallback_name})
 
 
