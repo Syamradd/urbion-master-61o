@@ -90,7 +90,7 @@ def add_cache_buster(url: str) -> str:
 
 
 def set_layer_checkbox(page, layer_id: str, desired: bool, timeout=12.0):
-    """Use the product's real checkbox event path, with a native DOM-click fallback."""
+    """Use the product's real checkbox event path, preferring its associated label."""
     locator = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
 
     def state():
@@ -105,12 +105,16 @@ def set_layer_checkbox(page, layer_id: str, desired: bool, timeout=12.0):
     if current is False and not desired:
         return
 
-    # First try Playwright's normal user click path. If Chromium/CI does not
-    # commit the native checkbox state, fall back to the element's native DOM
-    # click. Both paths dispatch the browser's real click/change events; we do
-    # not bypass the product's checkbox handler or call the layer manager API.
-    locator.click(force=True)
+    element_id = locator.get_attribute("id")
+    label = page.locator(f"label[for='{element_id}']") if element_id else None
+    # Clicking the product's explicit <label for=...> is the same native UI
+    # activation a human gets and avoids Chromium edge cases around styled
+    # checkbox inputs. Native DOM click remains the final fallback.
     try:
+        if label is not None and label.count():
+            label.click(force=True)
+        else:
+            locator.click(force=True)
         wait_until(lambda: state() is desired, timeout=1.5, interval=0.1)
         return
     except AssertionError:
