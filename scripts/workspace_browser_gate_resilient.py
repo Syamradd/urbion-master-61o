@@ -35,6 +35,14 @@ source = source.replace(
                 row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)''',
     1,
 )
+# The CI launcher normally changes the layer interaction to locator.click().
+# On the affected Chromium/CI combination, invoke the actual DOM click path
+# so the native checkbox state transition and its change event are preserved.
+source = source.replace(
+    '                row.scroll_into_view_if_needed(timeout=10000); row.click(force=True); page.wait_for_timeout(350)\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
+    '                row.scroll_into_view_if_needed(timeout=10000); row.evaluate("(el)=>el.click()"); page.wait_for_timeout(350)\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
+    1,
+)
 # GetLegendGraphic and its same-origin canonical proxy are part of the
 # authoritative GIS presentation path, not non-GIS application failures.
 source = source.replace(
