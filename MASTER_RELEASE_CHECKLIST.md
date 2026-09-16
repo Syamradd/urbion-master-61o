@@ -1,194 +1,133 @@
-# URBION HORIZON — Master Release Checklist
+# URBION HORIZON — MASTER RELEASE + DASHBOARD REPAIR CHECKLIST
 
-Status: `CURRENT-CANDIDATE REPAIR / RELEASE LOCKED`
+Status: `DASHBOARD REPAIR INTEGRATED / FRESH VALIDATION REQUIRED`
 
-This is the single release-control checklist for the current canonical release. The only active release branch is `feature/canonical-workspace-v2`. Historical, parallel, temporary, forensic and legacy branches are retained as reference only and must not be deployed over the canonical release.
+Canonical branch: `feature/canonical-workspace-v2`
+Canonical app: `landing_server:app`
+Canonical workspace: `/workspace` → `workspace_v5.html`
+Render target: `urbion-horizon-workspace-v4` (`srv-dahm749594qs73fk2tag`)
+Render auto-deploy: OFF
 
-## 1. Canonical architecture
+## 1. Non-negotiable architecture
 
-- [x] One active release branch: `feature/canonical-workspace-v2`
-- [x] One production architecture: V5 Planning Workspace
-- [x] One planning engine contract: `PHASE-E.8`
-- [x] One evidence contract: `PHASE1.2`
-- [x] One browser/API error contract: `URBION_ERROR_V1`
-- [x] One canonical application entrypoint: `landing_server:app`
-- [x] Existing Render launcher is a compatibility shim only: `workspace_v4_server:app → landing_server:app`
-- [x] One canonical workspace route: `/workspace`
-- [x] Deterministic planning/scoring engine preserved; no parallel planning/scoring engine introduced
-- [x] Statutory boundary preserved: `NOT_CLAIMED`
-- [x] Decision authority preserved: `NONE`
+- [x] Single canonical V5 Planning Workspace.
+- [x] Single deterministic planning engine contract: `PHASE-E.8`.
+- [x] Single evidence contract: `PHASE1.2`.
+- [x] Single browser/API error contract: `URBION_ERROR_V1`.
+- [x] No second planning/scoring engine introduced.
+- [x] `workspace_v4_server.py` remains a compatibility launcher only.
+- [x] Statutory verification remains `NOT_CLAIMED`.
+- [x] Decision authority remains `NONE`.
+- [x] GIS source context is not represented as statutory verification.
 
-## 2. Functional / evidence capability
+## 2. Laptop-night repair requirements recovered from the missing chat
 
-- [x] Site assessment and planning taxonomy
-- [x] TOD 400 m / 800 m logic
-- [x] Rule applicability/compliance and provenance
-- [x] KPI evidence-state presentation
-- [x] Canonical evidence packet propagation
-- [x] What-If scenario flow
-- [x] Decision Center + planner handoff
-- [x] Bounded Copilot / agent convergence
-- [x] Road Intelligence evidence attachment
-- [x] Mobility / station source-context integrations
-- [x] JPS station adapter preserved
-- [x] MyGEMS lithology adapter preserved
-- [x] MyEQMS/APIMS adapter preserved
-- [x] GIS 25-layer runtime contract
-- [x] KM / OSC readiness path
-- [x] Output / decision-story path
-- [x] BM / EN and theme controls
-- [x] Existing Welcome page preserved
-- [x] Canonical About Us page preserved
+### A — Explain URBION before asking the viewer to interact
 
-## 3. Deep repair pass — recovered from the laptop-night branch history
+- [x] Dashboard now has an explicit URBION introduction layer.
+- [x] Introduction explains what URBION is.
+- [x] Introduction explains the core objective: connect fragmented planning inputs into an evidence-aware, traceable workflow.
+- [x] Introduction exposes the main capabilities: GIS, site analysis, planning rules/policy, development impact, AI-assisted narrative, What-If and Decision Center.
+- [x] Introduction explains the output: explainable findings, evidence trace, review gaps and planner handoff.
+- [x] Statutory boundary is visible in the introduction.
 
-### Analysis / data contract
+### B — Connect the dashboard into one planning story
 
-- [x] Legacy `Yes/No` perimeter-planting and pedestrian-walkway values no longer hard-fail canonical assessment; unknown values remain unverified rather than fabricated.
-- [x] Workstation development inputs are propagated into the canonical proposal/evidence packet.
-- [x] GFA + plot ratio can produce a transparent calculated site-area input when explicit site area is absent.
-- [x] Development Impact reads explicit units/GFA/jobs/population/trips/road/flood/facility inputs and preserves `REVIEW_REQUIRED` where evidence is missing.
-- [x] Development Impact UI is registered in the canonical workspace and now served by the production compatibility wrapper without importing the FastAPI app into the computational engine.
-- [ ] Fresh end-to-end browser proof that `RUN SITE ANALYSIS` completes on the canonical case.
+- [x] Visible workflow: `SITE → SPATIAL → EVIDENCE → ASSESS → WHAT-IF → DECIDE`.
+- [x] One-click entry points for Site Analysis, Evidence, What-If and Decision Center.
+- [x] Existing canonical owners/functions are reused rather than duplicated.
+- [x] Existing GIS map remains the spatial evidence surface.
+- [x] Existing canonical evidence packet remains the source of truth after analysis.
+- [x] Existing Decision Center remains the decision-support endpoint.
+- [x] Existing Output / planner handoff remains preserved.
 
-### GIS / map rendering
+### C — Make the dashboard visibly substantive
 
-- [x] i-Plan WMS rendering uses the same-origin `/map/wms` proxy.
-- [x] Critical Melaka Current Land Use is routed to the proven i-Plan ArcGIS service `GTsemasa_04/MapServer` for deterministic imagery.
-- [x] Critical Melaka Zoning is routed to the proven i-Plan ArcGIS service `GTzoning_04/MapServer` for deterministic imagery.
-- [x] ArcGIS imagery uses the same-origin `/map/arcgis` proxy.
-- [x] Decorative map veil is forced below Leaflet imagery so overlay visibility is not visually masked by the workspace chrome.
-- [x] GIS layer controls are reclaimed exactly once after the canonical catalogue renders; stale checkbox handlers are removed by cloning before binding.
-- [x] Per-layer opacity sliders added to the visible GIS controls.
-- [x] GIS layer states remain explicit: loading / rendered / source-connected / error.
-- [x] Critical Current Land Use + Zoning can be auto-enabled for the initial planning view.
-- [x] JMG Major Fault rendering has an authoritative MapServer + FeatureServer fallback path and bounded upstream timeouts.
-- [ ] Fresh browser proof for each required 25-layer toggle + actual map imagery.
-- [ ] Fresh GIS end-to-end audit of layer render success/failure states.
+- [x] Canonical live/demo case context is shown without fabricating evidence.
+- [x] Deterministic demo scenario catalogue is surfaced from `/demo-scenarios`.
+- [x] Existing Development Impact surface remains connected to the canonical packet.
+- [x] Existing Decision Story / Live Evidence Story / Review Gaps owners remain active.
+- [x] GIS layer catalogue and layer states remain visible.
+- [x] Road Intelligence remains connected to live source context where available.
+- [x] Evidence states remain explicit: `USER_PROVIDED`, `CALCULATED`, `SOURCE_CONTEXT`, `VERIFIED`, `UNVERIFIED`.
 
-### Road / transport intelligence
+## 3. Existing deep repair work — preserved
 
-- [x] Road Intelligence uses live OSM/Overpass source context without claiming Malaysian statutory hierarchy.
-- [x] Multiple Overpass endpoints are attempted before reporting source unavailability.
-- [x] Road results retain centroid coordinates so the UI can visualise nearby road context on the map.
-- [x] Road hierarchy levels are presented explicitly in the Road Access drawer.
-- [x] Road Access UI refreshes from the current site coordinates and can attach the result to the canonical evidence packet when analysis has run.
-- [ ] Fresh browser proof of Road Access open → query → hierarchy result → map context.
+- [x] Legacy Yes/No planning inputs no longer hard-fail assessment.
+- [x] Workstation development inputs propagate into canonical proposal/evidence data.
+- [x] GFA + plot ratio transparent site-area calculation path preserved.
+- [x] Development Impact explicit-input/review-required boundary preserved.
+- [x] i-Plan WMS same-origin proxy preserved.
+- [x] Critical Melaka Current Land Use / Zoning ArcGIS routing preserved.
+- [x] ArcGIS same-origin proxy preserved.
+- [x] Leaflet imagery z-order hardening preserved.
+- [x] GIS layer controls + opacity + explicit loading/render/error states preserved.
+- [x] JMG Major Fault MapServer + FeatureServer fallback preserved.
+- [x] Road Intelligence Overpass fallback and map-coordinate context preserved.
+- [x] KM / OSC readiness path preserved.
+- [x] Bounded Copilot narrative preserved.
+- [x] Canonical About visual master serving repaired.
+- [x] Development Impact UI asset serving repaired without reintroducing the app import cycle.
 
-### Visual / right rail
+## 4. Current dashboard repair implementation
 
-- [x] Development Impact compact visual surface.
-- [x] Decision Story / Live Evidence Story / Review Gaps presentation owners retained.
-- [x] Right rail spacing compacted for usable single-screen scanning.
-- [x] Map controls retain Map / Satellite / Hybrid / Layers.
-- [x] Canonical About raster master is served by production and remains the immutable visual source.
-- [ ] Fresh visual regression after the complete repair pass.
+- [x] Added `urbion_workspace_demo_command_layer.js` as a presentation-only layer.
+- [x] Added explicit URBION intro/objective/capability/output cards.
+- [x] Added connected six-stage workflow framing.
+- [x] Added one-click Analysis / Evidence / What-If / Decision entry points.
+- [x] Added deterministic demo-scenario visibility using the existing `/demo-scenarios` endpoint.
+- [x] Added live demo-case context for Lot 11213 / Padang Semabok / Melaka without inventing missing evidence.
+- [x] Served and injected the new layer through the existing `workspace_v4_server.py` compatibility path.
+- [x] No new FastAPI application introduced.
+- [x] No duplicate planning engine introduced.
+- [x] No fake GIS data introduced.
 
-## 4. Duplicate / overlap audit
+## 5. Current GIS / release truth
 
-### Code/runtime
+- [x] Previous browser regression isolated the remaining strict GIS failure to `mygems-faults`; other browser/dashboard stages passed.
+- [x] JMG Major Fault repair was integrated before the current About/dashboard work.
+- [ ] Fresh 25-layer GIS audit must prove actual map imagery/states.
+- [ ] Fresh i-Plan upstream preflight evidence required.
+- [ ] Fresh Road Intelligence browser proof required.
+- [ ] Fresh browser proof that `RUN SITE ANALYSIS` completes and populates the dashboard packet.
+- [ ] Fresh browser proof that Analysis → Evidence → What-If → Decision flow is connected.
+- [ ] Fresh visual regression of the repaired dashboard.
 
-- [x] `landing_server.py` is the canonical public production wrapper.
-- [x] `championship_server.py` is the shared FastAPI application base, not a second planning engine.
-- [x] `workspace_v2_server.py` is historical/preview-only.
-- [x] `workspace_v4_server.py` is a compatibility launcher only.
-- [x] New GIS visual hardening runs inside the existing workspace runtime compatibility path; no second planning engine is introduced.
-- [x] Historical frontends remain isolated from `/workspace`.
-- [x] Development Impact computation no longer imports `server.app`, removing the app import cycle; the UI asset is exposed only by the canonical compatibility wrapper.
+## 6. About / presentation surface
 
-### Render
+- [x] Canonical `urbion_horizon_about.html` preserved.
+- [x] Canonical `about_master.png` preserved as immutable visual source.
+- [x] Production `/about_master.png` route added.
+- [x] Render deployment containing the About route reached `LIVE`.
+- [ ] User live smoke should confirm the full canonical About visual and hitboxes.
 
-- [x] Selected canonical deployment target: `urbion-horizon-workspace-v4`
-- [x] Selected Render branch: `feature/canonical-workspace-v2`
-- [x] Auto deploy remains OFF so Git ref movement cannot silently replace LIVE
-- [x] Legacy Render surfaces are untouched
-- [x] No new Render service is required
+## 7. Render truth
 
-## 5. Selected Render target contract
+- [x] Existing service retained; no new service created.
+- [x] Branch is `feature/canonical-workspace-v2`.
+- [x] Start command remains `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`.
+- [x] Latest confirmed About deployment: `dep-dakna8p594qs73f4fj8g` → `LIVE`.
+- [ ] Dashboard repair candidate must be deployed only after fresh required checks are accepted.
+- [ ] Controlled live smoke must verify the exact deployed SHA.
 
-Target service: `urbion-horizon-workspace-v4` (`srv-dahm749594qs73fk2tag`)
+## 8. Final certification gate
 
-- runtime: `python`
-- region: `singapore`
-- plan: `free`
-- build: `pip install -r requirements.txt`
-- branch: `feature/canonical-workspace-v2`
-- start: `uvicorn workspace_v4_server:app --host 0.0.0.0 --port $PORT`
-- auto deploy: `off`
+All items below must be true before the release is called green:
 
-## 6. Laptop-night recovery trace (15 September 2026)
+- [ ] Fresh CI required gates PASS.
+- [ ] Full workspace functional audit PASS.
+- [ ] 25-layer GIS end-to-end audit PASS or explicitly records authoritative upstream limitations without false success.
+- [ ] Dashboard narrative / objective / capability layer PASS.
+- [ ] Analysis → Evidence → What-If → Decision workflow PASS.
+- [ ] Development Impact / Road Intelligence / KM-OSC surfaces PASS.
+- [ ] About visual live smoke PASS.
+- [ ] No duplicate frontend/engine owner introduced.
+- [ ] Exact Render SHA matches final release SHA.
+- [ ] Final release SHA locked.
+- [ ] Final release identity/tag recorded.
 
-The branch history preserves the requested repair sequence from the laptop session. The recovered work, in order, was:
+## Release rule
 
-1. `01db...` — `fix(workspace): tolerate legacy Yes No analysis inputs`
-2. `dfeb...` — `fix(workspace): normalize legacy boolean analysis inputs`
-3. `995...` — `fix(ui): compact development impact panel`
-4. `c718...` — `fix(analysis): enrich canonical assessment inputs for impact and evidence`
-5. `20d1...` — `fix(ui): compact development impact presentation`
-6. `cf239...` — `fix(workspace): harden defaults and critical map visibility`
-7. `c3bfe390...` — `fix(gis): harden critical i-Plan land use proxy fallback`
-8. `073...` — `fix(workspace): stabilize canonical defaults after taxonomy boot`
-9. `700...` — `fix(analysis): expose canonical spatial context to evidence packet`
-10. `5eb...` — `fix(workspace): harden map layers and road intelligence UI`
-11. `f413...` — `fix(workspace): bootstrap GIS visual hardening layer`
-12. `c420...` — `fix(road): harden live hierarchy source and retain map coordinates`
-13. `68ab...` — `docs(release): record deep pre-render hardening pass`
-14. `e5d60...` — `fix(workspace): serve bundled GIS visual hardening asset`
-15. `fbf408...` — `fix(workspace): load bundled GIS hardening locally`
-16. `ca55...` — `fix(workspace): harden canonical runtime presentation fallbacks`
-17. `67d07...` — `fix(road): resolve canonical site coordinates in road UI`
-18. `bfb596...` — `fix(road): expose canonical road action to runtime`
-19. `f9897741...` — `fix(workspace): preserve canonical road action after hardening load`
-20. `c997c7d...` — `fix(impact): register canonical development impact UI asset`
-21. `fa62fa5...` — `fix(road): bound Overpass discovery latency and preserve live context`
-22. `b25e01c...` — `fix(impact): remove app import cycle from planning engine`
+`DO NOT CLAIM GREEN WITHOUT ACTUAL GREEN EVIDENCE.`
 
-Immediately after the laptop-night sequence, the About production asset repair was committed as `d29eb491...` (`fix(about): serve canonical About visual master`). The current-day recovery then added `78ce14c...` (`fix(ui): serve canonical development impact asset from production wrapper`) so the `b25e01...` import-cycle repair did not strand the canonical Development Impact UI asset.
-
-## 7. Current candidate / CI truth
-
-- [x] Current branch head is `78ce14c32780c4f9fe4588b48b74cd5ea87a80ef`.
-- [x] Workspace Source Gate for current head: PASS (`35047772743`).
-- [ ] Workspace Browser Gate for current head is still running (`35047772810`).
-- [ ] Canonical Release Audit for current head is still running (`35047772883`).
-- [x] Previous Browser Gate failure was isolated to `mygems-faults` in the strict 25-layer regression; other browser/dashboard stages passed.
-- [x] Previous Canonical Release Audit completed its runtime topology / About / deep-browser stages; release remained blocked by GIS end-to-end/preflight evidence.
-- [ ] Fresh current-head GIS proof is still required; do not mark green until the live regression proves the actual layer state.
-
-## 8. Known non-blocking product gaps
-
-These remain deliberately outside certification scope:
-
-- 3D massing / buildable envelope
-- persistent baseline vs alternatives comparison surface
-- deeper existing-conditions metrics
-- richer chart language / visual analytics
-- stakeholder collaboration / saved scenarios
-- advanced environmental simulation
-- enterprise GIS/BIM connectors
-
-## 9. Final certification sequence
-
-- [x] Preserve pre-convergence canonical snapshot
-- [x] Keep `feature/canonical-workspace-v2` as the sole active release branch
-- [x] Reconcile release documentation to canonical branch
-- [x] Integrate WMS proxy + GIS render truth repair
-- [x] Integrate browser/GIS audit into canonical release workflow
-- [x] Complete deep repair pass across analysis, GIS, road and visual surfaces
-- [x] Recover and record the laptop-night repair sequence
-- [x] Repair About visual asset serving in production
-- [x] Repair Development Impact UI asset serving in production without reintroducing the app import cycle
-- [ ] Fresh required CI on final candidate
-- [ ] Fresh full functional workspace audit
-- [ ] Fresh 25-layer GIS end-to-end audit
-- [ ] Fresh Road Intelligence browser proof
-- [ ] Fresh visual regression
-- [ ] Controlled live smoke on the exact final deployed SHA
-- [ ] Final release SHA lock
-- [ ] Final release identity/tag
-
-## Release gate
-
-`RENDER = LOCKED`
-
-The application is not declared production-ready until fresh current-head gates prove the complete repaired canonical workspace and controlled live smoke proves the exact deployed SHA. The currently LIVE Render revision remains the earlier About-repair deployment (`d29eb491...`) until a final candidate is deliberately deployed and verified.
+The dashboard repair is now integrated in Git. The remaining work is validation, deployment of the repaired candidate, and controlled live proof — not a restart or architecture rewrite.
