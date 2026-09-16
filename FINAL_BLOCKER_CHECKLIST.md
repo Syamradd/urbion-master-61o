@@ -37,6 +37,7 @@
 - [x] Layer drawer owns the live 25-layer catalogue
 - [x] Layer state transitions are truthful (`OFF`, `LOADING`, `ON · RENDERED`, `ERROR`)
 - [x] About route guard works
+- [x] Welcome page and About Us visual surfaces intentionally frozen; no logo/background changes in final hardening
 - [x] Core browser contract/evidence suite has passed on prior clean validation
 - [ ] Deep browser functional smoke passes on current post-repair HEAD
 - [ ] 25-layer GIS browser regression passes on current post-repair HEAD
@@ -58,9 +59,10 @@
 - [x] No weakened assertions solely to obtain green CI
 
 ## 8. Current Worklist
-- P0 — Validate current HEAD end-to-end through the real release/browser gates.
-- P1 — If GIS still fails, use exact layer/route evidence; do not add speculative endpoints.
-- P2 — Reduce validation wall-time only through bounded concurrency/event-driven waits; preserve strict render assertions.
+- P0 — Revalidate current HEAD end-to-end through the real release/browser gates after GIS opacity persistence repair.
+- P1 — If GIS still fails, identify exact layer/route evidence; repair only the verified source/runtime defect, never add speculative endpoints.
+- P1 — Exercise re-analysis stale-state paths for AI, LCP, Decision Story, What-If and live station markers.
+- P2 — Preserve strict GIS render assertions; improve only bounded synchronization/event-driven waits when a race is proven.
 - P3 — Close only when strict 14-layer preflight, strict 25/25 render, browser gate, and release audit are all green on the same HEAD.
 
-<!-- Current validation trigger: human-authored checklist refresh after authoritative GIS repair -->
+<!-- Welcome/About intentionally frozen. Current validation trigger: final-head GIS + stale-state hardening -->
