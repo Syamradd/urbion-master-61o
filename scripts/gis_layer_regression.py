@@ -18,11 +18,6 @@ EXPECTED_UI_LAYER_IDS = {
     "mygems-seismic", "mygems-mineral", "iplan-cadastral",
 }
 EXPECTED_API_CORE_IDS = EXPECTED_UI_LAYER_IDS - {"iplan-cadastral"}
-DEFERRED_UI_LAYER_IDS = {
-    "iplan-committed": "iplan:gunatanah_komited_04",
-    "iplan-rsn": "iplan:rsn",
-    "iplan-affordable-housing": "iplan:rumah_mampu_milik",
-}
 
 
 def wait_until(predicate, timeout=15.0, interval=0.2):
@@ -71,9 +66,11 @@ def response_layer_id(url: str, catalog_by_id: dict[str, dict]) -> str | None:
     query = parse_qs(parsed.query)
     if "/map/wms" in parsed.path:
         layer = unquote(query.get("layers", [""])[0])
-        for lid, item in catalog_by_id.items():
-            if item.get("type") == "GEOSERVER_WMS" and item.get("layers") == layer:
-                return lid
+        if layer:
+            for lid, item in catalog_by_id.items():
+                if item.get("type") == "GEOSERVER_WMS" and item.get("layers") == layer:
+                    return lid
+            return next((lid for lid, item in catalog_by_id.items() if item.get("layers") == layer), None)
     if "/map/arcgis" in parsed.path:
         service = unquote(query.get("service", [""])[0]).rstrip("/")
         if service.startswith("https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/LOT_"):
@@ -124,26 +121,11 @@ def main():
 
         layer_ids = [x for x in page.locator("#layerList [data-urbion-layer]").evaluate_all("els => els.map(e => e.getAttribute('data-urbion-layer')).filter(Boolean)") if x]
         verified = 0
-        deferred = 0
         for lid in layer_ids:
             wait_for_layer_dom(page, lid)
-            if lid in DEFERRED_UI_LAYER_IDS:
-                cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
-                st = page.locator(f"#layerList [data-layer-state='{lid}']")
-                assert cb.is_disabled(), f"{lid}: deferred layer checkbox must be disabled"
-                assert st.inner_text().strip().upper() == "UNVERIFIED · UPSTREAM", f"{lid}: expected explicit upstream state"
-                assert st.get_attribute("data-state") == "unverified", f"{lid}: expected unverified state marker"
-                before = set(responses_by_layer.keys())
-                page.dispatch_event(f"#layerList input[data-urbion-layer='{lid}']", "change")
-                page.wait_for_timeout(300)
-                assert cb.is_checked() is False, f"{lid}: deferred checkbox became checked"
-                assert st.inner_text().strip().upper() == "UNVERIFIED · UPSTREAM", f"{lid}: deferred state changed after change event"
-                assert set(responses_by_layer.keys()) == before, f"{lid}: deferred change generated GIS request"
-                print(f"GIS DEFERRED PASS: {lid} -> {DEFERRED_UI_LAYER_IDS[lid]}")
-                deferred += 1
-                continue
             expand_layer_group(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
+            assert not cb.is_disabled(), f"{lid}: final canonical GIS layer must be enabled"
             cb.check(force=True)
             if lid == "iplan-cadastral":
                 expected_type = "ARCGIS_MAP"
@@ -167,11 +149,10 @@ def main():
                     cb.uncheck(force=True)
                 page.wait_for_timeout(120)
 
-        assert deferred == len(DEFERRED_UI_LAYER_IDS), f"expected {len(DEFERRED_UI_LAYER_IDS)} deferred layers, got {deferred}"
         if failures:
             raise AssertionError("Verified GIS render failures:\n" + "\n".join(failures))
         browser.close()
-    print(f"GIS 25-layer end-to-end regression: PASS · verified={verified} deferred={deferred}")
+    print(f"GIS 25-layer end-to-end regression: PASS · verified={verified}")
 
 
 if __name__ == "__main__":
