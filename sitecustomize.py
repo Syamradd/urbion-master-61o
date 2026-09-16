@@ -36,23 +36,24 @@ try:
 
     async def _get_with_authoritative_retry(self, url, *args, **kwargs):
         response = None
+        error = None
         try:
             response = await _original_get(self, url, *args, **kwargs)
-        except (httpx.HTTPError, asyncio.TimeoutError):
-            response = None
+        except (httpx.HTTPError, asyncio.TimeoutError) as exc:
+            error = exc
 
         parsed_url = str(url)
         params = kwargs.get("params")
         layer = None
         if isinstance(params, dict):
             layer = str(params.get("layers") or "")
-        should_retry = (
-            _GIS_GWC_PATH in parsed_url
-            and layer in _GIS_DIRECT_RETRY_LAYERS
-        )
+        should_retry = _GIS_GWC_PATH in parsed_url and layer in _GIS_DIRECT_RETRY_LAYERS
+
         if not should_retry:
             if response is not None:
                 return response
+            if error is not None:
+                raise error
             raise httpx.ConnectError("GIS upstream request failed")
 
         if response is not None and response.status_code < 500:
@@ -65,6 +66,7 @@ try:
         direct_params.setdefault("version", "1.1.1")
         direct_params.setdefault("request", "GetMap")
         direct_params.setdefault("service", "WMS")
+        direct = None
         try:
             direct = await _original_request(self, "GET", _GIS_DIRECT_WMS, params=direct_params)
         except (httpx.HTTPError, asyncio.TimeoutError):
@@ -74,6 +76,8 @@ try:
             return direct
         if response is not None:
             return response
+        if error is not None:
+            raise error
         raise httpx.ConnectError("GIS GWC and direct WMS upstreams failed")
 
     if not getattr(httpx.AsyncClient.get, "__urbion_authoritative_retry__", False):
@@ -132,7 +136,7 @@ try:
                 body = body.replace('</body>', '<script src="/urbion_horizon_visual_overhaul.js"></script></body>', 1)
             if 'urbion_championship_visual_system_v2.js' not in body and '</body>' in body:
                 body = body.replace('</body>', '<script src="/urbion_championship_visual_system_v2.js"></script></body>', 1)
-        return HTMLResponse(body, media_type='text/html; charset=utf-8', headers={'Cache-Control': 'no-store', 'max-age': '0'})
+        return HTMLResponse(body, media_type='text/html; charset=utf-8', headers={'Cache-Control': 'no-store, max-age=0'})
 
     def _asset(asset: str):
         filename = asset + '.js'
@@ -141,7 +145,7 @@ try:
         target = (_BASE / filename).resolve()
         if target.parent != _BASE or not target.is_file():
             raise HTTPException(status_code=404, detail='Frontend asset not found')
-        return FileResponse(target, media_type='application/javascript', headers={'Cache-Control': 'no-store', 'max-age': '0'})
+        return FileResponse(target, media_type='application/javascript', headers={'Cache-Control': 'no-store, max-age=0'})
 
     def _init_with_assets(self, *args, **kwargs):
         _original_init(self, *args, **kwargs)
