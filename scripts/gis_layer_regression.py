@@ -126,8 +126,17 @@ def main():
             expand_layer_group(page, lid)
             cb = page.locator(f"#layerList input[data-urbion-layer='{lid}']")
             assert not cb.is_disabled(), f"{lid}: final canonical GIS layer must be enabled"
-            # Force a fresh render after the response listener is attached. This matters for
-            # auto-enabled/default layers such as Current Land Use and keeps capture deterministic.
+            # The Current Land Use thematic guard may mount a layer without
+            # checking its UI box. Remove any pre-existing live instance before
+            # the strict listener-backed capture so every layer gets a fresh
+            # network render event.
+            page.evaluate("""id=>{
+                const m=(typeof map!=='undefined'&&map)||window.__URBION_MAP__||null;
+                const store=window.__URBION_LIVE_LAYERS__||{};
+                const l=store[id];
+                if(l&&m&&m.hasLayer(l))m.removeLayer(l);
+                if(store[id])delete store[id];
+            }""", lid)
             if cb.is_checked():
                 cb.uncheck(force=True)
                 page.wait_for_timeout(180)
