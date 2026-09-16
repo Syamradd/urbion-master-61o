@@ -5,16 +5,14 @@ actual application is the single canonical public wrapper in ``landing_server``.
 This module intentionally contains no second FastAPI app, planning engine, or
 frontend owner. It exposes the canonical About raster asset, the canonical
 Development Impact UI asset, the narrative/demo workspace layer, normalizes
-legacy UI payloads, routes critical Melaka i-Plan map requests to the proven
-ArcGIS service, serves the bundled release-hardening asset used by the same
+legacy UI payloads, serves the bundled release-hardening asset used by the same
 V5 workspace, and reconnects visible planning inputs to the canonical evidence
 packet at the presentation boundary.
 """
 import json
 from pathlib import Path
-from urllib.parse import urlencode
 from fastapi import Request
-from fastapi.responses import FileResponse, RedirectResponse, Response, JSONResponse
+from fastapi.responses import FileResponse, Response, JSONResponse
 from landing_server import app, _development_impact, _canonical_packet
 
 _BASE_DIR=Path(__file__).resolve().parent
@@ -25,10 +23,6 @@ _DEMO_COMMAND_ASSET=_BASE_DIR/"urbion_workspace_demo_command_layer.js"
 _CONTRACT_SURFACE_ASSET=_BASE_DIR/"urbion_workspace_contract_surface_v1.js"
 _DEMO_ENRICHMENT_ASSET=_BASE_DIR/"urbion_workspace_demo_enrichment_v1.js"
 _LEGACY_BOOLEAN_FIELDS={"perimeter_planting","landscaped_pedestrian_walkway"}
-_CRITICAL_IPLAN_ARCGIS={
- "iplan:gunatanah_semasa_04":"https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTsemasa_04/MapServer",
- "iplan:gunatanah_zoning_04":"https://scharms.planmalaysia.gov.my/arcgis/rest/services/iPLAN/GTzoning_04/MapServer",
-}
 
 VISIBLE_CONTRACT_FIELDS=(
  "project","project_ref","mukim","landuse1","landuse2","landuse3",
@@ -103,6 +97,8 @@ async def _read_response_body(response:Response)->bytes:
  async for chunk in response.body_iterator:chunks.append(chunk)
  return b"".join(chunks)
 
+STATIC_IMPACT_SURFACE=b'''<section id="urbionImpactInputs" class="sec"><div class="sechead"><span class="num">04A</span><button type="button">IMPACT &amp; TECHNICAL INPUTS</button><span class="tag">OPTIONAL · EVIDENCE-AWARE</span></div><div class="body"><div class="g2"><div class="row"><label class="lab">SITE AREA (ha)</label><input id="site_area_ha" class="field" type="number" min="0" step="0.001" placeholder="e.g. 1.145"></div><div class="row"><label class="lab">COMMERCIAL GFA (m²)</label><input id="commercial_gfa_m2" class="field" type="number" min="0" step="1" placeholder="e.g. 12000"></div></div><div class="g2"><div class="row"><label class="lab">JOBS</label><input id="jobs" class="field" type="number" min="0" step="1" placeholder="Estimated jobs"></div><div class="row"><label class="lab">POPULATION / USERS</label><input id="population" class="field" type="number" min="0" step="1" placeholder="Estimated population/users"></div></div><div class="g2"><div class="row"><label class="lab">DAILY TRIPS</label><input id="daily_trips" class="field" type="number" min="0" step="1" placeholder="Estimated daily trips"></div><div class="row"><label class="lab">ROAD DISTANCE (m)</label><input id="road_distance_m" class="field" type="number" min="0" step="1" placeholder="Source-backed distance"></div></div><div class="row"><label class="lab">FLOOD / RISK EXPOSURE</label><select id="flood_exposure" class="select"><option value="">Not specified</option><option value="None identified">None identified</option><option value="Low">Low</option><option value="Moderate">Moderate</option><option value="High">High</option><option value="Requires official verification">Requires official verification</option></select></div><div class="row"><label class="lab">NEARBY FACILITIES</label><input id="nearby_facilities" class="field" placeholder="e.g. school, hospital, transit, utility"></div><div class="g2"><label class="checkitem"><input id="shop_frontage_verified" type="checkbox"> Shop frontage verified</label><label class="checkitem"><input id="shop_office_verified" type="checkbox"> Shop-office control verified</label></div><div class="hint">These fields are carried into the canonical evidence packet when supplied. Missing values remain review-required; no value is inferred as verified.</div></div></section>'''
+
 @app.middleware("http")
 async def _urbion_v4_compatibility(request:Request,call_next):
  raw_contract_payload=None
@@ -113,11 +109,6 @@ async def _urbion_v4_compatibility(request:Request,call_next):
     payload=json.loads(raw.decode("utf-8"));raw_contract_payload=payload;normalised=_normalise_legacy_inputs(payload)
     if normalised!=payload:request._body=json.dumps(normalised,separators=(",",":")).encode("utf-8")
    except (UnicodeDecodeError,json.JSONDecodeError):pass
- if request.method=="GET" and request.url.path=="/map/wms":
-  layer=request.query_params.get("layers","");service=_CRITICAL_IPLAN_ARCGIS.get(layer)
-  if service:
-   params={k:v for k,v in request.query_params.multi_items()};params.pop("layers",None);params["service"]=service;params.setdefault("f","image");params.setdefault("format","png32");params.setdefault("transparent","true");params["layers"]="show:0"
-   return RedirectResponse(url="/map/arcgis?"+urlencode(params),status_code=307)
  response=await call_next(request)
  if request.method=="POST" and request.url.path=="/workstation/analysis" and raw_contract_payload is not None:
   try:
@@ -132,6 +123,9 @@ async def _urbion_v4_compatibility(request:Request,call_next):
  if request.method=="GET" and request.url.path=="/workspace" and (_HARDENING_ASSET.is_file() or _DEMO_COMMAND_ASSET.is_file() or _CONTRACT_SURFACE_ASSET.is_file() or _DEMO_ENRICHMENT_ASSET.is_file()):
   try:
    body=await _read_response_body(response)
+   if b'id="urbionImpactInputs"' not in body and b'<div class="leftscroll">' in body:
+    marker=b'</div></aside>'
+    if marker in body: body=body.replace(marker,STATIC_IMPACT_SURFACE+marker,1)
    scripts=b''
    if _HARDENING_ASSET.is_file() and b"urbion_workspace_release_hardening_v6.js" not in body:
     scripts+=b'<script src="/urbion_workspace_release_hardening_v6.js"></script>'
@@ -155,7 +149,7 @@ def release_hardening_asset():
 
 @app.get("/urbion_workspace_development_impact_owner_v4.js",include_in_schema=False)
 def development_impact_ui_asset():
- if not _DEVELOPMENT_IMPACT_ASSET.is_file():return Response("URBION HORIZON development impact UI asset missing.",status_code=500,media_type="text/plain; charset=utf-8")
+ if not _DEVELOPMENT_IMPACT_ASSET.is_file():return Response("URBION HORIZON development impact UI asset missing.",status_code=500,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
  return Response(_DEVELOPMENT_IMPACT_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
 
 @app.get("/urbion_workspace_demo_command_layer.js",include_in_schema=False)
