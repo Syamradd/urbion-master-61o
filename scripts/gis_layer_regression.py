@@ -217,9 +217,10 @@ def main():
                 except AssertionError:
                     if lid == "iplan-cadastral":
                         state_now = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip()
+                        image_sources = page.locator("#map img.leaflet-tile").evaluate_all("els=>els.map(e=>e.src).filter(s=>s.includes('/map/arcgis')).slice(-20)")
                         print(f"GIS CADASTRAL DIAG: state={state_now}; mapped_responses={responses_by_layer[lid]}")
                         print(f"GIS CADASTRAL ARC-GIS RESPONSES: {all_arcgis_responses}")
-                        print(f"GIS CADASTRAL IMAGE SOURCES: {page.locator('#map img.leaflet-tile').evaluate_all(\"els=>els.map(e=>e.src).filter(s=>s.includes('/map/arcgis')).slice(-20)\")}")
+                        print(f"GIS CADASTRAL IMAGE SOURCES: {image_sources}")
                     raise
                 state_text = page.locator(f"#layerList [data-layer-state='{lid}']").inner_text().strip().upper()
                 successful = [r for r in responses_by_layer[lid] if r["status"] == 200 and r["content_type"].lower().startswith("image/")]
