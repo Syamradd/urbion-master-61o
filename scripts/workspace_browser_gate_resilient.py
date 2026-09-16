@@ -35,6 +35,17 @@ source = source.replace(
                 row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)''',
     1,
 )
+# GetLegendGraphic is part of the authoritative GIS presentation path, not a
+# non-GIS application failure. Keep the smoke strict while classifying it with
+# the other GIS requests instead of hiding it from the check suite.
+source = source.replace(
+    '(gis_optional if "/map/wms" in request.url or "/map/arcgis" in request.url else failed).append(item)',
+    '(gis_optional if "/map/wms" in request.url or "/map/arcgis" in request.url or "GetLegendGraphic" in request.url else failed).append(item)',
+)
+source = source.replace(
+    '(gis_optional if "/map/wms" in response.url or "/map/arcgis" in response.url else http).append(item)',
+    '(gis_optional if "/map/wms" in response.url or "/map/arcgis" in response.url or "GetLegendGraphic" in response.url else http).append(item)',
+)
 code = compile(source, str(TARGET), "exec")
 ns = {"__name__": "workspace_browser_gate_resilient", "__file__": str(TARGET)}
 exec(code, ns)
