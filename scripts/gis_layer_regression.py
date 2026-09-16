@@ -18,7 +18,7 @@ EXPECTED_UI_LAYER_IDS = {
     "mygems-seismic", "mygems-mineral", "iplan-cadastral",
 }
 EXPECTED_API_CORE_IDS = EXPECTED_UI_LAYER_IDS - {"iplan-cadastral"}
-EXPLICIT_UPSTREAM_DEFERRED = {"iplan-rsn", "iplan-affordable-housing"}
+EXPLICIT_UPSTREAM_DEFERRED = {"iplan-rfn", "iplan-rsn", "iplan-affordable-housing"}
 
 
 def wait_until(predicate, timeout=15.0, interval=0.2):
@@ -107,9 +107,6 @@ def set_layer_checkbox(page, layer_id: str, desired: bool, timeout=12.0):
 
     element_id = locator.get_attribute("id")
     label = page.locator(f"label[for='{element_id}']") if element_id else None
-    # Clicking the product's explicit <label for=...> is the same native UI
-    # activation a human gets and avoids Chromium edge cases around styled
-    # checkbox inputs. Native DOM click remains the final fallback.
     try:
         if label is not None and label.count():
             label.click(force=True)
