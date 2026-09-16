@@ -32,15 +32,14 @@ source = source.replace(
                     check(state.get_attribute("data-state") == "unverified", f"layer {layer_id} unverified state marker")
                     check(not row.is_checked(), f"layer {layer_id} remains unavailable")
                     continue
-                row.scroll_into_view_if_needed(timeout=10000); row.check(force=True); page.wait_for_timeout(250)''',
-    1,
-)
-# The CI launcher normally changes the layer interaction to locator.click().
-# On the affected Chromium/CI combination, invoke the actual DOM click path
-# so the native checkbox state transition and its change event are preserved.
-source = source.replace(
-    '                row.scroll_into_view_if_needed(timeout=10000); row.click(force=True); page.wait_for_timeout(350)\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
-    '                row.scroll_into_view_if_needed(timeout=10000); row.evaluate("(el)=>el.click()"); page.wait_for_timeout(350)\n                check(row.is_checked(), f"layer toggle applied: {layer_id}")',
+                row.scroll_into_view_if_needed(timeout=10000)
+                label = page.locator(f"label[for='{row.get_attribute('id')}']")
+                if label.count():
+                    label.click(force=True)
+                else:
+                    row.evaluate("(el)=>el.click()")
+                page.wait_for_timeout(350)
+                check(row.is_checked(), f"layer toggle applied: {layer_id}")''',
     1,
 )
 # GetLegendGraphic and its same-origin canonical proxy are part of the
