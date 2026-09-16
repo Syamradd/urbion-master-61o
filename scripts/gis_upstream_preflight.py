@@ -38,6 +38,9 @@ ARCGIS_FALLBACKS = {
     "iplan:ksas": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/AlamSekitar/MapServer", 2),
     "iplan:hakisan_pantai": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 5),
     "iplan:banjir": ("https://scharms.planmalaysia.gov.my/arcgis/rest/services/DPFDN/Bencana/MapServer", 2),
+    "iplan:gunatanah_komited_04": ("https://gisdev.planmalaysia.gov.my/server/rest/services/Hosted/MERGE_KOMITED/MapServer", 0),
+    "iplan:warisan": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_SOSIAL/MapServer", 1),
+    "iplan:topo": ("https://gisdev.planmalaysia.gov.my/server/rest/services/RFN4/04_PERANCANGAN_ALAM_SEKITAR/MapServer", 19),
 }
 DIRECT_WMS_FALLBACKS = {
     "iplan:gunatanah_komited_04", "iplan:rsn", "iplan:banjir", "iplan:warisan",
