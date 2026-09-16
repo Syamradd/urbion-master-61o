@@ -1,1 +1,1 @@
-x
+Canonical release checkpoint: post-repair validation trigger for commit 0f8368d. Product code unchanged; full push-based release gates must certify the exact post-repair tree before Render deployment.
