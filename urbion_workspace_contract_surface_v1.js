@@ -1,8 +1,9 @@
 /* URBION HORIZON — canonical input/interaction surface adapter. */
 (()=>{
 'use strict';
-if(window.__URBION_CONTRACT_SURFACE_V1__&&window.__URBION_CONTRACT_SURFACE_V1__.running)return;
-window.__URBION_CONTRACT_SURFACE_V1__={running:true};
+if(window.__URBION_CONTRACT_SURFACE_V1_RUNNING__)return;
+window.__URBION_CONTRACT_SURFACE_V1_RUNNING__=true;
+window.__URBION_CONTRACT_SURFACE_V1__=true;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
 function rawValue(id){return $(id)?.value??''}
