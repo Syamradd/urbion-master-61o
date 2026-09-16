@@ -13,8 +13,8 @@ wms.write_text(text, encoding="utf-8")
 
 bridge = ROOT / "urbion_workspace_bridge.js"
 text = bridge.read_text(encoding="utf-8")
-needle = '''          canonicalLast=null;\n          canonicalAnalysisError=null;\n          try{if(typeof lastResult!==\'undefined\')lastResult=null;}catch(_){ }\n'''
-replacement = '''          canonicalLast=null;\n          canonicalAnalysisError=null;\n          try{window.dispatchEvent(new CustomEvent(\'urbion:analysis-start\',{detail:{startedAt:Date.now()}}));}catch(_){ }\n          try{if(typeof lastResult!==\'undefined\')lastResult=null;}catch(_){ }\n'''
+needle = '''          canonicalLast=null;\n          canonicalAnalysisError=null;\n          try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }\n'''
+replacement = '''          canonicalLast=null;\n          canonicalAnalysisError=null;\n          try{window.dispatchEvent(new CustomEvent('urbion:analysis-start',{detail:{startedAt:Date.now()}}));}catch(_){ }\n          try{if(typeof lastResult!=='undefined')lastResult=null;}catch(_){ }\n'''
 if needle not in text:
     raise SystemExit("analysis reset anchor not found")
 text = text.replace(needle, replacement, 1)
@@ -55,4 +55,3 @@ if needle not in text:
 bridge.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
 
 # The release automation itself is intentionally ephemeral; the workflow removes it after use.
-''
