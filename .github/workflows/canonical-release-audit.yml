@@ -40,13 +40,13 @@ jobs:
           python -m pip install playwright
           python -m playwright install --with-deps chromium
 
-      - name: Start canonical presentation server
+      - name: Start canonical Render-compat presentation server
         env:
           PYTHONPATH: .
           PORT: 8765
         run: |
           set -euo pipefail
-          python -m uvicorn landing_server:app --host 0.0.0.0 --port "$PORT" >/tmp/urbion.log 2>&1 &
+          python -m uvicorn workspace_v4_server:app --host 0.0.0.0 --port "$PORT" >/tmp/urbion.log 2>&1 &
           PID=$!
           echo "$PID" > /tmp/urbion.pid
           for _ in $(seq 1 30); do
