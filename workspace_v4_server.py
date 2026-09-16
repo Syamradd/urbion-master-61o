@@ -127,8 +127,6 @@ async def _urbion_v4_compatibility(request:Request,call_next):
     marker=b'</div></aside>'
     if marker in body: body=body.replace(marker,STATIC_IMPACT_SURFACE.encode("utf-8")+marker,1)
    scripts=b''
-   # Keep the hardening asset on the presentation surface, but explicitly fence it
-   # off from DOM ownership. Canonical V5 owns GIS rendering/interactions.
    if _HARDENING_ASSET.is_file() and b"urbion_workspace_release_hardening_v6.js" not in body:
     scripts+=b'<script>window.__URBION_RELEASE_HARDENING_V6__=true;</script><script src="/urbion_workspace_release_hardening_v6.js"></script>'
    if _DEMO_COMMAND_ASSET.is_file() and b"urbion_workspace_demo_command_layer.js" not in body:
@@ -137,9 +135,7 @@ async def _urbion_v4_compatibility(request:Request,call_next):
     scripts+=b'<script src="/urbion_workspace_contract_surface_v1.js"></script>'
    if _DEMO_ENRICHMENT_ASSET.is_file() and b"urbion_workspace_demo_enrichment_v1.js" not in body:
     scripts+=b'<script src="/urbion_workspace_demo_enrichment_v1.js"></script>'
-   # Final presentation-boundary bridge: expose one stable getter that reads the
-   # actual visible controls regardless of which legacy bundle initialized first.
-   scripts+=b'''<script>(function(){'use strict';window.URBION_VISIBLE_INPUTS_V2=function(){const raw=id=>document.getElementById(id)?.value??'';const num=id=>{const r=raw(id),n=Number(r);return Number.isFinite(n)&&String(r).trim()!==''?n:null};const checked=id=>!!document.getElementById(id)?.checked;let base={};try{base=(typeof window.getInputs==='function'&&window.getInputs.__URBION_PRESENTATION_BRIDGE__)?window.getInputs():{}}catch(_){base={}}const getter=function(){return Object.assign({},base,{project:raw('project'),project_ref:raw('project_ref'),mukim:raw('mukim'),landuse1:raw('landuse1'),landuse2:raw('landuse2'),landuse3:raw('landuse3'),site_area_ha:num('site_area_ha'),commercial_gfa_m2:num('commercial_gfa_m2'),jobs:num('jobs'),population:num('population'),daily_trips:num('daily_trips'),road_distance_m:num('road_distance_m'),flood_exposure:raw('flood_exposure'),nearby_facilities:raw('nearby_facilities'),environment_note:raw('environment_note'),infra_note:raw('infra_note'),constraint_note:raw('constraint_note'),source_note:raw('source_note'),analysis_focus:raw('analysis_focus'),units:num('units'),gfa:num('gfa'),perimeter_planting:num('perimeter_planting'),landscaped_pedestrian_walkway:num('landscaped_pedestrian_walkway'),shop_frontage_verified:checked('shop_frontage_verified'),shop_office_verified:checked('shop_office_verified')})};getter.__URBION_PRESENTATION_BRIDGE__=true;window.getInputs=getter;})();</script>'''
+   scripts+=b'''<script>(function(){'use strict';const previous=typeof window.getInputs==='function'?window.getInputs:null;const raw=id=>document.getElementById(id)?.value??'';const num=id=>{const r=raw(id),n=Number(r);return Number.isFinite(n)&&String(r).trim()!==''?n:null};const checked=id=>!!document.getElementById(id)?.checked;const getter=function(){let base={};try{if(previous&&previous!==getter)base=previous()||{}}catch(_){base={}}return Object.assign({},base,{project:raw('project'),project_ref:raw('project_ref'),mukim:raw('mukim'),landuse1:raw('landuse1'),landuse2:raw('landuse2'),landuse3:raw('landuse3'),site_area_ha:num('site_area_ha'),commercial_gfa_m2:num('commercial_gfa_m2'),jobs:num('jobs'),population:num('population'),daily_trips:num('daily_trips'),road_distance_m:num('road_distance_m'),flood_exposure:raw('flood_exposure'),nearby_facilities:raw('nearby_facilities'),environment_note:raw('environment_note'),infra_note:raw('infra_note'),constraint_note:raw('constraint_note'),source_note:raw('source_note'),analysis_focus:raw('analysis_focus'),units:num('units'),gfa:num('gfa'),perimeter_planting:num('perimeter_planting'),landscaped_pedestrian_walkway:num('landscaped_pedestrian_walkway'),shop_frontage_verified:checked('shop_frontage_verified'),shop_office_verified:checked('shop_office_verified')})};getter.__URBION_PRESENTATION_BRIDGE__=true;window.getInputs=getter;window.URBION_VISIBLE_INPUTS_V2=getter;})();</script>'''
    if scripts and b"</body>" in body:body=body.replace(b"</body>",scripts+b"</body>",1)
    headers={k:v for k,v in dict(response.headers).items() if k.lower() not in {"content-length","content-type","transfer-encoding"}}
    headers["Cache-Control"]="no-store, max-age=0, must-revalidate"
@@ -154,7 +150,7 @@ def release_hardening_asset():
 
 @app.get("/urbion_workspace_development_impact_owner_v4.js",include_in_schema=False)
 def development_impact_ui_asset():
- if not _DEVELOPMENT_IMPACT_ASSET.is_file():return Response("URBION HORIZON development impact UI asset missing.",status_code=500,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
+ if not _DEVELOPMENT_IMPACT_ASSET.is_file():return Response("URBION HORIZON development impact UI asset missing.",status_code=500,media_type="text/plain; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
  return Response(_DEVELOPMENT_IMPACT_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
 
 @app.get("/urbion_workspace_demo_command_layer.js",include_in_schema=False)
@@ -164,7 +160,7 @@ def demo_command_asset():
 
 @app.get("/urbion_workspace_contract_surface_v1.js",include_in_schema=False)
 def contract_surface_asset():
- if not _CONTRACT_SURFACE_ASSET.is_file():return Response("URBION HORIZON contract surface asset missing.",status_code=500,media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
+ if not _CONTRACT_SURFACE_ASSET.is_file():return Response("URBION HORIZON contract surface asset missing.",status_code=500,media_type="text/plain; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
  return Response(_CONTRACT_SURFACE_ASSET.read_text(encoding="utf-8"),media_type="application/javascript; charset=utf-8",headers={"Cache-Control":"no-store, max-age=0, must-revalidate"})
 
 @app.get("/urbion_workspace_demo_enrichment_v1.js",include_in_schema=False)
