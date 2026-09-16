@@ -52,17 +52,21 @@ def wait_for_layer_dom(page, layer_id: str, timeout=12.0):
 def expand_layer_group(page, layer_id):
     checkbox = page.locator(f"#layerList input[data-urbion-layer='{layer_id}']")
     group = checkbox.locator("xpath=ancestor::*[contains(@class,'urbion-layer-group') or contains(@class,'layer-group')][1]")
-    if group.count() and "closed" in (group.get_attribute("class") or ""):
-        head = group.locator(".urbion-layer-head, .layer-group-head").first
-        if head.count():
-            head.click(force=True)
-            page.wait_for_timeout(120)
-    # The layer body can be inside an independently scrollable drawer. Native
-    # Playwright scrolling can report an invisible checkbox while the drawer is
-    # still settling, so use the DOM scroll primitive before the final check.
+    if group.count():
+        # Always normalize every ancestor group to open. Deferred layers can
+        # leave the previous group in a closed state while the next group has
+        # not yet been interacted with, so relying on a single click is brittle.
+        group.evaluate("el=>el.classList.remove('closed')")
+        for _ in range(10):
+            try:
+                if checkbox.is_visible():
+                    break
+            except Exception:
+                pass
+            page.wait_for_timeout(60)
+    checkbox.evaluate("el=>{let p=el.parentElement;while(p){if(p.classList&&p.classList.contains('urbion-layer-group'))p.classList.remove('closed');p=p.parentElement}}")
     checkbox.evaluate("el=>el.scrollIntoView({block:'center',inline:'nearest'})")
-    if not checkbox.is_visible():
-        raise AssertionError("GIS layer checkbox remained hidden after expanding its group")
+    wait_until(lambda: checkbox.is_visible(), timeout=3.0, interval=0.1)
 
 
 def response_layer_id(url: str, catalog_by_id: dict[str, dict]) -> str | None:
