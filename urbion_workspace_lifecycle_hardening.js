@@ -1,4 +1,4 @@
-/* URBION HORIZON — final analysis lifecycle guard. */
+/* URBION HORIZON — final analysis lifecycle + GIS convergence guard. */
 (()=>{
   'use strict';
   if(window.__URBION_LIFECYCLE_HARDENING_V1__)return;
@@ -21,25 +21,42 @@
     window.__URBION_LAST_ANALYSIS_STATE__='ERROR';
   },{passive:true});
 
-  // Final convergence guard for the canonical GIS panel. Some late UI owners may
-  // replace the layer drawer after the authoritative manager has populated it.
-  // Never weaken the layer contract: simply ask the single canonical owner to
-  // repaint from its current source catalogue when the visible rows disappear.
-  let observerInstalled=false;
-  function protectLayerPanel(){
-    if(observerInstalled)return true;
-    const host=document.querySelector('#layerList');
+  // Final GIS convergence guard. The canonical layer manager remains the sole
+  // owner of layer state/data, but another UI owner can replace #layerList itself.
+  // Observe the stable #layers shell, reacquire the current list, and repaint
+  // from the authoritative catalogue whenever the visible rows disappear.
+  let shellObserver=null;
+  let poll=null;
+  let repairing=false;
+  function converge(){
+    if(repairing)return;
     const manager=window.URBION_LAYER_MANAGER;
-    if(!host||!manager||typeof manager.refresh!=='function')return false;
-    observerInstalled=true;
-    const repair=()=>{
-      const rows=host.querySelectorAll('input[data-urbion-layer]').length;
-      const catalog=Array.isArray(window.__URBION_LAYER_CATALOG__)?window.__URBION_LAYER_CATALOG__.length:0;
-      if(!rows&&catalog>=20&&document.querySelector('#layers.open'))void manager.refresh();
-    };
-    new MutationObserver(()=>{try{repair()}catch(_){}}).observe(host,{childList:true,subtree:true});
-    repair();
+    const shell=document.querySelector('#layers');
+    const host=shell?.querySelector('#layerList')||document.querySelector('#layerList');
+    const catalog=Array.isArray(window.__URBION_LAYER_CATALOG__)?window.__URBION_LAYER_CATALOG__.length:0;
+    if(!manager||typeof manager.refresh!=='function'||!shell||!host||catalog<20)return;
+    const rows=host.querySelectorAll('input[data-urbion-layer]').length;
+    if(!shell.classList.contains('open')||rows>0)return;
+    repairing=true;
+    Promise.resolve(manager.refresh()).catch(()=>{}).finally(()=>{repairing=false;});
+  }
+  function install(){
+    if(shellObserver)return true;
+    const shell=document.querySelector('#layers');
+    if(!shell||!window.URBION_LAYER_MANAGER?.refresh)return false;
+    shellObserver=new MutationObserver(()=>{try{converge()}catch(_){}});
+    shellObserver.observe(shell,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+    try{converge()}catch(_){ }
+    poll=setInterval(()=>{
+      try{converge()}catch(_){ }
+      const shellNow=document.querySelector('#layers');
+      const hostNow=shellNow?.querySelector('#layerList');
+      const catalogNow=Array.isArray(window.__URBION_LAYER_CATALOG__)?window.__URBION_LAYER_CATALOG__.length:0;
+      if(shellNow&&hostNow&&catalogNow>=20&&hostNow.querySelectorAll('input[data-urbion-layer]').length>0){
+        clearInterval(poll);poll=null;
+      }
+    },150);
     return true;
   }
-  const timer=setInterval(()=>{if(protectLayerPanel())clearInterval(timer)},100);
+  const timer=setInterval(()=>{if(install())clearInterval(timer)},100);
 })();
