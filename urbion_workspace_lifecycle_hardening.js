@@ -7,15 +7,23 @@
   // Keep the public GIS catalogue contract atomic with its rendered DOM. The
   // layer manager assigns the catalogue before drawing rows; exposing that
   // intermediate value lets a browser consumer observe >=20 while the panel is
-  // still empty. Buffer the assignment until the current #layerList contains
-  // the same number of authoritative layer controls.
+  // still empty. The getter also resolves readiness synchronously once the
+  // authoritative rows are present, avoiding a timing-only gap between draw()
+  // and the 25 ms readiness poll.
   let layerCatalogue=null;
   let layerCatalogueReady=false;
   try{
     Object.defineProperty(window,'__URBION_LAYER_CATALOG__',{
       configurable:true,
       enumerable:true,
-      get(){return layerCatalogueReady?layerCatalogue:[]},
+      get(){
+        const host=document.querySelector('#layerList');
+        const rows=host?.querySelectorAll('input[data-urbion-layer]').length||0;
+        if(!layerCatalogueReady && Array.isArray(layerCatalogue) && layerCatalogue.length>0 && rows===layerCatalogue.length){
+          layerCatalogueReady=true;
+        }
+        return layerCatalogueReady?layerCatalogue:[];
+      },
       set(value){
         layerCatalogue=Array.isArray(value)?value:[];
         layerCatalogueReady=false;
