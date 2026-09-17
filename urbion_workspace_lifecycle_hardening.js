@@ -50,6 +50,29 @@
     });
   }catch(_){ }
 
+  // Restore the existing canonical About destination in the workspace shell.
+  // This restores navigation only; the premium About page remains the existing
+  // visual master and is not duplicated or rewritten here.
+  function restoreAboutNavigation(){
+    const nav=document.querySelector('.top .nav');
+    if(!nav||nav.querySelector('[data-urbion-about]'))return;
+    const b=document.createElement('button');
+    b.type='button';
+    b.dataset.urbionAbout='true';
+    b.textContent='ABOUT';
+    b.setAttribute('aria-label','About URBION HORIZON');
+    b.addEventListener('click',()=>window.location.assign('/about'));
+    nav.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',restoreAboutNavigation,{once:true});
+  else restoreAboutNavigation();
+  let aboutPoll=0;
+  const aboutTimer=setInterval(()=>{
+    restoreAboutNavigation();
+    aboutPoll+=1;
+    if(document.querySelector('[data-urbion-about]')||aboutPoll>=120)clearInterval(aboutTimer);
+  },100);
+
   let run=0;
   window.__URBION_ANALYSIS_RUN_ID__=0;
   const stamp=()=>++run;
@@ -94,11 +117,11 @@
     try{converge()}catch(_){ }
     return true;
   }
-  const timer=setInterval(()=>{
+  poll=setInterval(()=>{
     try{attach()}catch(_){ }
     try{converge()}catch(_){ }
     if(attach()){
-      if(poll)clearInterval(poll);
+      clearInterval(poll);
       poll=null;
     }
   },100);
