@@ -6,8 +6,8 @@
 
   // Keep the public GIS catalogue contract atomic with its rendered DOM. The
   // layer manager assigns the catalogue before drawing rows; exposing that
-  // intermediate value lets a browser consumer observe >=20 while the panel is
-  // still empty. The getter also resolves readiness synchronously once the
+  // intermediate value lets a browser consumer observe >=20 while the panel
+  // is still empty. The getter also resolves readiness synchronously once the
   // authoritative rows are present, avoiding a timing-only gap between draw()
   // and the 25 ms readiness poll.
   let layerCatalogue=null;
@@ -53,6 +53,9 @@
   // Restore the existing canonical About destination in the workspace shell.
   // This restores navigation only; the premium About page remains the existing
   // visual master and is not duplicated or rewritten here.
+  function goAbout(){
+    window.location.assign('/about');
+  }
   function restoreAboutNavigation(){
     const nav=document.querySelector('.top .nav');
     if(!nav||nav.querySelector('[data-urbion-about]'))return;
@@ -61,9 +64,23 @@
     b.dataset.urbionAbout='true';
     b.textContent='ABOUT';
     b.setAttribute('aria-label','About URBION HORIZON');
-    b.addEventListener('click',()=>window.location.assign('/about'));
+    b.addEventListener('click',goAbout);
     nav.appendChild(b);
   }
+  // Make every visible ABOUT control in the workspace route to the existing
+  // canonical /about page, even when another UI owner attaches a click handler.
+  document.addEventListener('click',e=>{
+    const target=e.target instanceof Element?e.target.closest('button,a,[role="button"]'):null;
+    if(!target)return;
+    const label=(target.getAttribute('aria-label')||target.textContent||'').trim().replace(/\s+/g,' ').toUpperCase();
+    if(label==='ABOUT'||label==='ABOUT US'||label.startsWith('ABOUT ')){
+      if(target.closest('.top .nav')||target.dataset?.urbionAbout!==undefined){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        goAbout();
+      }
+    }
+  },true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',restoreAboutNavigation,{once:true});
   else restoreAboutNavigation();
   let aboutPoll=0;
